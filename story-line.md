@@ -123,21 +123,129 @@ This journey illustrates disconnected services: Alex juggles 20+ interactions ac
 
 
 
-# Agency Interactions in Home Renovation Process (Chronological Order with Timelines and Costs)
+# Agency Interactions in Home Renovation Process
 
-This table organizes the processes in approximate chronological order based on the renovation journey (permit applications first, then utility coordination, inspections during construction, disposal ongoing, violation mid-project, final approvals, and now rebate application post-completion). Timelines and costs are typical estimates as of early 2026, drawn from LADBS, LADWP, and LASAN guidelines; actuals vary by project complexity, workload, and specifics (e.g., valuation-based fees).
+## Summary Table (Chronological Order with Dependencies, Timelines, and Costs)
 
-| Order | Persona  | Agency                                      | Process Engaged                          | Typical Completion Time                  | Associated Costs (Approximate)          |
-|-------|----------|---------------------------------------------|------------------------------------------|------------------------------------------|----------------------------------------|
-| 1     | Alex     | Los Angeles Department of Building and Safety (LADBS) | Building Permit Application (for metal roof) | 4-12 weeks (plan check review + revisions) | $500-$1,500 (valuation-based + plan check) |
-| 2     | Alex     | Los Angeles Department of Building and Safety (LADBS) | Electrical Permit Application (for service upgrade, rewiring, solar, batteries) | 4-12 weeks (often concurrent with others) | $800-$2,000 (higher due to scope)     |
-| 3     | Alex     | Los Angeles Department of Building and Safety (LADBS) | Mechanical Permit Application (for heat pumps) | 4-12 weeks (concurrent)                 | $400-$1,000                           |
-| 4     | Alex     | Los Angeles Department of Water and Power (LADWP) | Utility Service Upgrade Request (for 400A electrical service) | 6-20 weeks (engineering + construction) | $0-$15,000+ (often $5,000+ if upgrades needed) |
-| 5     | Alex     | Los Angeles Department of Water and Power (LADWP) | Interconnection Agreement Application (for solar panels and batteries) | 6-20 weeks (review + requirements)      | $500-$2,000 (application/engineering) |
-| 6     | Neighbor | Los Angeles Department of Building and Safety (LADBS) | Code Violation Reporting (via 311 or online form for alleged heat pump setback and noise issues) | Immediate submission; investigation starts 1-3 weeks | $0 (for reporter)                     |
-| 7     | Alex     | Los Angeles Department of Building and Safety (LADBS) | Rough and Final Inspections (for all permitted work) | 1-2 weeks per scheduling (multiple over 8-16 weeks construction) | $100-$200 per re-inspection if failed |
-| 8     | Alex     | Los Angeles Department of Building and Safety (LADBS) | Response to Code Violation Notice (providing evidence of compliance) | 2-6 weeks total resolution              | $0 (if invalid; potential fines if valid) |
-| 9     | Alex     | Los Angeles Department of Water and Power (LADWP) | Final Utility Inspection and Energization | 1-4 weeks (after on-site install)       | Included in prior fees                |
-| 10    | Alex     | Los Angeles Department of Water and Power (LADWP) | Rebate Application for Efficient HVAC (Ductless Heat Pumps) | Submission immediate after project completion; processing up to 12 weeks | $0 (rebate received: $1,500-$2,500 per ton based on efficiency ratings) |
-| 11    | Alex     | LA Sanitation & Environment (LASAN)        | Bulky Item Pickup Scheduling (for old furnace, AC unit, appliances) | 2-7 days scheduling + pickup            | Free (up to 10 collections/year)      |
-| 12    | Alex     | LA Sanitation & Environment (LASAN)        | E-Waste Curbside Collection Request (for old electrical cables) | 2-7 days scheduling + pickup            | Free                                  |
+This table organizes the processes in approximate chronological order based on the renovation journey, showing dependencies between tasks. Timelines and costs are typical estimates as of early 2026, drawn from LADBS, LADWP, and LASAN guidelines; actuals vary by project complexity, workload, and specifics (e.g., valuation-based fees).
+
+| ID | Persona  | Agency | Process Engaged | Dependencies | Typical Completion Time | Associated Costs (Approximate) |
+|----|----------|--------|-----------------|--------------|-------------------------|--------------------------------|
+| P1 | Alex | LADBS | Building Permit Application (for metal roof) | None | 4-12 weeks (plan check review + revisions) | $500-$1,500 (valuation-based + plan check) |
+| P2 | Alex | LADBS | Electrical Permit Application (for service upgrade, rewiring, solar, batteries) | None | 4-12 weeks (concurrent with P1, P3) | $800-$2,000 (higher due to scope) |
+| P3 | Alex | LADBS | Mechanical Permit Application (for heat pumps) | None | 4-12 weeks (concurrent with P1, P2) | $400-$1,000 |
+| U1 | Alex | LADWP | Utility Service Upgrade Request (for 400A electrical service) | P2 submitted | 6-20 weeks (engineering + construction) | $0-$15,000+ (often $5,000+ if upgrades needed) |
+| U2 | Alex | LADWP | Interconnection Agreement Application (for solar panels and batteries) | P2 submitted | 6-20 weeks (review + requirements, concurrent with U1) | $500-$2,000 (application/engineering) |
+| C1 | Alex | LADBS | Construction Phase (contractors begin work) | P1, P2, P3 approved | 8-16 weeks | $50,000-$100,000+ (contractor labor) |
+| I1 | Alex | LADBS | Rough and Final Inspections (for all permitted work) | C1 in progress | 1-2 weeks per scheduling (multiple over 8-16 weeks) | $100-$200 per re-inspection if failed |
+| D1 | Alex | LASAN | Bulky Item Pickup Scheduling (for old furnace, AC unit) | C1 started (during demolition) | 2-7 days scheduling + pickup | Free (up to 10 collections/year) |
+| D2 | Alex | LASAN | E-Waste Curbside Collection Request (for old electrical cables) | C1 started (during demolition) | 2-7 days scheduling + pickup | Free |
+| V1 | Neighbor | LADBS | Code Violation Reporting (alleged heat pump setback/noise issues) | C1 in progress (mid-construction) | Immediate submission; investigation starts 1-3 weeks | $0 (for reporter) |
+| V2 | Alex | LADBS | Response to Code Violation Notice (provide evidence of compliance) | V1 filed | 2-6 weeks total resolution | $0 (if invalid; potential fines if valid) |
+| F1 | Alex | LADWP | Final Utility Inspection and Energization | C1 complete, I1 passed, U1 and U2 approved | 1-4 weeks (after on-site install) | Included in prior fees |
+| R1 | Alex | LADWP | Rebate Application for Efficient HVAC (Ductless Heat Pumps) | F1 complete, I1 passed | Submission immediate after completion; processing up to 12 weeks | $0 (rebate received: $1,500-$2,500 per ton) |
+
+**Legend:**
+- **P#**: Permit applications (can run in parallel)
+- **U#**: Utility coordination (depends on permit submissions)
+- **C#**: Construction phase
+- **I#**: Inspections (throughout construction)
+- **D#**: Disposal/waste management (during construction, parallel)
+- **V#**: Violation handling (contingent event)
+- **F#**: Final approvals
+- **R#**: Rebates (post-completion)
+
+## Process Dependency Flow Chart
+
+The following diagram shows the dependencies and parallel execution paths for Alex's home renovation project. Tasks at the same horizontal level can be executed in parallel.
+
+```mermaid
+graph TD
+    Start([Project Planning<br/>1-4 weeks]) --> P1[P1: Building Permit<br/>LADBS, 4-12 weeks]
+    Start --> P2[P2: Electrical Permit<br/>LADBS, 4-12 weeks]
+    Start --> P3[P3: Mechanical Permit<br/>LADBS, 4-12 weeks]
+    
+    P2 --> U1[U1: Service Upgrade Request<br/>LADWP, 6-20 weeks]
+    P2 --> U2[U2: Interconnection Agreement<br/>LADWP, 6-20 weeks]
+    
+    P1 --> PermitsApproved{All Permits<br/>Approved?}
+    P2 --> PermitsApproved
+    P3 --> PermitsApproved
+    
+    PermitsApproved -->|Yes| C1[C1: Construction Phase<br/>8-16 weeks]
+    
+    C1 --> I1[I1: Inspections<br/>Throughout construction<br/>1-2 weeks each]
+    C1 --> D1[D1: Bulky Pickup<br/>LASAN, 2-7 days]
+    C1 --> D2[D2: E-Waste Pickup<br/>LASAN, 2-7 days]
+    
+    C1 -.->|Mid-construction<br/>Contingent| V1[V1: Violation Reported<br/>Neighbor, immediate]
+    V1 --> V2[V2: Respond to Violation<br/>2-6 weeks resolution]
+    V2 --> I1
+    
+    I1 --> InspectionsPassed{Inspections<br/>Passed?}
+    InspectionsPassed -->|Yes| UtilityReady{Utility Work<br/>Complete?}
+    InspectionsPassed -->|No| I1
+    
+    U1 --> UtilityReady
+    U2 --> UtilityReady
+    
+    UtilityReady -->|Yes| F1[F1: Final Utility Inspection<br/>LADWP, 1-4 weeks]
+    
+    F1 --> ProjectComplete{Project<br/>Complete?}
+    ProjectComplete -->|Yes| R1[R1: Rebate Application<br/>LADWP, up to 12 weeks processing]
+    
+    R1 --> End([Project Finished])
+    
+    classDef permitClass fill:#4CAF50,stroke:#2E7D32,color:#fff,stroke-width:2px
+    classDef utilityClass fill:#2196F3,stroke:#1565C0,color:#fff,stroke-width:2px
+    classDef constructionClass fill:#FF9800,stroke:#E65100,color:#fff,stroke-width:2px
+    classDef inspectionClass fill:#9C27B0,stroke:#6A1B9A,color:#fff,stroke-width:2px
+    classDef disposalClass fill:#607D8B,stroke:#37474F,color:#fff,stroke-width:2px
+    classDef violationClass fill:#F44336,stroke:#C62828,color:#fff,stroke-width:2px
+    classDef finalClass fill:#00BCD4,stroke:#00838F,color:#fff,stroke-width:2px
+    classDef decisionClass fill:#FFF9C4,stroke:#F57F17,color:#000,stroke-width:2px
+    
+    class P1,P2,P3 permitClass
+    class U1,U2 utilityClass
+    class C1 constructionClass
+    class I1 inspectionClass
+    class D1,D2 disposalClass
+    class V1,V2 violationClass
+    class F1,R1 finalClass
+    class PermitsApproved,InspectionsPassed,UtilityReady,ProjectComplete decisionClass
+```
+
+## Key Observations from Dependency Analysis
+
+### Critical Path
+The longest dependency chain (critical path) runs through:
+1. **Electrical Permit (P2)**: 4-12 weeks
+2. **Utility Coordination (U1/U2)**: 6-20 weeks (starts after P2 submitted, runs parallel)
+3. **Construction (C1)**: 8-16 weeks (waits for all permits approved)
+4. **Inspections (I1)**: Throughout construction
+5. **Final Utility Inspection (F1)**: 1-4 weeks
+6. **Rebate Processing (R1)**: Up to 12 weeks
+
+**Total Critical Path**: ~23-64+ weeks (6-16 months)
+
+### Parallelization Opportunities
+- **Permit Applications (P1, P2, P3)**: Can all be submitted simultaneously, saving 8-24 weeks vs. sequential
+- **Utility Requests (U1, U2)**: Can start as soon as electrical permit is submitted (don't need to wait for approval)
+- **Disposal Activities (D1, D2)**: Run independently during construction, no blocking
+- **Violation Handling (V1, V2)**: Contingent path that can delay construction by 2-6 weeks if triggered
+
+### Bottlenecks Identified
+1. **Permit Review Delays**: 4-12 weeks review time with potential for 1-4 week revision rounds
+2. **Utility Construction**: 6-20 weeks, often unpredictable due to infrastructure needs
+3. **Agency Coordination**: No automated handoffs between LADBS (permits) and LADWP (utility work)
+4. **Inspection Scheduling**: 1-2 week delays per inspection, compounded by potential failures
+5. **Manual Status Tracking**: Citizens must proactively check status across 3+ agency systems
+
+### AI-Powered Improvements
+With the MCP-based architecture, the system can:
+- **Parallel Submission**: Auto-submit all permit applications simultaneously with pre-validation
+- **Proactive Coordination**: Trigger utility requests immediately upon permit submission (not approval)
+- **Predictive Timeline**: Use historical data to provide accurate estimates and identify delay risks early
+- **Automated Tracking**: Monitor all processes across agencies and proactively notify citizens of status changes
+- **Smart Scheduling**: Optimize inspection sequences to minimize delays and coordinate across agencies
+- **Early Rebate Identification**: Alert citizens to rebate eligibility during permit phase, not after completion

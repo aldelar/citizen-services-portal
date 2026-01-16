@@ -62,6 +62,7 @@ The solution leverages the following Azure platform services:
 - **Azure OpenAI**: Conversational AI and intelligent assistance
 - **Cognitive Services (Language)**: Natural language understanding, sentiment analysis, translation
 - **Microsoft Fabric**: Data integration, analytics, and reporting
+- **Microsoft Agent Framework**: Building conversational agents and virtual assistants - likely use of Durable Agents for stateful interactions like projects
 
 ---
 
