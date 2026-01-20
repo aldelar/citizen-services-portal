@@ -293,6 +293,25 @@ az group delete --name csp --yes --no-wait
 
 ---
 
+## MCP Servers
+
+Model Context Protocol (MCP) servers provide specialized tools for AI agents to interact with government services.
+
+### LADBS MCP Server
+
+The **Los Angeles Department of Building and Safety (LADBS)** MCP server provides tools for building permits, inspections, and code violations.
+
+**Tools Available:**
+- `submit_permit_application` - Submit building permit applications
+- `check_permit_status` - Check status of existing permits
+- `schedule_inspection` - Schedule building inspections
+- `report_violation` - Report code violations
+
+**Location:** `src/mcp-servers/ladbs/`  
+**Documentation:** [src/mcp-servers/ladbs/README.md](src/mcp-servers/ladbs/README.md)
+
+---
+
 ## Next Steps
 
 After successful deployment:
