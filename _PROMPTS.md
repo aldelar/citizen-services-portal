@@ -69,3 +69,26 @@ So the overall architecture should be tailored toward:
 Revise the overall plan.
 
 Also, use mermaid when you diagram architecture or systems.
+
+
+
+==== INFRASTRUCTURE DESIGN Assistance =====
+
+Let's work on defining the Azure infrastrucure required for this project.
+
+Let's write up the foundation services required for it. I'll provide a short list, and then please suggest a structure to build up an 'infra' folder that will contain all the biceps templates.
+
+The goal is to be able to build and update the environment using 'azd'.
+
+Here are the key services to define:
+- resource group 'aldelar-ama'
+- Foundry Service and one Foundry Resource to host the project - we will integrate API Management as the 'AI Gateway' to access models via the Gateway when we build agents
+- AI Search service
+- API Management (will be used for model endpoints to enforce governance, capacity and enable scale out accross regions of models)
+- Azure Container Apps (So we can host mcp servers and the web apps)
+- Azure Content Safety
+- Azure Cosmos DB as our memory store for agents + overall citizen operational data store
+
+Let's start here. Draft a landing zone document in 'infrastructure.md', make some assumptions based on best practices, but be brief, and let's discuss the open questions to refine this.
+
+Propose how to lay out the biceps files. Don't write any bicept file yet, we will do that once we agree on scope of services required and requirements.

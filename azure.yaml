@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: citizen-services-portal
+metadata:
+  template: citizen-services-portal@0.0.1
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+pipeline:
+  provider: github
+
+# Future: Add services here as they are developed
+# services:
+#   mcp-permits:
+#     project: ./src/mcp-servers/mcp_permits
+#     language: py
+#     host: containerapp
+#   
+#   web-portal:
+#     project: ./src/web/citizen-portal
+#     language: js
+#     host: containerapp
