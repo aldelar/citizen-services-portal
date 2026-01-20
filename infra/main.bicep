@@ -22,9 +22,7 @@ param location string
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
-// Load abbreviations for resource naming
-var abbrs = loadJsonContent('./abbreviations.json')
-var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+// Tags for all resources
 var tags = {
   'azd-env-name': environmentName
   project: 'citizen-services-portal'
@@ -33,7 +31,7 @@ var tags = {
 
 // Resource Group
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
-  name: 'aldelar-ama'
+  name: 'csp'
   location: location
   tags: tags
 }
@@ -45,8 +43,8 @@ module monitoring './core/monitor/monitoring.bicep' = {
   params: {
     location: location
     tags: tags
-    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
-    applicationInsightsName: '${abbrs.insightsComponents}${resourceToken}'
+    logAnalyticsName: 'aldelar-csp-log'
+    applicationInsightsName: 'aldelar-csp-insights'
   }
 }
 
@@ -57,7 +55,7 @@ module managedIdentity './core/security/managed-identity.bicep' = {
   params: {
     location: location
     tags: tags
-    identityName: '${abbrs.managedIdentityUserAssignedIdentities}${resourceToken}'
+    identityName: 'aldelar-csp-identity'
   }
 }
 
@@ -68,19 +66,20 @@ module keyVault './core/security/key-vault.bicep' = {
   params: {
     location: location
     tags: tags
-    keyVaultName: '${abbrs.keyVaultVaults}${resourceToken}'
+    keyVaultName: 'aldelar-csp-kv'
     principalId: principalId
   }
 }
 
 // Storage Account (required for Foundry Hub)
+// Note: Storage account names must be globally unique, lowercase, no hyphens
 module storageAccount './core/data/storage-account.bicep' = {
   name: 'storage-deployment'
   scope: rg
   params: {
     location: location
     tags: tags
-    storageAccountName: '${abbrs.storageStorageAccounts}${resourceToken}'
+    storageAccountName: 'aldelarcspstorage'
   }
 }
 
@@ -91,7 +90,7 @@ module containerRegistry './core/host/container-registry.bicep' = {
   params: {
     location: location
     tags: tags
-    name: '${abbrs.containerRegistryRegistries}${resourceToken}'
+    name: 'aldelarcspcr'
   }
 }
 
@@ -102,7 +101,7 @@ module containerAppsEnvironment './core/host/container-apps-environment.bicep' =
   params: {
     location: location
     tags: tags
-    name: '${abbrs.appManagedEnvironments}${resourceToken}'
+    name: 'aldelar-csp-cae'
     logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
   }
 }
@@ -114,7 +113,7 @@ module aiSearch './core/ai/ai-search.bicep' = {
   params: {
     location: location
     tags: tags
-    searchServiceName: '${abbrs.searchSearchServices}${resourceToken}'
+    searchServiceName: 'aldelar-csp-search'
     sku: 'standard'
     replicaCount: 1
     partitionCount: 1
@@ -128,7 +127,7 @@ module contentSafety './core/ai/content-safety.bicep' = {
   params: {
     location: location
     tags: tags
-    contentSafetyName: '${abbrs.cognitiveServicesAccounts}cs-${resourceToken}'
+    contentSafetyName: 'aldelar-csp-contentsafety'
     sku: 'S0'
   }
 }
@@ -140,7 +139,7 @@ module cosmosDb './core/data/cosmos-db.bicep' = {
   params: {
     location: location
     tags: tags
-    cosmosDbAccountName: '${abbrs.cosmosDBDatabaseAccounts}${resourceToken}'
+    cosmosDbAccountName: 'aldelar-csp-cosmos'
     enableServerless: true
     defaultConsistencyLevel: 'Session'
   }
@@ -153,7 +152,7 @@ module apiManagement './core/gateway/api-management.bicep' = {
   params: {
     location: location
     tags: tags
-    apimName: '${abbrs.apiManagementService}${resourceToken}'
+    apimName: 'aldelar-csp-apim'
     publisherEmail: 'admin@citizenservices.local'
     publisherName: 'Citizen Services Platform'
     sku: 'Standard'
@@ -168,7 +167,7 @@ module foundryHub './core/ai/foundry-hub.bicep' = {
   params: {
     location: location
     tags: tags
-    hubName: '${abbrs.machineLearningServicesWorkspaces}hub-${resourceToken}'
+    hubName: 'aldelar-csp-foundry-hub'
     friendlyName: 'Citizen Services AI Hub'
     hubDescription: 'AI Foundry Hub for developing citizen service agents and workflows'
     storageAccountId: storageAccount.outputs.id
@@ -186,7 +185,7 @@ module foundryProject './core/ai/foundry-project.bicep' = {
   params: {
     location: location
     tags: tags
-    projectName: '${abbrs.machineLearningServicesWorkspaces}proj-${resourceToken}'
+    projectName: 'aldelar-csp-foundry-project'
     friendlyName: 'Citizen Services Project'
     projectDescription: 'Foundry project for building and deploying citizen service AI agents'
     hubId: foundryHub.outputs.id

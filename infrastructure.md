@@ -16,7 +16,7 @@ This document defines the Azure infrastructure foundation for the Citizen Servic
 ## Foundation Services
 
 ### 1. Resource Group
-- **Name:** `aldelar-ama`
+- **Name:** `csp`
 - **Purpose:** Logical container for all project resources
 - **Environment:** Development
 - **Lifecycle:** Managed via azd
@@ -153,7 +153,7 @@ infra/
 |----------|--------|-----------|
 | **Region** | North Central US | Supports AI Foundry Hosted Agents capability |
 | **Environment Strategy** | Single Dev environment | Simplify initial deployment, expand to staging/prod later |
-| **Resource Group** | `aldelar-ama` | Single logical container for all resources |
+| **Resource Group** | `csp` | Single logical container for all resources |
 | **AI Search Tier** | Standard S1 | Right-sized for MVP with moderate query load |
 | **API Management Tier** | Standard | Sufficient for public endpoints; Premium only needed for VNet |
 | **Cosmos DB API** | NoSQL | Flexible document model for agent memory + citizen data |

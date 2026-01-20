@@ -203,7 +203,7 @@ azd provision
 # - Location: northcentralus (or choose from: eastus, eastus2, westus2, westus3)
 # 
 # This will:
-# - Create resource group 'aldelar-ama'
+# - Create resource group 'csp'
 # - Deploy all foundation services (Foundry, APIM, Cosmos DB, etc.)
 # - Configure monitoring and security
 # - Take approximately 15-20 minutes
@@ -218,7 +218,7 @@ azd provision
 azd show
 
 # List deployed resources
-az resource list --resource-group aldelar-ama --output table
+az resource list --resource-group aldelar-csp --output table
 
 # View saved environment values
 azd env get-values
@@ -239,19 +239,6 @@ The AI Gateway integration between API Management and Foundry Project must be co
 
 This enables model access (gpt-5-mini, gpt-5.2) through the APIM AI Gateway.
 
-### Alternative: Direct Bicep Deployment
-
-If you prefer to deploy using Azure CLI directly without azd:
-
-```bash
-# Create deployment (uses current subscription from 'az login')
-az deployment sub create \
-  --name citizen-services-portal-$(date +%Y%m%d-%H%M%S) \
-  --location northcentralus \
-  --template-file infra/main.bicep \
-  --parameters environmentName=dev \
-               location=northcentralus
-```
 
 ### Validation
 
@@ -259,21 +246,21 @@ After deployment, validate the infrastructure:
 
 ```bash
 # Check resource group exists
-az group show --name aldelar-ama
+az group show --name csp
 
 # Verify key resources
 az resource list \
-  --resource-group aldelar-ama \
+  --resource-group csp \
   --query "[].{Name:name, Type:type, Location:location}" \
   --output table
 
 # Test API Management is accessible
-APIM_NAME=$(az apim list --resource-group aldelar-ama --query "[0].name" -o tsv)
-az apim show --name $APIM_NAME --resource-group aldelar-ama
+APIM_NAME=$(az apim list --resource-group csp --query "[0].name" -o tsv)
+az apim show --name $APIM_NAME --resource-group csp
 
 # Test Cosmos DB is accessible
-COSMOS_NAME=$(az cosmosdb list --resource-group aldelar-ama --query "[0].name" -o tsv)
-az cosmosdb show --name $COSMOS_NAME --resource-group aldelar-ama
+COSMOS_NAME=$(az cosmosdb list --resource-group csp --query "[0].name" -o tsv)
+az cosmosdb show --name $COSMOS_NAME --resource-group csp
 ```
 
 ### Troubleshooting
@@ -301,7 +288,7 @@ To remove all deployed resources:
 azd down
 
 # Or using Azure CLI
-az group delete --name aldelar-ama --yes --no-wait
+az group delete --name csp --yes --no-wait
 ```
 
 ---

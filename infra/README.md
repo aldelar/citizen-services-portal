@@ -86,7 +86,7 @@ This step will be automated when ARM/Bicep support is available.
 
 | Resource | Purpose | SKU/Tier |
 |----------|---------|----------|
-| Resource Group | `aldelar-ama` | N/A |
+| Resource Group | `csp` | N/A |
 | AI Foundry Hub | AI development workspace | Basic |
 | AI Foundry Project | Agent/workflow environment | Basic |
 | AI Search | Vector/semantic search | Standard S1 |
@@ -155,7 +155,7 @@ Edit `main.parameters.json` to customize deployment:
 az deployment sub show --name <deployment-name>
 
 # View deployment logs
-az monitor activity-log list --resource-group aldelar-ama
+az monitor activity-log list --resource-group csp
 ```
 
 ### Validate Bicep
@@ -178,7 +178,7 @@ az deployment sub what-if \
 azd down
 
 # Or manually delete resource group
-az group delete --name aldelar-ama --yes
+az group delete --name csp --yes
 ```
 
 ## Next Steps
