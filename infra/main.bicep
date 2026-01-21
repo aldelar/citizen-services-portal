@@ -173,6 +173,17 @@ module foundry './core/ai/foundry.bicep' = {
   }
 }
 
+// Foundry RBAC - Grant user access to Foundry data plane operations
+module foundryRbac './core/security/foundry-rbac.bicep' = if (principalId != '') {
+  name: 'foundry-rbac-deployment'
+  scope: rg
+  params: {
+    foundryId: foundry.outputs.id
+    principalId: principalId
+    principalType: 'User'
+  }
+}
+
 // AI Foundry Project
 module foundryProject './core/ai/foundry-project.bicep' = {
   name: 'foundry-project-deployment'
@@ -212,6 +223,9 @@ module gpt41 './core/ai/openai-deployment.bicep' = {
     sku: 'GlobalStandard'
     capacity: 1000
   }
+  dependsOn: [
+    gpt41Mini
+  ]
 }
 
 module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
@@ -225,6 +239,9 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
     sku: 'GlobalStandard'
     capacity: 1000
   }
+  dependsOn: [
+    gpt41
+  ]
 }
 
 // =================================

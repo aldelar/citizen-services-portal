@@ -4,10 +4,26 @@ name: citizen-services-portal
 metadata:
   template: citizen-services-portal@0.0.1
 
+hooks:
+  preprovision:
+    posix:
+      shell: sh
+      run: |
+        # Automatically set the current user's principal ID for RBAC assignments
+        PRINCIPAL_ID=$(az ad signed-in-user show --query id -o tsv 2>/dev/null || echo "")
+        if [ -n "$PRINCIPAL_ID" ]; then
+          azd env set AZURE_PRINCIPAL_ID "$PRINCIPAL_ID"
+          echo "Set AZURE_PRINCIPAL_ID to $PRINCIPAL_ID"
+        else
+          echo "Warning: Could not get user principal ID. RBAC assignment will be skipped."
+        fi
+
 infra:
   provider: bicep
   path: infra
   module: main
+  parameters:
+    principalId: ${AZURE_PRINCIPAL_ID}
 
 pipeline:
   provider: github
