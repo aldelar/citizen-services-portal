@@ -30,11 +30,11 @@ param containerRegistryId string
 @description('Managed identity resource ID')
 param identityId string = ''
 
-resource foundryHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
+resource foundryHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
   name: hubName
   location: location
   tags: tags
-  kind: 'Hub'
+  kind: 'Foundry'
   identity: !empty(identityId) ? {
     type: 'SystemAssigned,UserAssigned'
     userAssignedIdentities: {

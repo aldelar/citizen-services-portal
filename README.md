@@ -83,8 +83,8 @@ The solution is built on a modern, AI-first Azure architecture optimized for int
 
 | Service | Purpose | Configuration |
 |---------|---------|---------------|
-| **Azure AI Foundry** | AI development platform with Hub + Project for building and deploying agents | Basic tier, models: gpt-5-mini, gpt-5.2 |
-| **Azure API Management** | AI Gateway for model endpoints, request throttling, token governance | Standard tier |
+| **Azure AI Foundry** | AI development platform (NEW Foundry) with Hub + Project for building and deploying agents | Project: citizen-services-portal, Models: gpt-5-mini, gpt-5.2, text-embedding-3-small (Global Standard, 1M TPM) |
+| **Azure API Management** | AI Gateway for model endpoints + MCP service proxy with request throttling, token governance | Standard tier, APIs: /ai/v1 (models), /mcp/v1 (services) |
 | **Azure AI Search** | Vector and semantic search for citizen knowledge base, FAQs, policy documents | Standard S1 (1 replica, 1 partition) |
 | **Azure Cosmos DB** | NoSQL database for agent memory (conversation history) and citizen operational data | Serverless, Session consistency |
 | **Azure Content Safety** | Content moderation, PII detection, and ethical AI guardrails | S0 tier |
@@ -106,7 +106,7 @@ The solution is built on a modern, AI-first Azure architecture optimized for int
 - **Network:** Public endpoints with security controls (VNet integration planned for production)
 - **Deployment:** Infrastructure as Code (Bicep) with Azure Developer CLI (azd)
 
-**Key Integration:** API Management is configured as the AI Gateway within the Foundry Project, providing centralized access to AI models (gpt-5-mini, gpt-5.2) with built-in governance, rate limiting, and token tracking.
+**Key Integration:** API Management is configured as the AI Gateway within the Foundry Project, providing centralized access to AI models (gpt-5-mini, gpt-5.2, text-embedding-3-small) and MCP servers (LADBS) with built-in governance, rate limiting, and token tracking.
 
 For detailed infrastructure documentation, see [infrastructure.md](infrastructure.md).
 
@@ -193,11 +193,13 @@ azd init
 # - Environment name: dev (or your preferred name)
 ```
 
-#### 4. Provision Infrastructure
+#### 4. Deploy Infrastructure and Services
+
+**Option A: Deploy Everything (Infrastructure + MCP Servers)**
 
 ```bash
-# Deploy all Azure resources
-azd provision
+# Deploy all Azure resources and services
+azd up
 
 # When prompted (first time only):
 # - Location: northcentralus (or choose from: eastus, eastus2, westus2, westus3)
@@ -205,8 +207,28 @@ azd provision
 # This will:
 # - Create resource group 'csp'
 # - Deploy all foundation services (Foundry, APIM, Cosmos DB, etc.)
+# - Build and deploy LADBS MCP server
 # - Configure monitoring and security
-# - Take approximately 15-20 minutes
+# - Take approximately 20-25 minutes
+```
+
+**Option B: Deploy Infrastructure Only**
+
+```bash
+# Provision infrastructure without deploying services
+azd provision
+
+# When prompted (first time only):
+# - Location: northcentralus (or choose from: eastus, eastus2, westus2, westus3)
+# 
+# Takes approximately 15-20 minutes
+```
+
+**Option C: Deploy Individual Services**
+
+```bash
+# Deploy only LADBS (after infrastructure exists)
+azd deploy mcp-ladbs
 ```
 
 **Note:** azd saves location and subscription in `.azure/<env-name>/.env` - you won't be prompted again on subsequent deployments.
@@ -218,10 +240,13 @@ azd provision
 azd show
 
 # List deployed resources
-az resource list --resource-group aldelar-csp --output table
+az resource list --resource-group csp --output table
 
 # View saved environment values
 azd env get-values
+
+# Get LADBS MCP Server URI (if deployed)
+azd env get-value mcpLadbsUri
 ```
 
 #### 6. Post-Deployment Configuration
@@ -312,15 +337,43 @@ The **Los Angeles Department of Building and Safety (LADBS)** MCP server provide
 
 ---
 
+## AI Agents
+
+AI agents built using Azure AI Foundry Agent Service, connecting to models via APIM AI Gateway and tools via MCP servers.
+
+### LADBS Assistant
+
+The **LADBS AI Agent** helps citizens with building permits, inspections, and code violations using conversational AI.
+
+**Capabilities:**
+- Submit permit applications with guided data collection
+- Check permit status and review timeline
+- Schedule inspections with preferred dates
+- Report code violations (anonymously or with contact info)
+
+**Configuration:**
+- **Model:** gpt-5.2 (accessed via APIM AI Gateway)
+- **Tools:** mcp-ladbs (LADBS MCP server via APIM)
+- **Deployment:** Automated via `azd provision` (postprovision hook)
+
+**Location:** `src/agents/ladbs/`  
+**Test Agent:** [Azure AI Foundry Portal](https://ai.azure.com/build/projects/citizen-services-portal/agents)
+
+For agent details and manual deployment, see [src/agents/ladbs/README.md](src/agents/ladbs/README.md).
+
+---
+
 ## Next Steps
 
 After successful deployment:
 
 1. ✅ Configure AI Gateway (manual step - see Post-Deployment Configuration above)
-2. 📝 Define Cosmos DB containers for agent memory and citizen data
-3. 🔧 Build and deploy MCP servers to Container Apps
-4. 🌐 Develop citizen portal web application
-5. 🤖 Create AI agents and workflows in Foundry
-6. 🚀 Set up CI/CD pipeline for automated deployments
+2. ✅ LADBS MCP Server deployed and accessible via APIM
+3. ✅ LADBS AI Agent deployed to Foundry Agent Service
+4. 📝 Define Cosmos DB containers for agent memory and citizen data
+5. 🔧 Build additional MCP servers (permits, utilities, etc.)
+6. 🌐 Develop citizen portal web application
+7. 🤖 Test and refine agents in Foundry Playground
+8. 🚀 Set up CI/CD pipeline for automated deployments
 
 ---

@@ -131,9 +131,101 @@ uv sync --upgrade
 uv pip compile pyproject.toml -o requirements.txt
 ```
 
-## Docker
+## Deploy to Azure
+
+### Prerequisites
+
+- Azure subscription with required resources deployed (see root [README.md](../../../README.md))
+- Azure CLI (`az`) - [Install Guide](https://learn.microsoft.com/cli/azure/install-azure-cli)
+- Azure Developer CLI (`azd`) - [Install Guide](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- Docker (for manual deployments)
+
+### Option 1: Deploy with azd (Recommended)
+
+From the **repository root**, deploy the entire stack including LADBS:
+
+```bash
+# Deploy infrastructure + all services
+azd up
+
+# Or deploy only LADBS (after infrastructure exists)
+azd deploy mcp-ladbs
+```
+
+This will:
+1. Build the Docker image
+2. Push to Azure Container Registry (`aldelarcspcr`)
+3. Deploy to Azure Container Apps
+4. Output the service URI
+
+**View deployment outputs:**
+```bash
+azd env get-values
+
+# Get LADBS URI
+azd env get-value mcpLadbsUri
+```
+
+### Option 2: Manual Docker Deployment
+
+If you need to deploy manually:
+
+```bash
+# From this directory (src/mcp-servers/ladbs)
+cd src/mcp-servers/ladbs
+
+# Build image
+docker build -t aldelarcspcr.azurecr.io/mcp-ladbs:latest .
+
+# Login to ACR
+az acr login --name aldelarcspcr
+
+# Push image
+docker push aldelarcspcr.azurecr.io/mcp-ladbs:latest
+
+# Deploy (from repo root)
+az deployment group create \
+  --resource-group csp \
+  --template-file infra/app/mcp-ladbs.bicep \
+  --parameters \
+    containerAppsEnvironmentName=aldelar-csp-cae \
+    containerRegistryName=aldelarcspcr \
+    containerImage=aldelarcspcr.azurecr.io/mcp-ladbs:latest \
+    identityId=$(az identity show -n aldelar-csp-identity -g csp --query id -o tsv) \
+    applicationInsightsConnectionString=$(az monitor app-insights component show -g csp -a aldelar-csp-insights --query connectionString -o tsv)
+```
+
+### Verify Deployment
+
+```bash
+# Check Container App status
+az containerapp show -n aldelar-csp-mcp-ladbs -g csp --query "properties.latestRevisionName"
+
+# View logs
+az containerapp logs show -n aldelar-csp-mcp-ladbs -g csp --follow
+
+# Get service URL
+az containerapp show -n aldelar-csp-mcp-ladbs -g csp --query "properties.configuration.ingress.fqdn" -o tsv
+```
+
+### Test Deployed Server
+
+```bash
+# Update .env to point to Azure
+echo "MCP_SERVER_HOST=<fqdn-from-above>" > .env
+echo "MCP_SERVER_PORT=443" >> .env
+
+# Run test client
+uv run python mcp_client_ladbs.py
+```
+
+---
+
+## Local Development
 
 ### Build Container
+
+### Build Container Locally
 
 ```bash
 # Build the image
@@ -143,11 +235,9 @@ docker build -t mcp-ladbs:latest .
 docker run -p 8000:8000 --env-file .env mcp-ladbs:latest
 ```
 
-### Deploy to Azure Container Apps
+---
 
-See the main repository documentation for Azure deployment instructions.
-
-## Environment Variables
+## Configuration
 
 | Variable | Description | Default |
 |----------|-------------|---------|

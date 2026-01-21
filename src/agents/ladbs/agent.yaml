@@ -1,0 +1,12 @@
+name: ladbs-assistant
+description: AI assistant for Los Angeles Department of Building and Safety (LADBS) services
+model:
+  deployment: gpt-5.2
+  endpoint: via-apim-gateway  # Configured through AI Gateway
+instructions: file://system-prompt.md
+tools:
+  - type: mcp
+    name: mcp-ladbs
+    spec: file://tools/mcp-ladbs.yaml
+temperature: 0.7
+max_tokens: 2000

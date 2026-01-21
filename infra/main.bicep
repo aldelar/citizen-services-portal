@@ -161,15 +161,15 @@ module apiManagement './core/gateway/api-management.bicep' = {
 }
 
 // AI Foundry Hub
-module foundryHub './core/ai/foundry-hub.bicep' = {
-  name: 'foundry-hub-deployment'
+module foundryHub './core/ai/foundry.bicep' = {
+  name: 'foundry-deployment'
   scope: rg
   params: {
     location: location
     tags: tags
-    hubName: 'aldelar-csp-foundry-hub'
-    friendlyName: 'Citizen Services AI Hub'
-    hubDescription: 'AI Foundry Hub for developing citizen service agents and workflows'
+    hubName: 'aldelar-csp-foundry'
+    friendlyName: 'Citizen Services AI Foundry'
+    hubDescription: 'AI Foundry for developing citizen service agents and workflows'
     storageAccountId: storageAccount.outputs.id
     keyVaultId: keyVault.outputs.keyVaultId
     applicationInsightsId: monitoring.outputs.applicationInsightsId
@@ -185,12 +185,105 @@ module foundryProject './core/ai/foundry-project.bicep' = {
   params: {
     location: location
     tags: tags
-    projectName: 'aldelar-csp-foundry-project'
-    friendlyName: 'Citizen Services Project'
+    projectName: 'citizen-services-portal'
+    friendlyName: 'Citizen Services Portal'
     projectDescription: 'Foundry project for building and deploying citizen service AI agents'
     hubId: foundryHub.outputs.id
     apimId: apiManagement.outputs.id
     identityId: managedIdentity.outputs.identityId
+  }
+}
+
+// OpenAI Model Deployments
+module gpt5Mini './core/ai/openai-deployment.bicep' = {
+  name: 'gpt5-mini-deployment'
+  scope: rg
+  params: {
+    hubName: foundryHub.outputs.name
+    deploymentName: 'gpt-5-mini'
+    modelName: 'gpt-5-mini'
+    modelVersion: 'latest'
+    sku: 'GlobalStandard'
+    capacity: 1000000
+  }
+}
+
+module gpt52 './core/ai/openai-deployment.bicep' = {
+  name: 'gpt52-deployment'
+  scope: rg
+  params: {
+    hubName: foundryHub.outputs.name
+    deploymentName: 'gpt-5.2'
+    modelName: 'gpt-5.2'
+    modelVersion: 'latest'
+    sku: 'GlobalStandard'
+    capacity: 1000000
+  }
+}
+
+module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
+  name: 'text-embedding-3-small-deployment'
+  scope: rg
+  params: {
+    hubName: foundryHub.outputs.name
+    deploymentName: 'text-embedding-3-small'
+    modelName: 'text-embedding-3-small'
+    modelVersion: 'latest'
+    sku: 'GlobalStandard'
+    capacity: 1000000
+  }
+}
+
+// =================================
+// API Management - API Configuration
+// =================================
+
+// AI Models API (for accessing OpenAI models through APIM)
+module apimAiApi './core/gateway/apim-ai-api.bicep' = {
+  name: 'apim-ai-api-deployment'
+  scope: rg
+  params: {
+    apimName: apiManagement.outputs.name
+    displayName: 'AI Models API'
+    apiDescription: 'API for accessing OpenAI models (gpt-5-mini, gpt-5.2, text-embedding-3-small)'
+    foundryEndpoint: foundryHub.outputs.name // Will be configured post-deployment
+  }
+  dependsOn: [
+    gpt5Mini
+    gpt52
+    textEmbedding3Small
+  ]
+}
+
+// MCP Services API (for accessing MCP servers through APIM)
+module apimMcpApi './core/gateway/apim-mcp-api.bicep' = {
+  name: 'apim-mcp-api-deployment'
+  scope: rg
+  params: {
+    apimName: apiManagement.outputs.name
+    displayName: 'MCP Services API'
+    apiDescription: 'API for accessing MCP servers providing government service tools'
+    ladbsMcpUri: mcpLadbs.outputs.uri
+  }
+}
+
+// =================================
+// Application Services
+// =================================
+
+// LADBS MCP Server
+module mcpLadbs './app/mcp-ladbs.bicep' = {
+  name: 'mcp-ladbs-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    containerAppName: 'aldelar-csp-mcp-ladbs'
+    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
+    containerRegistryName: containerRegistry.outputs.name
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
+    identityId: managedIdentity.outputs.identityId
+    applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
   }
 }
 
@@ -274,3 +367,10 @@ output foundryProjectName string = foundryProject.outputs.name
 
 @description('Post-deployment configuration note for AI Gateway')
 output aiGatewayConfigurationNote string = foundryProject.outputs.configurationNote
+
+// Application Services
+@description('LADBS MCP Server FQDN')
+output mcpLadbsFqdn string = mcpLadbs.outputs.fqdn
+
+@description('LADBS MCP Server URI')
+output mcpLadbsUri string = mcpLadbs.outputs.uri

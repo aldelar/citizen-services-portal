@@ -24,11 +24,11 @@ param apimId string = ''
 @description('Managed identity resource ID')
 param identityId string = ''
 
-resource foundryProject 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
+resource foundryProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
   name: projectName
   location: location
   tags: tags
-  kind: 'Project'
+  kind: 'FoundryProject'
   identity: !empty(identityId) ? {
     type: 'SystemAssigned,UserAssigned'
     userAssignedIdentities: {

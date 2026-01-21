@@ -1,4 +1,4 @@
-
+-- sonnet 4.5 unless noted
 
 ===== USE CASE ANALYSIS / REFININEMENT Assistance =====
 -- Grok / Expert --
@@ -35,7 +35,6 @@ After that, we will model how this could be re-engineered to be super efficient,
 
 
 ======= ARCHITECTURE Assistance =======
--- sonnet 4.5
 
 (((1)))
 
@@ -92,3 +91,31 @@ Here are the key services to define:
 Let's start here. Draft a landing zone document in 'infrastructure.md', make some assumptions based on best practices, but be brief, and let's discuss the open questions to refine this.
 
 Propose how to lay out the biceps files. Don't write any bicept file yet, we will do that once we agree on scope of services required and requirements.
+
+===== MCP servers / LADBS DEPLOYMENT Assistance =====
+
+I've added under src/mcp-servers/ladbs a first skeleton of an MCP server for the LADBS functionality for this project.
+
+Can you review what's in there, and suggest ways to organize this. If we are to need more services for this server, how would we go about organizing the bicepts for it. Do we need an 'mcp' folder under infra?
+
+What would you have within the src/mcp-servers/ladbs folder to help dev/test? Should we have a mini README.md there and some instructions to test?
+
+I want to use uv for python env management to speed up dev/test.
+
+
+===== FOUNDRY/APIM/AGENT SETUP
+
+great. now, let's work on the foundry setup.
+
+Please suggest an approach to get the following done:
+
+we need the 2 gpt models deployed, on top of that, update the readme and indicate we'll need an embedding model as well, and for that we'll use 'text-embedding-3-small' from openai. so define how to package these models into the infra deployment
+we also want to have APIM setup to have one endpoint defined for each of these models, as we're going to want to access them via APIM. setup will some basic defaults, we will tune that later
+we also want APIM to define an endpoint for the LADBS MCP server, and apply basic defaults to that
+we will want to define a Foundry Project called 'citizens-services-portal'
+in foundry, we will want to define an AI Gateway that will connect to our APIM instance
+in that project, we will want to setup a Tool that will connect to our deployed MCP server (accessed via APIM), that tool will be called 'mcp-ladbs'
+then, we'll want to define a Foundry Declarative Agent (Using the Agent Service in Foundry), which will be setup with the mcp-ladbs tool, and use the gpt-5.2 model served by its APIM endpoint (this will need to use the Gateway setup above)
+Please let me know how you would approach all this, all this setup should use azd, and the agent code/artifacts required to define this should be stored in srv/agents/ladbs. I assumed we'll have a file for the system prompt so it's sourced controlled, some yaml definition of the agent to be deployed using azd or azure cli if azd doesn't support it, etc.
+
+Propose the cleanests approaches to do all this so we can have our first agent up and running.

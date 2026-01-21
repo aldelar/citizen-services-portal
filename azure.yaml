@@ -12,14 +12,13 @@ infra:
 pipeline:
   provider: github
 
-# Future: Add services here as they are developed
-# services:
-#   mcp-permits:
-#     project: ./src/mcp-servers/mcp_permits
-#     language: py
-#     host: containerapp
-#   
-#   web-portal:
-#     project: ./src/web/citizen-portal
-#     language: js
-#     host: containerapp
+services:
+  mcp-ladbs:
+    project: ./src/mcp-servers/ladbs
+    language: py
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      registry: aldelarcspcr.azurecr.io
+
