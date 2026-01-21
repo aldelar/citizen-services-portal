@@ -194,7 +194,7 @@ module gpt5Mini './core/ai/openai-deployment.bicep' = {
   params: {
     foundryName: foundry.outputs.name
     deploymentName: 'gpt-5-mini'
-    modelName: 'gpt-4o-mini'  // Using actual Azure OpenAI model name
+    modelName: 'gpt-5-mini'
     modelVersion: '2024-07-18'
     sku: 'GlobalStandard'
     capacity: 100
@@ -206,8 +206,8 @@ module gpt52 './core/ai/openai-deployment.bicep' = {
   scope: rg
   params: {
     foundryName: foundry.outputs.name
-    deploymentName: 'gpt-5-2'
-    modelName: 'gpt-4o'  // Using actual Azure OpenAI model name
+    deploymentName: 'gpt-5.2'
+    modelName: 'gpt-5.2'
     modelVersion: '2024-08-06'
     sku: 'GlobalStandard'
     capacity: 100
@@ -222,7 +222,7 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
     deploymentName: 'text-embedding-3-small'
     modelName: 'text-embedding-3-small'
     modelVersion: '1'
-    sku: 'Standard'
+    sku: 'GlobalStandard'
     capacity: 100
   }
 }
