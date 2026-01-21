@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """
-Deploy LADBS AI Agent Definition to Azure AI Foundry.
+Deploy AI Agent Definition to Azure AI Foundry.
 
 This script:
 1. Loads the agent configuration from agent.yaml
 2. Connects to Azure AI Foundry
 3. Creates/updates the agent definition using PromptAgentDefinition
 4. Supports idempotent operations (create new version if updated)
+
+Usage:
+    python deploy_agent.py <agent_name>
+    
+Example:
+    python deploy_agent.py ladbs
 """
 
 import asyncio
@@ -28,11 +34,6 @@ RESOURCE_GROUP_NAME = os.getenv("resourceGroupName")
 FOUNDRY_NAME = os.getenv("foundryName")
 FOUNDRY_PROJECT_NAME = os.getenv("foundryProjectName")
 
-# Paths
-AGENT_DIR = Path(__file__).parent
-AGENT_YAML = AGENT_DIR / "agent.yaml"
-SYSTEM_PROMPT = AGENT_DIR / "system-prompt.md"
-
 
 def load_yaml(file_path: Path) -> dict:
     """Load YAML file."""
@@ -44,6 +45,24 @@ def load_text(file_path: Path) -> str:
     """Load text file."""
     with open(file_path, 'r') as f:
         return f.read()
+
+
+def substitute_env_vars(content: str) -> str:
+    """
+    Substitute environment variable placeholders in content.
+    Supports ${VAR_NAME} syntax.
+    """
+    import re
+    
+    def replace_var(match):
+        var_name = match.group(1)
+        value = os.getenv(var_name)
+        if value is None:
+            print(f"   ⚠️  Warning: Environment variable {var_name} not set")
+            return match.group(0)  # Return original if not found
+        return value
+    
+    return re.sub(r'\$\{([^}]+)\}', replace_var, content)
 
 
 def publish_agent(agent_name: str, agent_version: str = None) -> bool:
@@ -148,6 +167,7 @@ def publish_agent(agent_name: str, agent_version: str = None) -> bool:
         )
         
         print(f"   Deploying agent version {agent_version}...")
+        
         # Make PUT request to create/update deployment
         response = requests.put(
             deployment_url,
@@ -209,12 +229,22 @@ async def create_agent(agent_config: dict, system_prompt: str):
     ):
         # Create a persistent agent using the new API (version 2.0)
         # This will create a new version if the agent already exists (idempotent)
+        
+        # Extract model from definition (supports both old and new schema)
+        if 'definition' in agent_config:
+            model = agent_config['definition']['model']
+            temperature = agent_config['definition'].get('temperature', 0.7)
+        else:
+            # Legacy schema support
+            model = agent_config['model']['deployment']
+            temperature = agent_config.get('temperature', 0.7)
+        
         created_agent = await project_client.agents.create_version(
             agent_name=agent_config['name'],
             definition=PromptAgentDefinition(
-                model=agent_config['model']['deployment'],
+                model=model,
                 instructions=system_prompt,
-                temperature=agent_config.get('temperature', 0.7),
+                temperature=temperature,
                 # Note: Tools are registered separately via deploy_tools.py
             )
         )
@@ -226,17 +256,40 @@ async def create_agent(agent_config: dict, system_prompt: str):
         return created_agent
 
 
-async def deploy_agent():
+async def deploy_agent(agent_name: str):
     """
-    Deploy LADBS agent to Azure AI Foundry.
+    Deploy agent to Azure AI Foundry.
     
     This orchestrates the full deployment:
     1. Load configuration
     2. Create/update agent
     3. Publish agent as application
+    
+    Args:
+        agent_name: Name of the agent to deploy
     """
+    # Determine agent directory
+    script_dir = Path(__file__).parent
+    agent_dir = script_dir / agent_name
+    
+    if not agent_dir.exists():
+        print(f"❌ Agent directory not found: {agent_dir}")
+        sys.exit(1)
+    
+    # Paths
+    agent_yaml = agent_dir / "agent.yaml"
+    system_prompt_file = agent_dir / "system-prompt.md"
+    
+    if not agent_yaml.exists():
+        print(f"❌ Agent configuration not found: {agent_yaml}")
+        sys.exit(1)
+    
+    if not system_prompt_file.exists():
+        print(f"❌ System prompt not found: {system_prompt_file}")
+        sys.exit(1)
+    
     print("=" * 60)
-    print("LADBS Agent Definition Deployment")
+    print(f"{agent_name.upper()} Agent Definition Deployment")
     print("=" * 60)
     
     # Validate environment
@@ -246,13 +299,28 @@ async def deploy_agent():
     
     # Load agent configuration
     print("\n📄 Loading agent configuration...")
-    agent_config = load_yaml(AGENT_YAML)
-    system_prompt = load_text(SYSTEM_PROMPT)
+    
+    # Load YAML with environment variable substitution
+    with open(agent_yaml, 'r') as f:
+        agent_yaml_content = f.read()
+    agent_yaml_content = substitute_env_vars(agent_yaml_content)
+    agent_config = yaml.safe_load(agent_yaml_content)
+    
+    system_prompt = load_text(system_prompt_file)
+    
+    # Extract model and tools info (supports both old and new schema)
+    if 'definition' in agent_config:
+        model = agent_config['definition']['model']
+        tools = agent_config['definition'].get('tools', [])
+    else:
+        # Legacy schema support
+        model = agent_config['model']['deployment']
+        tools = agent_config.get('tools', [])
     
     print(f"   Agent: {agent_config['name']}")
-    print(f"   Model: {agent_config['model']['deployment']}")
-    if 'tools' in agent_config:
-        print(f"   Tools: {len(agent_config['tools'])} tool(s)")
+    print(f"   Model: {model}")
+    if tools:
+        print(f"   Tools: {len(tools)} tool(s)")
     
     # Connect to Azure AI Foundry
     print("\n🔗 Connecting to Azure AI Foundry...")
@@ -290,9 +358,21 @@ async def deploy_agent():
         sys.exit(1)
 
 
+def main():
+    """Main entry point."""
+    if len(sys.argv) < 2:
+        print("Usage: python deploy_agent.py <agent_name>")
+        print("\nExample:")
+        print("  python deploy_agent.py ladbs")
+        sys.exit(1)
+    
+    agent_name = sys.argv[1]
+    asyncio.run(deploy_agent(agent_name))
+
+
 if __name__ == "__main__":
     try:
-        asyncio.run(deploy_agent())
+        main()
     except KeyboardInterrupt:
         print("\n\n⚠️  Deployment cancelled by user")
         sys.exit(1)

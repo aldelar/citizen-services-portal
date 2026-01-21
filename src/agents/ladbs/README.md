@@ -18,21 +18,7 @@ This agent provides intelligent assistance for LADBS-related queries, including:
 
 ## Deployment
 
-The agent deployment consists of three scripts:
-
-1. **`deploy.py`** - Master orchestration script
-   - Runs tool deployment followed by agent deployment
-   - Called automatically by `azd deploy`
-
-2. **`deploy_tools.py`** - Tool registration
-   - Scans `tools/` directory for YAML definitions
-   - Registers each tool with Azure AI Foundry
-   - Idempotent: Updates existing tools
-
-3. **`deploy_agent.py`** - Agent definition deployment
-   - Creates/updates the agent using `PromptAgentDefinition`
-   - Uses `create_version()` for idempotent deployments
-   - New version created automatically if definition changes
+The agent deployment uses generic scripts located in the `src/agents/` directory that work with any agent.
 
 ### Deploy All Services
 
@@ -55,19 +41,17 @@ azd deploy ladbs-agent
 You can also run the deployment scripts directly:
 
 ```bash
-cd src/agents/ladbs
-
-# Ensure uv environment is synced
-uv sync --prerelease=allow
+cd src/agents
 
 # Deploy everything (tools + agent)
-export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
-uv run deploy.py
+python deploy.py ladbs
 
 # Or deploy individually
-uv run deploy_tools.py
-uv run deploy_agent.py
+python deploy_tools.py ladbs
+python deploy_agent.py ladbs
 ```
+
+See [../README.md](../README.md) for detailed documentation on the deployment scripts.
 
 ## Configuration
 

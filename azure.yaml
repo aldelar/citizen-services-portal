@@ -24,7 +24,7 @@ hooks:
       run: |
         # Deploy LADBS agent after infrastructure is provisioned
         echo "Deploying LADBS agent..."
-        cd src/agents/ladbs
+        cd src/agents
         
         # Export required environment variables from azd
         export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
@@ -33,8 +33,11 @@ hooks:
         export foundryName=$(azd env get-value foundryName)
         export foundryProjectName=$(azd env get-value foundryProjectName)
         
+        # Export MCP server URL for variable substitution
+        export MCP_LADBS_URL="$(azd env get-value mcpLadbsUri)/mcp"
+        
         uv sync --quiet --prerelease=allow
-        uv run deploy.py
+        uv run deploy.py ladbs
 
 infra:
   provider: bicep

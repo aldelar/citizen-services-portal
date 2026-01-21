@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-Master deployment script for LADBS Agent.
+Master deployment script for AI Agents.
 
 Orchestrates the deployment of:
 1. Agent tools (deploy_tools.py)
 2. Agent definition (deploy_agent.py)
+
+Usage:
+    python deploy.py <agent_name>
+    
+Example:
+    python deploy.py ladbs
 """
 
 import sys
@@ -14,12 +20,13 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 
 
-def run_script(script_name: str) -> bool:
+def run_script(script_name: str, agent_name: str) -> bool:
     """
     Run a deployment script.
     
     Args:
         script_name: Name of the script to run
+        agent_name: Name of the agent to deploy
     
     Returns:
         True if successful, False otherwise
@@ -36,7 +43,7 @@ def run_script(script_name: str) -> bool:
     
     try:
         result = subprocess.run(
-            ["uv", "run", str(script_path)],
+            ["uv", "run", str(script_path), agent_name],
             cwd=SCRIPT_DIR,
             check=True
         )
@@ -51,23 +58,31 @@ def run_script(script_name: str) -> bool:
 
 def main():
     """Main deployment orchestration."""
+    if len(sys.argv) < 2:
+        print("Usage: python deploy.py <agent_name>")
+        print("\nExample:")
+        print("  python deploy.py ladbs")
+        sys.exit(1)
+    
+    agent_name = sys.argv[1]
+    
     print("=" * 60)
-    print("LADBS Agent - Master Deployment")
+    print(f"{agent_name.upper()} Agent - Master Deployment")
     print("=" * 60)
     
     # Step 1: Deploy tools
-    if not run_script("deploy_tools.py"):
+    if not run_script("deploy_tools.py", agent_name):
         print("\n⚠️  Tool deployment failed, but continuing with agent deployment...")
         # Don't exit - tools might not be critical for initial deployment
     
     # Step 2: Deploy agent
-    if not run_script("deploy_agent.py"):
+    if not run_script("deploy_agent.py", agent_name):
         print("\n❌ Agent deployment failed")
         sys.exit(1)
     
     # Success
     print("\n" + "=" * 60)
-    print("✅ LADBS Agent Deployment Complete!")
+    print(f"✅ {agent_name.upper()} Agent Deployment Complete!")
     print("=" * 60)
     print()
 
