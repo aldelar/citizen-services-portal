@@ -33,8 +33,9 @@ hooks:
         export foundryName=$(azd env get-value foundryName)
         export foundryProjectName=$(azd env get-value foundryProjectName)
         
-        # Export MCP server URL for variable substitution
-        export MCP_LADBS_URL="$(azd env get-value mcpLadbsUri)/mcp"
+        # Programmatically export all service URIs from azure.yaml services
+        # This creates variables like: SERVICE_MCP_LADBS_URI
+        eval "$(uv run export_service_urls.py 2>&1 | grep '^export')"
         
         uv sync --quiet --prerelease=allow
         uv run deploy.py ladbs

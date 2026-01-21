@@ -119,3 +119,11 @@ then, we'll want to define a Foundry Declarative Agent (Using the Agent Service 
 Please let me know how you would approach all this, all this setup should use azd, and the agent code/artifacts required to define this should be stored in srv/agents/ladbs. I assumed we'll have a file for the system prompt so it's sourced controlled, some yaml definition of the agent to be deployed using azd or azure cli if azd doesn't support it, etc.
 
 Propose the cleanests approaches to do all this so we can have our first agent up and running.
+
+
+=======
+
+How's the MCP_LADBS_URL retrieved from config?
+We have to make sure it's done in a programmatic way, meaning if the ladbs agent were to require a tool named 'abc', we would know how to fetch the deployment configs using azd to retrieve the ACA deployed URL for that tool, assuming the tools are all deployed before we deploy the agents.
+
+Can you double check all this, make sure the deploy order is correct, and that from the tool 'name' only, we can retrieve the URL via deployed items to make this all work at scale.

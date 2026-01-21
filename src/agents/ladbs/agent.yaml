@@ -11,6 +11,6 @@ definition:
   temperature: 0.7
   tools:
     - type: mcp
-      server_label: mcp_ladbs
-      server_url: ${MCP_LADBS_URL}
+      server_label: mcp-ladbs  # Must match azure.yaml service name
+      server_url: ${SERVICE_MCP_LADBS_URI}/mcp
       project_connection_id: mcp-ladbs
