@@ -230,14 +230,32 @@ async def create_agent(agent_config: dict, system_prompt: str):
         # Create a persistent agent using the new API (version 2.0)
         # This will create a new version if the agent already exists (idempotent)
         
-        # Extract model from definition (supports both old and new schema)
+        # Extract model and tools from definition (supports both old and new schema)
         if 'definition' in agent_config:
             model = agent_config['definition']['model']
             temperature = agent_config['definition'].get('temperature', 0.7)
+            tools = agent_config['definition'].get('tools', [])
         else:
             # Legacy schema support
             model = agent_config['model']['deployment']
             temperature = agent_config.get('temperature', 0.7)
+            tools = agent_config.get('tools', [])
+        
+        # Convert tools to the format expected by PromptAgentDefinition
+        agent_tools = []
+        if tools:
+            print(f"   Adding {len(tools)} tool(s) to agent definition...")
+            for tool in tools:
+                if tool.get('type') == 'mcp':
+                    # Create MCP tool definition
+                    mcp_tool = {
+                        "type": "mcp",
+                        "server_label": tool.get('server_label'),
+                        "server_url": tool.get('server_url'),
+                        "project_connection_id": tool.get('project_connection_id')
+                    }
+                    agent_tools.append(mcp_tool)
+                    print(f"      - MCP tool: {tool.get('server_label')} -> {tool.get('server_url')}")
         
         created_agent = await project_client.agents.create_version(
             agent_name=agent_config['name'],
@@ -245,7 +263,7 @@ async def create_agent(agent_config: dict, system_prompt: str):
                 model=model,
                 instructions=system_prompt,
                 temperature=temperature,
-                # Note: Tools are registered separately via deploy_tools.py
+                tools=agent_tools if agent_tools else None,
             )
         )
         
