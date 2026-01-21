@@ -15,12 +15,12 @@ Orchestrates the complete deployment of an agent, including tools and agent defi
 **Usage:**
 ```bash
 cd src/agents
-python deploy.py <agent_name>
+eval "$(azd env get-values)" && uv run deploy.py <agent_name>
 ```
 
 **Example:**
 ```bash
-python deploy.py ladbs
+eval "$(azd env get-values)" && uv run deploy.py ladbs
 ```
 
 **What it does:**
@@ -37,12 +37,12 @@ Validates all tools defined in the agent's `agent.yaml` configuration.
 **Usage:**
 ```bash
 cd src/agents
-python deploy_tools.py <agent_name>
+eval "$(azd env get-values)" && uv run deploy_tools.py <agent_name>
 ```
 
 **Example:**
 ```bash
-python deploy_tools.py ladbs
+eval "$(azd env get-values)" && uv run deploy_tools.py ladbs
 ```
 
 **What it does:**
@@ -60,19 +60,46 @@ Deploys the agent definition to Azure AI Foundry and publishes it as a managed d
 **Usage:**
 ```bash
 cd src/agents
-python deploy_agent.py <agent_name>
+eval "$(azd env get-values)" && uv run deploy_agent.py <agent_name>
 ```
 
 **Example:**
 ```bash
-python deploy_agent.py ladbs
+eval "$(azd env get-values)" && uv run deploy_agent.py ladbs
 ```
 
 **What it does:**
-1. Loads the agent's `agent.yaml` configuration
-2. Loads the agent's `system-prompt.md` instructions
-3. Creates/updates the agent definition in Azure AI Foundry
-4. Publishes the agent as a managed deployment (production-ready)
+1. Automatically discovers service URLs from `azure.yaml` (via `service_urls.py`)
+2. Loads the agent's `agent.yaml` configuration with variable substitution
+3. Loads the agent's `system-prompt.md` instructions
+4. Creates/updates the agent definition in Azure AI Foundry
+5. Publishes the agent as a managed deployment (production-ready)
+
+---
+
+### `service_urls.py` - Service URL Discovery Library
+
+Automatically discovers and resolves service URLs from Azure deployment for agent configuration.
+
+**Used by:** `deploy_agent.py` (automatically imported)
+
+**What it does:**
+1. Reads `azure.yaml` to discover all deployed services
+2. Queries `azd` environment for each service's URI
+3. Returns URLs in a standardized format (e.g., `SERVICE_MCP_LADBS_URI`)
+4. Enables automatic variable substitution in `agent.yaml`
+
+**Can also be used standalone:**
+```bash
+cd src/agents
+uv run service_urls.py
+```
+
+**Output format:**
+```bash
+export SERVICE_MCP_LADBS_URI="https://..."
+export SERVICE_MCP_OTHER_URI="https://..."
+```
 
 ---
 
@@ -86,15 +113,13 @@ These scripts require the following environment variables to be set (typically v
 - `foundryName` - Azure AI Foundry account name
 - `foundryProjectName` - Azure AI Foundry project name
 
+**Service URLs are automatically discovered** from `azure.yaml` and injected during deployment.
+
 **Example:**
 ```bash
-# Load environment from azd
-cd /home/aldelar/Code/citizen-services-portal
-azd env get-values > .env
-source .env
-
-# Or run with azd env directly
-azd env get-values | python src/agents/scripts/deploy.py ladbs
+# Load environment from azd and run deployment
+cd /home/aldelar/Code/citizen-services-portal/src/agents
+eval "$(azd env get-values)" && uv run deploy.py ladbs
 ```
 
 ---
@@ -176,7 +201,7 @@ To add a new agent:
 5. Deploy your agent:
    ```bash
    cd src/agents
-   python deploy.py my-new-agent
+   eval "$(azd env get-values)" && uv run deploy.py my-new-agent
    ```
 
 ---

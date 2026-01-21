@@ -25,6 +25,7 @@ from azure.identity.aio import AzureCliCredential
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects.aio import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition
+import service_urls
 
 # Configuration
 # Use foundryProjectEndpoint from azd env, fallback to AZURE_AI_PROJECT_ENDPOINT for manual runs
@@ -47,15 +48,25 @@ def load_text(file_path: Path) -> str:
         return f.read()
 
 
-def substitute_env_vars(content: str) -> str:
+def substitute_env_vars(content: str, service_url_map: dict[str, str] = None) -> str:
     """
     Substitute environment variable placeholders in content.
     Supports ${VAR_NAME} syntax.
+    
+    Args:
+        content: Content with variable placeholders
+        service_url_map: Optional dictionary of service URLs to use for substitution
     """
     import re
     
     def replace_var(match):
         var_name = match.group(1)
+        
+        # First check service_url_map if provided
+        if service_url_map and var_name in service_url_map:
+            return service_url_map[var_name]
+        
+        # Fall back to environment variables
         value = os.getenv(var_name)
         if value is None:
             print(f"   ⚠️  Warning: Environment variable {var_name} not set")
@@ -315,13 +326,23 @@ async def deploy_agent(agent_name: str):
         print("ERROR: foundryProjectEndpoint environment variable not set")
         sys.exit(1)
     
+    # Discover service URLs from azd environment
+    print("\n🔍 Discovering service URLs...")
+    service_url_map = service_urls.get_service_urls()
+    if service_url_map:
+        print(f"   ✓ Found {len(service_url_map)} service URL(s):")
+        for var_name, url in service_url_map.items():
+            print(f"      - {var_name}: {url}")
+    else:
+        print("   ℹ️  No service URLs found")
+    
     # Load agent configuration
     print("\n📄 Loading agent configuration...")
     
     # Load YAML with environment variable substitution
     with open(agent_yaml, 'r') as f:
         agent_yaml_content = f.read()
-    agent_yaml_content = substitute_env_vars(agent_yaml_content)
+    agent_yaml_content = substitute_env_vars(agent_yaml_content, service_url_map)
     agent_config = yaml.safe_load(agent_yaml_content)
     
     system_prompt = load_text(system_prompt_file)

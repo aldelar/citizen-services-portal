@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """
-Helper script to programmatically resolve service URLs for agent deployment.
+Library for resolving service URLs from Azure deployment.
 
-This script:
-1. Reads azd environment variables
-2. Discovers all service URIs based on azure.yaml services
-3. Exports them in a format that can be sourced by deployment scripts
+This module:
+1. Reads azure.yaml to discover services
+2. Queries azd environment for service URIs
+3. Returns them in a standardized format for agent deployment
 
 Convention:
 - azure.yaml service name: mcp-ladbs
 - azd env variable: mcpLadbsUri
-- Exported variable: SERVICE_MCP_LADBS_URI
+- Dictionary key: SERVICE_MCP_LADBS_URI
 """
 
 import os
 import sys
 import subprocess
-import json
 import yaml
 from pathlib import Path
 
@@ -27,7 +26,6 @@ def service_name_to_env_var(service_name: str) -> str:
     
     Example: mcp-ladbs -> mcpLadbsUri
     """
-    # Remove hyphens and camelCase the parts
     parts = service_name.split('-')
     camel_case = parts[0] + ''.join(word.capitalize() for word in parts[1:])
     return f"{camel_case}Uri"
@@ -44,12 +42,10 @@ def service_name_to_export_var(service_name: str) -> str:
 
 def get_azd_services() -> list[str]:
     """Get list of services from azure.yaml."""
-    # Find azure.yaml (should be in project root)
     script_dir = Path(__file__).parent.parent.parent
     azure_yaml_path = script_dir / "azure.yaml"
     
     if not azure_yaml_path.exists():
-        print(f"Warning: azure.yaml not found at {azure_yaml_path}", file=sys.stderr)
         return []
     
     with open(azure_yaml_path, 'r') as f:
@@ -70,14 +66,42 @@ def get_azd_env_value(var_name: str) -> str:
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except Exception as e:
-        print(f"Warning: Could not get {var_name}: {e}", file=sys.stderr)
+    except Exception:
+        pass
     return ""
 
 
+def get_service_urls() -> dict[str, str]:
+    """
+    Get all service URLs from azd environment.
+    
+    Returns:
+        Dictionary mapping service variable names to their URLs.
+        Example: {"SERVICE_MCP_LADBS_URI": "https://..."}
+    """
+    services = get_azd_services()
+    
+    if not services:
+        return {}
+    
+    service_urls = {}
+    for service_name in services:
+        azd_var = service_name_to_env_var(service_name)
+        export_var = service_name_to_export_var(service_name)
+        
+        value = get_azd_env_value(azd_var)
+        if value:
+            service_urls[export_var] = value
+    
+    return service_urls
+
+
 def main():
-    """Main entry point."""
-    # Get all services from azure.yaml
+    """
+    Main entry point for CLI usage.
+    
+    Outputs shell export commands that can be eval'd.
+    """
     services = get_azd_services()
     
     if not services:
@@ -87,7 +111,6 @@ def main():
     print(f"# Auto-generated service URLs from azd environment", file=sys.stderr)
     print(f"# Found {len(services)} service(s)", file=sys.stderr)
     
-    # For each service, try to get its URI from azd env
     exports = []
     for service_name in services:
         azd_var = service_name_to_env_var(service_name)
@@ -100,8 +123,7 @@ def main():
         else:
             print(f"# Warning: No URI found for service '{service_name}' (tried {azd_var})", file=sys.stderr)
     
-    # Output shell commands that can be eval'd
-    print()  # Empty line after stderr output
+    print()
     for export in exports:
         print(export)
 
