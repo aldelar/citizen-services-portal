@@ -53,7 +53,7 @@ async def check_permit_status(permit_number: str) -> str:
     status = await tools.check_permit_status(permit_number=permit_number)
     if 'error' in status:
         return f"Error: {status['error']}"
-    return f"Permit Status for {permit_number}:\nStatus: {status['status']}\nLast Updated: {status['last_updated']}"
+    return f"Permit Status for {permit_number}:\nStatus: {status['status']}\nLast Updated: {status['updated_date']}"
 
 
 @mcp.tool(title="Schedule Inspection")
@@ -84,7 +84,7 @@ async def schedule_inspection(
         contact_name=contact_name,
         contact_phone=contact_phone,
     )
-    return f"Inspection scheduled successfully.\nConfirmation Number: {result['confirmation_number']}\nScheduled Date: {result['scheduled_date']}\nInspection Type: {result['inspection_type']}"
+    return f"Inspection scheduled successfully.\nInspection ID: {result['inspection_id']}\nScheduled Date: {result['scheduled_date']}\nInspection Type: {result['inspection_type']}"
 
 
 @mcp.tool(title="Report Violation")

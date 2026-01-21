@@ -33,72 +33,69 @@ async def run_client():
         async with ClientSession(read, write) as session:
             # Initialize the connection
             print("\nInitializing MCP session...")
-            await session.initialize()
+            init_result = await session.initialize()
+            
+            print("\nServer Information:")
+            print(f"  Server Name: {init_result.serverInfo.name}")
+            print(f"  Server Version: {init_result.serverInfo.version}")
+            print(f"  Protocol Version: {init_result.protocolVersion}")
+            
+            # List available capabilities
+            print("\nServer Capabilities:")
+            capabilities = init_result.capabilities
+            print(f"  Tools: {capabilities.tools is not None}")
+            print(f"  Resources: {capabilities.resources is not None}")
+            print(f"  Prompts: {capabilities.prompts is not None}")
 
             # List available tools
+            print("\n" + "=" * 60)
+            print("Available Tools:")
+            print("=" * 60)
             tools_response = await session.list_tools()
-            print("\nAvailable tools:")
-            for tool in tools_response.tools:
-                print(f"- {tool.name}: {tool.description}")
+            for i, tool in enumerate(tools_response.tools, 1):
+                print(f"\n{i}. {tool.name}")
+                print(f"   Description: {tool.description}")
+                if hasattr(tool, 'inputSchema') and tool.inputSchema:
+                    print(f"   Parameters:")
+                    if 'properties' in tool.inputSchema:
+                        for param, details in tool.inputSchema['properties'].items():
+                            param_type = details.get('type', 'unknown')
+                            param_desc = details.get('description', 'No description')
+                            print(f"     - {param} ({param_type}): {param_desc}")
 
-            # Test 1: Submit permit application
+            # List available resources
             print("\n" + "=" * 60)
-            print("Test 1: Submit Permit Application")
+            print("Available Resources:")
             print("=" * 60)
-            result = await session.call_tool(
-                "submit_permit_application",
-                arguments={
-                    "applicant_name": "John Doe",
-                    "property_address": "123 Main St, Los Angeles, CA 90001",
-                    "work_description": "Kitchen remodel with new electrical and plumbing",
-                    "estimated_cost": 25000.00,
-                },
-            )
-            print(f"Result: {result.content}")
+            try:
+                resources_response = await session.list_resources()
+                if resources_response.resources:
+                    for i, resource in enumerate(resources_response.resources, 1):
+                        print(f"\n{i}. {resource.name}")
+                        print(f"   URI: {resource.uri}")
+                        print(f"   Description: {resource.description}")
+                else:
+                    print("  No resources available")
+            except Exception as e:
+                print(f"  Resources not supported or error: {e}")
 
-            # Test 2: Check permit status
+            # List available prompts
             print("\n" + "=" * 60)
-            print("Test 2: Check Permit Status")
+            print("Available Prompts:")
             print("=" * 60)
-            result = await session.call_tool(
-                "check_permit_status",
-                arguments={"permit_number": "PERMIT-ABC12345"},
-            )
-            print(f"Result: {result.content}")
-
-            # Test 3: Schedule inspection
-            print("\n" + "=" * 60)
-            print("Test 3: Schedule Inspection")
-            print("=" * 60)
-            result = await session.call_tool(
-                "schedule_inspection",
-                arguments={
-                    "permit_number": "PERMIT-ABC12345",
-                    "inspection_type": "foundation",
-                    "requested_date": "2026-02-15",
-                    "contact_name": "Jane Smith",
-                    "contact_phone": "555-0123",
-                },
-            )
-            print(f"Result: {result.content}")
-
-            # Test 4: Report violation
-            print("\n" + "=" * 60)
-            print("Test 4: Report Code Violation")
-            print("=" * 60)
-            result = await session.call_tool(
-                "report_violation",
-                arguments={
-                    "property_address": "456 Oak Ave, Los Angeles, CA 90002",
-                    "violation_type": "unpermitted_construction",
-                    "description": "Addition built on property without permits",
-                    "reporter_name": "Anonymous Neighbor",
-                },
-            )
-            print(f"Result: {result.content}")
+            try:
+                prompts_response = await session.list_prompts()
+                if prompts_response.prompts:
+                    for i, prompt in enumerate(prompts_response.prompts, 1):
+                        print(f"\n{i}. {prompt.name}")
+                        print(f"   Description: {prompt.description}")
+                else:
+                    print("  No prompts available")
+            except Exception as e:
+                print(f"  Prompts not supported or error: {e}")
 
             print("\n" + "=" * 60)
-            print("All tests completed successfully!")
+            print("MCP Server Discovery Complete!")
             print("=" * 60)
 
 
