@@ -28,8 +28,12 @@ hooks:
         
         # Export required environment variables from azd
         export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
+        export AZURE_SUBSCRIPTION_ID=$(azd env get-value AZURE_SUBSCRIPTION_ID)
+        export resourceGroupName=$(azd env get-value resourceGroupName)
+        export foundryName=$(azd env get-value foundryName)
+        export foundryProjectName=$(azd env get-value foundryProjectName)
         
-        uv sync --quiet
+        uv sync --quiet --prerelease=allow
         uv run deploy.py
 
 infra:

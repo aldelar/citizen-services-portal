@@ -729,6 +729,7 @@ dependencies = [
     { name = "azure-ai-projects" },
     { name = "azure-identity" },
     { name = "pyyaml" },
+    { name = "requests" },
 ]
 
 [package.metadata]
@@ -738,6 +739,7 @@ requires-dist = [
     { name = "azure-ai-projects" },
     { name = "azure-identity" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "requests", specifier = ">=2.31.0" },
 ]
 
 [[package]]

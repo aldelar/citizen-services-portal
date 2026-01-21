@@ -1,6 +1,6 @@
 """MCP tools for LADBS services."""
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 from .models import PermitApplication, PermitStatus, InspectionRequest, ViolationReport
 from .services import LADBSService
@@ -93,8 +93,8 @@ class LADBSTools:
         property_address: str,
         violation_type: str,
         description: str,
-        reporter_name: str | None = None,
-        reporter_contact: str | None = None,
+        reporter_name: Optional[str] = None,
+        reporter_contact: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Report a code violation.

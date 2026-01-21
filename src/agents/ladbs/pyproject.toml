@@ -9,6 +9,7 @@ dependencies = [
     "agent-framework-azure-ai",
     "azure-identity",
     "azure-ai-projects",
+    "requests>=2.31.0",
     "pyyaml>=6.0",
 ]
 
