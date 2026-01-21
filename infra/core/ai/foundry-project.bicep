@@ -1,4 +1,4 @@
-metadata description = 'Creates an Azure AI Foundry Project with AI Gateway integration via API Management.'
+metadata description = 'Creates an Azure AI Foundry Project (NEW Foundry) for AI development.'
 
 @description('The Azure region for the Foundry Project')
 param location string = resourceGroup().location
@@ -15,62 +15,25 @@ param friendlyName string = ''
 @description('Description of the Foundry Project')
 param projectDescription string = 'AI Foundry Project for Citizen Services Portal agents'
 
-@description('Foundry resource ID')
-param foundryId string
+@description('Foundry account name (parent)')
+param foundryName string
 
-@description('Storage account resource ID')
-param storageAccountId string
-
-@description('Key Vault resource ID')
-param keyVaultId string
-
-@description('Application Insights resource ID')
-param applicationInsightsId string
-
-@description('Container Registry resource ID')
-param containerRegistryId string
-
-@description('API Management resource ID for AI Gateway')
-param apimId string = ''
-
-@description('Managed identity resource ID')
-param identityId string = ''
-
-resource foundryProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
-  name: projectName
-  location: location
-  tags: tags
-  identity: !empty(identityId) ? {
-    type: 'SystemAssigned,UserAssigned'
-    userAssignedIdentities: {
-      '${identityId}': {}
-    }
-  } : {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    friendlyName: !empty(friendlyName) ? friendlyName : projectName
-    description: projectDescription
-    hubResourceId: foundryId
-    storageAccount: storageAccountId
-    keyVault: keyVaultId
-    applicationInsights: applicationInsightsId
-    containerRegistry: containerRegistryId
-    publicNetworkAccess: 'Enabled'
-  }
-  sku: {
-    name: 'Basic'
-    tier: 'Basic'
-  }
+// Reference the parent Foundry account
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
+  name: foundryName
 }
 
-// Note: AI Gateway configuration (linking APIM to Foundry Project) is typically done post-deployment
-// via Azure Portal or separate API calls, as it's not directly supported in Bicep ARM templates yet.
-// The apimId parameter is reserved for future use when this capability becomes available in ARM/Bicep.
-// For now, configure AI Gateway manually:
-// 1. Navigate to Foundry Project in Azure Portal
-// 2. Go to Settings > AI Gateway
-// 3. Select the API Management instance created by this deployment
+// NEW Foundry Project
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+  name: projectName
+  parent: foundry
+  location: location
+  tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {}
+}
 
 @description('The resource ID of the Foundry Project')
 output id string = foundryProject.id
@@ -80,6 +43,3 @@ output name string = foundryProject.name
 
 @description('The principal ID of the Foundry Project')
 output principalId string = foundryProject.identity.principalId
-
-@description('Manual configuration required: Link APIM as AI Gateway in Foundry Project settings')
-output configurationNote string = 'Configure AI Gateway: Navigate to ${projectName} > Settings > AI Gateway > Select ${apimId}'

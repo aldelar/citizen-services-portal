@@ -170,11 +170,6 @@ module foundry './core/ai/foundry.bicep' = {
     foundryName: 'aldelar-csp-foundry'
     friendlyName: 'Citizen Services AI Foundry'
     foundryDescription: 'AI Foundry for developing citizen service agents and workflows'
-    storageAccountId: storageAccount.outputs.id
-    keyVaultId: keyVault.outputs.keyVaultId
-    applicationInsightsId: monitoring.outputs.applicationInsightsId
-    containerRegistryId: containerRegistry.outputs.id
-    identityId: managedIdentity.outputs.identityId
   }
 }
 
@@ -188,29 +183,21 @@ module foundryProject './core/ai/foundry-project.bicep' = {
     projectName: 'aldelar-csp-foundry-project'
     friendlyName: 'Citizen Services AI Foundry Project'
     projectDescription: 'Foundry project for building and deploying citizen service AI agents'
-    foundryId: foundry.outputs.id
-    storageAccountId: storageAccount.outputs.id
-    keyVaultId: keyVault.outputs.keyVaultId
-    applicationInsightsId: monitoring.outputs.applicationInsightsId
-    containerRegistryId: containerRegistry.outputs.id
-    apimId: apiManagement.outputs.id
-    identityId: managedIdentity.outputs.identityId
+    foundryName: foundry.outputs.name
   }
 }
 
-// OpenAI Model Deployments - Currently disabled, will be deployed via Azure AI Foundry SDK
-// Models need to be deployed using Azure AI Foundry portal or SDK, not ARM/Bicep
-/*
+// OpenAI Model Deployments
 module gpt5Mini './core/ai/openai-deployment.bicep' = {
   name: 'gpt5-mini-deployment'
   scope: rg
   params: {
     foundryName: foundry.outputs.name
     deploymentName: 'gpt-5-mini'
-    modelName: 'gpt-5-mini'
-    modelVersion: 'latest'
+    modelName: 'gpt-4o-mini'  // Using actual Azure OpenAI model name
+    modelVersion: '2024-07-18'
     sku: 'GlobalStandard'
-    capacity: 1000000
+    capacity: 100
   }
 }
 
@@ -219,11 +206,11 @@ module gpt52 './core/ai/openai-deployment.bicep' = {
   scope: rg
   params: {
     foundryName: foundry.outputs.name
-    deploymentName: 'gpt-5.2'
-    modelName: 'gpt-5.2'
-    modelVersion: 'latest'
+    deploymentName: 'gpt-5-2'
+    modelName: 'gpt-4o'  // Using actual Azure OpenAI model name
+    modelVersion: '2024-08-06'
     sku: 'GlobalStandard'
-    capacity: 1000000
+    capacity: 100
   }
 }
 
@@ -234,12 +221,11 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
     foundryName: foundry.outputs.name
     deploymentName: 'text-embedding-3-small'
     modelName: 'text-embedding-3-small'
-    modelVersion: 'latest'
-    sku: 'GlobalStandard'
-    capacity: 1000000
+    modelVersion: '1'
+    sku: 'Standard'
+    capacity: 100
   }
 }
-*/
 
 // =================================
 // API Management - API Configuration
@@ -253,14 +239,13 @@ module apimAiApi './core/gateway/apim-ai-api.bicep' = {
     apimName: apiManagement.outputs.name
     displayName: 'AI Models API'
     apiDescription: 'API for accessing OpenAI models (gpt-5-mini, gpt-5.2, text-embedding-3-small)'
+    foundryEndpoint: foundry.outputs.endpoint
   }
-  /*
   dependsOn: [
     gpt5Mini
     gpt52
     textEmbedding3Small
   ]
-  */
 }
 
 // MCP Services API (for accessing MCP servers through APIM)
@@ -372,9 +357,6 @@ output foundryName string = foundry.outputs.name
 
 @description('Foundry Project name')
 output foundryProjectName string = foundryProject.outputs.name
-
-@description('Post-deployment configuration note for AI Gateway')
-output aiGatewayConfigurationNote string = foundryProject.outputs.configurationNote
 
 // Application Services
 @description('LADBS MCP Server FQDN')

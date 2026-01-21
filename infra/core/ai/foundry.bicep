@@ -1,69 +1,48 @@
-metadata description = 'Creates an Azure AI Foundry workspace for centralized AI development.'
+metadata description = 'Creates an Azure AI Foundry account (NEW Foundry) for centralized AI development.'
 metadata displayName = 'AI Foundry'
 
-@description('The Azure region for the Foundry workspace')
+@description('The Azure region for the Foundry account')
 param location string = resourceGroup().location
 
-@description('Tags to apply to the Foundry workspace')
+@description('Tags to apply to the Foundry account')
 param tags object = {}
 
-@description('Name of the AI Foundry workspace')
+@description('Name of the AI Foundry account')
 param foundryName string
 
-@description('Friendly name for the Foundry workspace')
+@description('Friendly name for the Foundry account')
 param friendlyName string = ''
 
-@description('Description of the Foundry workspace')
+@description('Description of the Foundry account')
 param foundryDescription string = 'AI Foundry for Citizen Services Portal'
 
-@description('Storage account resource ID')
-param storageAccountId string
-
-@description('Key Vault resource ID')
-param keyVaultId string
-
-@description('Application Insights resource ID')
-param applicationInsightsId string
-
-@description('Container Registry resource ID')
-param containerRegistryId string
-
-@description('Managed identity resource ID')
-param identityId string = ''
-
-resource foundry 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
+// NEW Foundry uses Microsoft.CognitiveServices/accounts with kind='AIServices'
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: foundryName
   location: location
   tags: tags
-  identity: !empty(identityId) ? {
-    type: 'SystemAssigned,UserAssigned'
-    userAssignedIdentities: {
-      '${identityId}': {}
-    }
-  } : {
+  identity: {
     type: 'SystemAssigned'
   }
-  properties: {
-    friendlyName: !empty(friendlyName) ? friendlyName : foundryName
-    description: foundryDescription
-    storageAccount: storageAccountId
-    keyVault: keyVaultId
-    applicationInsights: applicationInsightsId
-    containerRegistry: containerRegistryId
-    publicNetworkAccess: 'Enabled'
-    v1LegacyMode: false
-  }
   sku: {
-    name: 'Basic'
-    tier: 'Basic'
+    name: 'S0'
+  }
+  kind: 'AIServices'
+  properties: {
+    allowProjectManagement: true  // Required for NEW Foundry
+    customSubDomainName: foundryName
+    disableLocalAuth: false  // Enable for development
   }
 }
 
-@description('The resource ID of the Foundry workspace')
+@description('The resource ID of the Foundry account')
 output id string = foundry.id
 
-@description('The name of the Foundry workspace')
+@description('The name of the Foundry account')
 output name string = foundry.name
 
-@description('The principal ID of the Foundry workspace')
+@description('The endpoint of the Foundry account')
+output endpoint string = foundry.properties.endpoint
+
+@description('The principal ID of the Foundry account')
 output principalId string = foundry.identity.principalId

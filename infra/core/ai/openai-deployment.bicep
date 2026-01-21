@@ -1,16 +1,16 @@
-metadata description = 'Deploys an Azure OpenAI model to an AI Foundry workspace'
+metadata description = 'Deploys an Azure OpenAI model to an AI Foundry account'
 
-@description('Name of the AI Foundry workspace')
+@description('Name of the AI Foundry account')
 param foundryName string
 
 @description('Name of the deployment')
 param deploymentName string
 
-@description('OpenAI model name and version')
+@description('OpenAI model name')
 param modelName string
 
 @description('Model version')
-param modelVersion string
+param modelVersion string = 'latest'
 
 @description('Deployment SKU (Standard, GlobalStandard, etc.)')
 param sku string = 'GlobalStandard'
@@ -18,20 +18,24 @@ param sku string = 'GlobalStandard'
 @description('Deployment capacity in TPM (Tokens Per Minute)')
 param capacity int = 1000000
 
-// Reference the Foundry workspace
-resource workspace 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' existing = {
+// Reference the Foundry account
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
   name: foundryName
 }
 
-// OpenAI model deployment
-resource modelDeployment 'Microsoft.MachineLearningServices/workspaces/onlineEndpoints@2024-10-01-preview' = {
-  parent: workspace
+// OpenAI model deployment to NEW Foundry
+resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundry
   name: deploymentName
+  sku: {
+    capacity: capacity
+    name: sku
+  }
   properties: {
-    authMode: 'Key'
-    properties: {
-      modelId: modelName
-      modelVersion: modelVersion
+    model: {
+      name: modelName
+      format: 'OpenAI'
+      version: modelVersion
     }
   }
 }
