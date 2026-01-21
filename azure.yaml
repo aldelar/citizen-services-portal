@@ -17,6 +17,20 @@ hooks:
         else
           echo "Warning: Could not get user principal ID. RBAC assignment will be skipped."
         fi
+  
+  postdeploy:
+    posix:
+      shell: sh
+      run: |
+        # Deploy LADBS agent after infrastructure is provisioned
+        echo "Deploying LADBS agent..."
+        cd src/agents/ladbs
+        
+        # Export required environment variables from azd
+        export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
+        
+        uv sync --quiet
+        uv run deploy.py
 
 infra:
   provider: bicep
@@ -37,4 +51,7 @@ services:
       path: ./Dockerfile
       context: .
       registry: aldelarcspcr.azurecr.io
+  
+  # Note: ladbs-agent is deployed via hooks, not as a hosted service
+  # The predeploy hook runs the Python deployment scripts
 

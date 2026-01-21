@@ -372,8 +372,14 @@ output apiManagementGatewayUrl string = apiManagement.outputs.gatewayUrl
 @description('Foundry name')
 output foundryName string = foundry.outputs.name
 
+@description('Foundry Hub endpoint')
+output foundryEndpoint string = foundry.outputs.endpoint
+
 @description('Foundry Project name')
 output foundryProjectName string = foundryProject.outputs.name
+
+@description('Foundry Project endpoint - Use this for agent deployment')
+output foundryProjectEndpoint string = 'https://${foundry.outputs.name}.services.ai.azure.com/api/projects/${foundryProject.outputs.name}'
 
 // Application Services
 @description('LADBS MCP Server FQDN')

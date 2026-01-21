@@ -43,3 +43,6 @@ output name string = foundryProject.name
 
 @description('The principal ID of the Foundry Project')
 output principalId string = foundryProject.identity.principalId
+
+@description('The endpoint of the parent Foundry account')
+output endpoint string = foundry.properties.endpoint

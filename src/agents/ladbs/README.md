@@ -1,29 +1,124 @@
 # LADBS AI Agent
 
-AI Agent for Los Angeles Department of Building and Safety (LADBS) services.
+AI assistant for Los Angeles Department of Building and Safety (LADBS) services.
 
 ## Overview
 
-This agent assists citizens with building permits, inspections, violations, and general LADBS inquiries using the MCP-LADBS tool.
+This agent provides intelligent assistance for LADBS-related queries, including:
+- Building permit information
+- Inspection scheduling
+- Code compliance guidance
+- Service navigation
 
-**Model:** gpt-5.2 (via APIM AI Gateway)
-**Tools:** mcp-ladbs (accessed via APIM MCP Services API)
+## Architecture
+
+- **Agent Definition**: `agent.yaml` - Configuration for the AI agent
+- **System Prompt**: `system-prompt.md` - Instructions and behavior definition
+- **Tools**: `tools/` - MCP tool definitions for extended capabilities
 
 ## Deployment
 
-See [deploy.py](deploy.py) for automated deployment using Azure AI Foundry SDK.
+The agent deployment consists of three scripts:
 
-## Files
+1. **`deploy.py`** - Master orchestration script
+   - Runs tool deployment followed by agent deployment
+   - Called automatically by `azd deploy`
 
-- `agent.yaml` - Agent configuration
-- `system-prompt.md` - Agent instructions and personality
-- `tools/mcp-ladbs.yaml` - MCP tool connection specification
-- `deploy.py` - Deployment script
+2. **`deploy_tools.py`** - Tool registration
+   - Scans `tools/` directory for YAML definitions
+   - Registers each tool with Azure AI Foundry
+   - Idempotent: Updates existing tools
 
-## Manual Testing
+3. **`deploy_agent.py`** - Agent definition deployment
+   - Creates/updates the agent using `PromptAgentDefinition`
+   - Uses `create_version()` for idempotent deployments
+   - New version created automatically if definition changes
 
-After deployment, test the agent in Azure AI Foundry Portal:
-1. Navigate to the `citizen-services-portal` project
-2. Go to **Agents**
-3. Select **ladbs-assistant**
-4. Open **Playground** to chat with the agent
+### Deploy All Services
+
+```bash
+azd deploy
+```
+
+This deploys both the MCP server (container app) and the agent definition.
+
+### Deploy Only LADBS Agent
+
+To deploy only the LADBS agent and its tools (skip MCP server):
+
+```bash
+azd deploy ladbs-agent
+```
+
+### Manual Deployment
+
+You can also run the deployment scripts directly:
+
+```bash
+cd src/agents/ladbs
+
+# Ensure uv environment is synced
+uv sync --prerelease=allow
+
+# Deploy everything (tools + agent)
+export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
+uv run deploy.py
+
+# Or deploy individually
+uv run deploy_tools.py
+uv run deploy_agent.py
+```
+
+## Configuration
+
+### Environment Variables
+
+Required for deployment:
+
+- `foundryProjectEndpoint` - Azure AI Foundry project endpoint (set by azd)
+- Format: `https://{foundry-name}.services.ai.azure.com/api/projects/{project-name}`
+- Credentials are obtained via Azure CLI (`az login`)
+
+### Agent Configuration
+
+Edit [agent.yaml](agent.yaml) to modify:
+- Model deployment name
+- Temperature and max_tokens
+- Tool references
+
+## Idempotency
+
+Both deployment scripts are idempotent:
+- **Tools**: Validated on each deployment (registration API support pending)
+- **Agent**: New version created automatically if definition changed
+- Safe to run multiple times without duplicates
+
+## Change Detection
+
+Currently, deployments run on every `azd deploy` call. To skip unnecessary deployments:
+
+1. **Manual approach**: Run scripts individually only when needed
+2. **Git-based**: Add pre-deploy check to compare git status
+3. **Hash-based**: Calculate config file hashes and skip if unchanged
+
+For production, consider implementing one of these approaches in `deploy.py`.
+
+## Testing
+
+After deployment, test the agent:
+- Azure AI Foundry Portal: https://ai.azure.com
+- Navigate to your project → Agents
+- Find `ladbs-assistant` and start a conversation
+
+### Test MCP Server
+
+```bash
+cd ../../mcp-servers/ladbs
+MCP_SERVER_HOST="<your-aca-host>" MCP_SERVER_PORT="443" uv run python mcp_client_ladbs.py
+```
+
+## Development Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) - Fast Python package manager
+- Azure CLI (`az login` required)

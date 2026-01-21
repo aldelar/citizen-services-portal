@@ -195,10 +195,10 @@ azd init
 
 #### 4. Deploy Infrastructure and Services
 
-**Option A: Deploy Everything (Infrastructure + MCP Servers)**
+**Option A: Deploy Everything (Infrastructure + Services + Agents)**
 
 ```bash
-# Deploy all Azure resources and services
+# Deploy all Azure resources, services, and AI agents
 azd up
 
 # When prompted (first time only):
@@ -207,7 +207,8 @@ azd up
 # This will:
 # - Create resource group 'csp'
 # - Deploy all foundation services (Foundry, APIM, Cosmos DB, etc.)
-# - Build and deploy LADBS MCP server
+# - Build and deploy LADBS MCP server to Container Apps
+# - Deploy LADBS AI agent to Azure AI Foundry (via postdeploy hook)
 # - Configure monitoring and security
 # - Take approximately 20-25 minutes
 ```
@@ -221,14 +222,17 @@ azd provision
 # When prompted (first time only):
 # - Location: northcentralus (or choose from: eastus, eastus2, westus2, westus3)
 # 
-# Takes approximately 15-20 minutes
+# Takes approximately 15-20 minutes (or ~1 minute for config-only updates)
 ```
 
 **Option C: Deploy Individual Services**
 
 ```bash
-# Deploy only LADBS (after infrastructure exists)
+# Deploy only LADBS MCP server (after infrastructure exists)
 azd deploy mcp-ladbs
+
+# Deploy services + run agent deployment
+azd deploy
 ```
 
 **Note:** azd saves location and subscription in `.azure/<env-name>/.env` - you won't be prompted again on subsequent deployments.
@@ -247,7 +251,17 @@ azd env get-values
 
 # Get LADBS MCP Server URI (if deployed)
 azd env get-value mcpLadbsUri
+
+# Test MCP server
+cd src/mcp-servers/ladbs
+MCP_SERVER_HOST="$(azd env get-value mcpLadbsUri | sed 's|https://||')" \
+MCP_SERVER_PORT="443" \
+uv run python mcp_client_ladbs.py
 ```
+
+**Access AI Agent:**
+- Portal: https://ai.azure.com
+- Navigate to your project → Agents → `ladbs-assistant`
 
 #### 6. Post-Deployment Configuration
 

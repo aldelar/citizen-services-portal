@@ -1,8 +1,8 @@
 name: ladbs-assistant
 description: AI assistant for Los Angeles Department of Building and Safety (LADBS) services
 model:
-  deployment: gpt-5.2
-  endpoint: via-apim-gateway  # Configured through AI Gateway
+  deployment: gpt-4.1
+  # endpoint: via-apim-gateway  # Configured through AI Gateway - disabled for direct testing
 instructions: file://system-prompt.md
 tools:
   - type: mcp

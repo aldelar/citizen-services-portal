@@ -197,7 +197,18 @@ az deployment group create \
 
 ### Verify Deployment
 
+Test the deployed server:
+
 ```bash
+# Get the deployed URL
+MCP_URI=$(azd env get-value mcpLadbsUri)
+
+# Test with client
+cd src/mcp-servers/ladbs
+MCP_SERVER_HOST="${MCP_URI#https://}" MCP_SERVER_PORT="443" uv run python mcp_client_ladbs.py
+```
+
+Expected output: Successful tests for all four LADBS tools.
 # Check Container App status
 az containerapp show -n aldelar-csp-mcp-ladbs -g csp --query "properties.latestRevisionName"
 
