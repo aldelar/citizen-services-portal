@@ -1,19 +1,20 @@
-metadata description = 'Creates an Azure AI Foundry Hub for centralized AI development.'
+metadata description = 'Creates an Azure AI Foundry workspace for centralized AI development.'
+metadata displayName = 'AI Foundry'
 
-@description('The Azure region for the Foundry Hub')
+@description('The Azure region for the Foundry workspace')
 param location string = resourceGroup().location
 
-@description('Tags to apply to the Foundry Hub')
+@description('Tags to apply to the Foundry workspace')
 param tags object = {}
 
-@description('Name of the Foundry Hub')
-param hubName string
+@description('Name of the AI Foundry workspace')
+param foundryName string
 
-@description('Friendly name for the Foundry Hub')
+@description('Friendly name for the Foundry workspace')
 param friendlyName string = ''
 
-@description('Description of the Foundry Hub')
-param hubDescription string = 'AI Foundry Hub for Citizen Services Portal'
+@description('Description of the Foundry workspace')
+param foundryDescription string = 'AI Foundry for Citizen Services Portal'
 
 @description('Storage account resource ID')
 param storageAccountId string
@@ -30,11 +31,10 @@ param containerRegistryId string
 @description('Managed identity resource ID')
 param identityId string = ''
 
-resource foundryHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
-  name: hubName
+resource foundry 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
+  name: foundryName
   location: location
   tags: tags
-  kind: 'Foundry'
   identity: !empty(identityId) ? {
     type: 'SystemAssigned,UserAssigned'
     userAssignedIdentities: {
@@ -44,8 +44,8 @@ resource foundryHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01-pre
     type: 'SystemAssigned'
   }
   properties: {
-    friendlyName: !empty(friendlyName) ? friendlyName : hubName
-    description: hubDescription
+    friendlyName: !empty(friendlyName) ? friendlyName : foundryName
+    description: foundryDescription
     storageAccount: storageAccountId
     keyVault: keyVaultId
     applicationInsights: applicationInsightsId
@@ -59,11 +59,11 @@ resource foundryHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01-pre
   }
 }
 
-@description('The resource ID of the Foundry Hub')
-output id string = foundryHub.id
+@description('The resource ID of the Foundry workspace')
+output id string = foundry.id
 
-@description('The name of the Foundry Hub')
-output name string = foundryHub.name
+@description('The name of the Foundry workspace')
+output name string = foundry.name
 
-@description('The principal ID of the Foundry Hub')
-output principalId string = foundryHub.identity.principalId
+@description('The principal ID of the Foundry workspace')
+output principalId string = foundry.identity.principalId

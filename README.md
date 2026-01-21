@@ -98,7 +98,7 @@ The solution is built on a modern, AI-first Azure architecture optimized for int
 | **Key Vault** | Secure secrets, connection strings, API keys with RBAC |
 | **Log Analytics + Application Insights** | Centralized logging, APM, distributed tracing |
 | **Managed Identity** | Service-to-service authentication without credentials |
-| **Storage Account** | Required dependency for AI Foundry Hub |
+| **Storage Account** | Required dependency for AI Foundry |
 
 ### Architecture Highlights
 

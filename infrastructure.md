@@ -23,7 +23,7 @@ This document defines the Azure infrastructure foundation for the Citizen Servic
 
 ### 2. Azure AI Foundry
 - **Components:**
-  - AI Foundry Hub (workspace for AI development)
+  - AI Foundry (workspace for AI development)
   - AI Foundry Project (scoped environment for agents/workflows)
 - **Models:** gpt-5-mini, gpt-5.2
 - **Integration:** API Management configured as AI Gateway in Foundry Resource
@@ -115,7 +115,7 @@ infra/
 │
 ├── core/                               # Reusable modules
 │   ├── ai/
-│   │   ├── foundry-hub.bicep          # AI Foundry Hub
+│   │   ├── foundry.bicep              # AI Foundry
 │   │   ├── foundry-project.bicep      # AI Foundry Project
 │   │   ├── ai-search.bicep            # Azure AI Search
 │   │   └── content-safety.bicep       # Content Safety service

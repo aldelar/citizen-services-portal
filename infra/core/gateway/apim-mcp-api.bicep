@@ -40,7 +40,7 @@ resource mcpServicesPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-0
   name: 'policy'
   properties: {
     format: 'rawxml'
-    value: '<policies><inbound><base /><rate-limit calls="100" renewal-period="60" /><cors allow-credentials="true"><allowed-origins><origin>*</origin></allowed-origins><allowed-methods><method>POST</method><method>GET</method></allowed-methods><allowed-headers><header>*</header></allowed-headers></cors></inbound><backend><retry condition="@(context.Response.StatusCode >= 500)" count="3" interval="1" /><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+    value: '<policies><inbound><base /><rate-limit calls="100" renewal-period="60" /><cors><allowed-origins><origin>*</origin></allowed-origins><allowed-methods><method>POST</method><method>GET</method></allowed-methods><allowed-headers><header>*</header></allowed-headers></cors></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
   }
 }
 

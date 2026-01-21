@@ -12,7 +12,7 @@ infra/
 │
 ├── core/                      # Reusable infrastructure modules
 │   ├── ai/
-│   │   ├── foundry-hub.bicep         # AI Foundry Hub
+│   │   ├── foundry.bicep             # AI Foundry
 │   │   ├── foundry-project.bicep     # AI Foundry Project  
 │   │   ├── ai-search.bicep           # Azure AI Search
 │   │   └── content-safety.bicep      # Content Safety
@@ -87,7 +87,7 @@ This step will be automated when ARM/Bicep support is available.
 | Resource | Purpose | SKU/Tier |
 |----------|---------|----------|
 | Resource Group | `csp` | N/A |
-| AI Foundry Hub | AI development workspace | Basic |
+| AI Foundry | AI development workspace | Basic |
 | AI Foundry Project | Agent/workflow environment | Basic |
 | AI Search | Vector/semantic search | Standard S1 |
 | API Management | AI Gateway for models | Standard |

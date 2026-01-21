@@ -12,8 +12,8 @@ param displayName string = 'AI Models API'
 @description('API description text')
 param apiDescription string = 'API for accessing OpenAI models through AI Gateway'
 
-@description('Foundry Hub endpoint for backend')
-param foundryEndpoint string
+@description('Foundry endpoint for backend')
+param foundryEndpoint string = ''
 
 // Reference existing APIM
 resource apim 'Microsoft.ApiManagement/service@2023-05-01-preview' existing = {
@@ -40,7 +40,7 @@ resource aiModelsPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-0
   name: 'policy'
   properties: {
     format: 'rawxml'
-    value: '<policies><inbound><base /><set-backend-service base-url="${foundryEndpoint}" /><rate-limit calls="100" renewal-period="60" /><cors allow-credentials="true"><allowed-origins><origin>*</origin></allowed-origins><allowed-methods><method>POST</method><method>GET</method></allowed-methods><allowed-headers><header>*</header></allowed-headers></cors></inbound><backend><retry condition="@(context.Response.StatusCode >= 500)" count="3" interval="1" /><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+    value: '<policies><inbound><base />${!empty(foundryEndpoint) ? '<set-backend-service base-url="${foundryEndpoint}" />' : ''}<rate-limit calls="100" renewal-period="60" /><cors><allowed-origins><origin>*</origin></allowed-origins><allowed-methods><method>POST</method><method>GET</method></allowed-methods><allowed-headers><header>*</header></allowed-headers></cors></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
   }
 }
 

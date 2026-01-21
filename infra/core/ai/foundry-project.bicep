@@ -15,8 +15,20 @@ param friendlyName string = ''
 @description('Description of the Foundry Project')
 param projectDescription string = 'AI Foundry Project for Citizen Services Portal agents'
 
-@description('Foundry Hub resource ID')
-param hubId string
+@description('Foundry resource ID')
+param foundryId string
+
+@description('Storage account resource ID')
+param storageAccountId string
+
+@description('Key Vault resource ID')
+param keyVaultId string
+
+@description('Application Insights resource ID')
+param applicationInsightsId string
+
+@description('Container Registry resource ID')
+param containerRegistryId string
 
 @description('API Management resource ID for AI Gateway')
 param apimId string = ''
@@ -28,7 +40,6 @@ resource foundryProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01
   name: projectName
   location: location
   tags: tags
-  kind: 'FoundryProject'
   identity: !empty(identityId) ? {
     type: 'SystemAssigned,UserAssigned'
     userAssignedIdentities: {
@@ -40,7 +51,11 @@ resource foundryProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01
   properties: {
     friendlyName: !empty(friendlyName) ? friendlyName : projectName
     description: projectDescription
-    hubResourceId: hubId
+    hubResourceId: foundryId
+    storageAccount: storageAccountId
+    keyVault: keyVaultId
+    applicationInsights: applicationInsightsId
+    containerRegistry: containerRegistryId
     publicNetworkAccess: 'Enabled'
   }
   sku: {

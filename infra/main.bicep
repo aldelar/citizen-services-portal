@@ -25,7 +25,7 @@ param principalId string = ''
 // Tags for all resources
 var tags = {
   'azd-env-name': environmentName
-  project: 'citizen-services-portal'
+  project: 'aldelar-csp-foundry-project'
   'managed-by': 'azd'
 }
 
@@ -71,7 +71,7 @@ module keyVault './core/security/key-vault.bicep' = {
   }
 }
 
-// Storage Account (required for Foundry Hub)
+// Storage Account (required for Foundry)
 // Note: Storage account names must be globally unique, lowercase, no hyphens
 module storageAccount './core/data/storage-account.bicep' = {
   name: 'storage-deployment'
@@ -160,16 +160,16 @@ module apiManagement './core/gateway/api-management.bicep' = {
   }
 }
 
-// AI Foundry Hub
-module foundryHub './core/ai/foundry.bicep' = {
-  name: 'foundry-deployment'
+// AI Foundry
+module foundry './core/ai/foundry.bicep' = {
+  name: 'ai-foundry'
   scope: rg
   params: {
     location: location
     tags: tags
-    hubName: 'aldelar-csp-foundry'
+    foundryName: 'aldelar-csp-foundry'
     friendlyName: 'Citizen Services AI Foundry'
-    hubDescription: 'AI Foundry for developing citizen service agents and workflows'
+    foundryDescription: 'AI Foundry for developing citizen service agents and workflows'
     storageAccountId: storageAccount.outputs.id
     keyVaultId: keyVault.outputs.keyVaultId
     applicationInsightsId: monitoring.outputs.applicationInsightsId
@@ -185,21 +185,27 @@ module foundryProject './core/ai/foundry-project.bicep' = {
   params: {
     location: location
     tags: tags
-    projectName: 'citizen-services-portal'
-    friendlyName: 'Citizen Services Portal'
+    projectName: 'aldelar-csp-foundry-project'
+    friendlyName: 'Citizen Services AI Foundry Project'
     projectDescription: 'Foundry project for building and deploying citizen service AI agents'
-    hubId: foundryHub.outputs.id
+    foundryId: foundry.outputs.id
+    storageAccountId: storageAccount.outputs.id
+    keyVaultId: keyVault.outputs.keyVaultId
+    applicationInsightsId: monitoring.outputs.applicationInsightsId
+    containerRegistryId: containerRegistry.outputs.id
     apimId: apiManagement.outputs.id
     identityId: managedIdentity.outputs.identityId
   }
 }
 
-// OpenAI Model Deployments
+// OpenAI Model Deployments - Currently disabled, will be deployed via Azure AI Foundry SDK
+// Models need to be deployed using Azure AI Foundry portal or SDK, not ARM/Bicep
+/*
 module gpt5Mini './core/ai/openai-deployment.bicep' = {
   name: 'gpt5-mini-deployment'
   scope: rg
   params: {
-    hubName: foundryHub.outputs.name
+    foundryName: foundry.outputs.name
     deploymentName: 'gpt-5-mini'
     modelName: 'gpt-5-mini'
     modelVersion: 'latest'
@@ -212,7 +218,7 @@ module gpt52 './core/ai/openai-deployment.bicep' = {
   name: 'gpt52-deployment'
   scope: rg
   params: {
-    hubName: foundryHub.outputs.name
+    foundryName: foundry.outputs.name
     deploymentName: 'gpt-5.2'
     modelName: 'gpt-5.2'
     modelVersion: 'latest'
@@ -225,7 +231,7 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
   name: 'text-embedding-3-small-deployment'
   scope: rg
   params: {
-    hubName: foundryHub.outputs.name
+    foundryName: foundry.outputs.name
     deploymentName: 'text-embedding-3-small'
     modelName: 'text-embedding-3-small'
     modelVersion: 'latest'
@@ -233,6 +239,7 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
     capacity: 1000000
   }
 }
+*/
 
 // =================================
 // API Management - API Configuration
@@ -246,13 +253,14 @@ module apimAiApi './core/gateway/apim-ai-api.bicep' = {
     apimName: apiManagement.outputs.name
     displayName: 'AI Models API'
     apiDescription: 'API for accessing OpenAI models (gpt-5-mini, gpt-5.2, text-embedding-3-small)'
-    foundryEndpoint: foundryHub.outputs.name // Will be configured post-deployment
   }
+  /*
   dependsOn: [
     gpt5Mini
     gpt52
     textEmbedding3Small
   ]
+  */
 }
 
 // MCP Services API (for accessing MCP servers through APIM)
@@ -359,8 +367,8 @@ output apiManagementName string = apiManagement.outputs.name
 output apiManagementGatewayUrl string = apiManagement.outputs.gatewayUrl
 
 // AI Foundry
-@description('Foundry Hub name')
-output foundryHubName string = foundryHub.outputs.name
+@description('Foundry name')
+output foundryName string = foundry.outputs.name
 
 @description('Foundry Project name')
 output foundryProjectName string = foundryProject.outputs.name
