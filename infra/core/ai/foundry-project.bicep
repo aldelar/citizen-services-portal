@@ -19,12 +19,12 @@ param projectDescription string = 'AI Foundry Project for Citizen Services Porta
 param foundryName string
 
 // Reference the parent Foundry account
-resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' existing = {
   name: foundryName
 }
 
 // NEW Foundry Project
-resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-01-preview' = {
   name: projectName
   parent: foundry
   location: location

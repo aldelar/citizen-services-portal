@@ -19,12 +19,12 @@ param sku string = 'GlobalStandard'
 param capacity int = 1000000
 
 // Reference the Foundry account
-resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' existing = {
   name: foundryName
 }
 
 // OpenAI model deployment to NEW Foundry
-resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-10-01-preview' = {
   parent: foundry
   name: deploymentName
   sku: {

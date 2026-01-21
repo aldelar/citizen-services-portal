@@ -188,29 +188,29 @@ module foundryProject './core/ai/foundry-project.bicep' = {
 }
 
 // OpenAI Model Deployments
-module gpt5Mini './core/ai/openai-deployment.bicep' = {
-  name: 'gpt5-mini-deployment'
+module gpt41Mini './core/ai/openai-deployment.bicep' = {
+  name: 'gpt41-mini-deployment'
   scope: rg
   params: {
     foundryName: foundry.outputs.name
-    deploymentName: 'gpt-5-mini'
-    modelName: 'gpt-5-mini'
-    modelVersion: '2024-07-18'
+    deploymentName: 'gpt-4.1-mini'
+    modelName: 'gpt-4.1-mini'
+    modelVersion: '2025-04-14'
     sku: 'GlobalStandard'
-    capacity: 100
+    capacity: 5000
   }
 }
 
-module gpt52 './core/ai/openai-deployment.bicep' = {
-  name: 'gpt52-deployment'
+module gpt41 './core/ai/openai-deployment.bicep' = {
+  name: 'gpt41-deployment'
   scope: rg
   params: {
     foundryName: foundry.outputs.name
-    deploymentName: 'gpt-5.2'
-    modelName: 'gpt-5.2'
-    modelVersion: '2024-08-06'
+    deploymentName: 'gpt-4.1'
+    modelName: 'gpt-4.1'
+    modelVersion: '2025-04-14'
     sku: 'GlobalStandard'
-    capacity: 100
+    capacity: 1000
   }
 }
 
@@ -223,7 +223,7 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
     modelName: 'text-embedding-3-small'
     modelVersion: '1'
     sku: 'GlobalStandard'
-    capacity: 100
+    capacity: 1000
   }
 }
 
@@ -238,12 +238,12 @@ module apimAiApi './core/gateway/apim-ai-api.bicep' = {
   params: {
     apimName: apiManagement.outputs.name
     displayName: 'AI Models API'
-    apiDescription: 'API for accessing OpenAI models (gpt-5-mini, gpt-5.2, text-embedding-3-small)'
+    apiDescription: 'API for accessing OpenAI models (gpt-4.1-mini, gpt-4.1, text-embedding-3-small)'
     foundryEndpoint: foundry.outputs.endpoint
   }
   dependsOn: [
-    gpt5Mini
-    gpt52
+    gpt41Mini
+    gpt41
     textEmbedding3Small
   ]
 }

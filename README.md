@@ -83,7 +83,7 @@ The solution is built on a modern, AI-first Azure architecture optimized for int
 
 | Service | Purpose | Configuration |
 |---------|---------|---------------|
-| **Azure AI Foundry** | AI development platform (NEW Foundry) with Hub + Project for building and deploying agents | Project: citizen-services-portal, Models: gpt-5-mini, gpt-5.2, text-embedding-3-small (Global Standard, 1M TPM) |
+| **Azure AI Foundry** | AI development platform (NEW Foundry) with Hub + Project for building and deploying agents | Project: citizen-services-portal, Models: gpt-4.1-mini, gpt-4.1, text-embedding-3-small (Global Standard, 1M TPM) |
 | **Azure API Management** | AI Gateway for model endpoints + MCP service proxy with request throttling, token governance | Standard tier, APIs: /ai/v1 (models), /mcp/v1 (services) |
 | **Azure AI Search** | Vector and semantic search for citizen knowledge base, FAQs, policy documents | Standard S1 (1 replica, 1 partition) |
 | **Azure Cosmos DB** | NoSQL database for agent memory (conversation history) and citizen operational data | Serverless, Session consistency |
@@ -106,7 +106,7 @@ The solution is built on a modern, AI-first Azure architecture optimized for int
 - **Network:** Public endpoints with security controls (VNet integration planned for production)
 - **Deployment:** Infrastructure as Code (Bicep) with Azure Developer CLI (azd)
 
-**Key Integration:** API Management is configured as the AI Gateway within the Foundry Project, providing centralized access to AI models (gpt-5-mini, gpt-5.2, text-embedding-3-small) and MCP servers (LADBS) with built-in governance, rate limiting, and token tracking.
+**Key Integration:** API Management is configured as the AI Gateway within the Foundry Project, providing centralized access to AI models (gpt-4.1-mini, gpt-4.1, text-embedding-3-small) and MCP servers (LADBS) with built-in governance, rate limiting, and token tracking.
 
 For detailed infrastructure documentation, see [infrastructure.md](infrastructure.md).
 
@@ -262,7 +262,7 @@ The AI Gateway integration between API Management and Foundry Project must be co
 5. Select the API Management instance that was deployed
 6. Save the configuration
 
-This enables model access (gpt-5-mini, gpt-5.2) through the APIM AI Gateway.
+This enables model access (gpt-4.1-mini, gpt-4.1) through the APIM AI Gateway.
 
 
 ### Validation
@@ -352,7 +352,7 @@ The **LADBS AI Agent** helps citizens with building permits, inspections, and co
 - Report code violations (anonymously or with contact info)
 
 **Configuration:**
-- **Model:** gpt-5.2 (accessed via APIM AI Gateway)
+- **Model:** gpt-4.1 (accessed via APIM AI Gateway)
 - **Tools:** mcp-ladbs (LADBS MCP server via APIM)
 - **Deployment:** Automated via `azd provision` (postprovision hook)
 

@@ -17,7 +17,7 @@ param friendlyName string = ''
 param foundryDescription string = 'AI Foundry for Citizen Services Portal'
 
 // NEW Foundry uses Microsoft.CognitiveServices/accounts with kind='AIServices'
-resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   name: foundryName
   location: location
   tags: tags
