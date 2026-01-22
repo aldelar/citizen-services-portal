@@ -18,6 +18,15 @@ hooks:
           echo "Warning: Could not get user principal ID. RBAC assignment will be skipped."
         fi
   
+  postprovision:
+    posix:
+      shell: sh
+      run: |
+        echo "Configuring AI Gateway..."
+        cd scripts && uv run python configure_ai_gateway_arm.py
+      continueOnError: false
+      interactive: false
+  
   postdeploy:
     posix:
       shell: sh

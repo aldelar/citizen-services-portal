@@ -77,7 +77,7 @@ def get_service_urls() -> dict[str, str]:
     
     Returns:
         Dictionary mapping service variable names to their URLs.
-        Example: {"SERVICE_MCP_LADBS_URI": "https://..."}
+        Example: {"SERVICE_MCP_LADBS_URI": "https://...", "MCP_LADBS_SCOPE_URI": "https://..."}
     """
     services = get_azd_services()
     
@@ -92,6 +92,14 @@ def get_service_urls() -> dict[str, str]:
         value = get_azd_env_value(azd_var)
         if value:
             service_urls[export_var] = value
+            
+        # Also check for scope URI for MCP servers (for authentication)
+        scope_azd_var = service_name_to_env_var(service_name.replace('uri', 'ScopeUri'))
+        scope_export_var = f"{service_name.upper().replace('-', '_')}_SCOPE_URI"
+        
+        scope_value = get_azd_env_value(f"{service_name_to_env_var(service_name).replace('Uri', 'ScopeUri')}")
+        if scope_value:
+            service_urls[scope_export_var] = scope_value
     
     return service_urls
 

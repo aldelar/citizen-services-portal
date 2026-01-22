@@ -14,3 +14,6 @@ definition:
       server_label: mcp-ladbs  # Must match azure.yaml service name
       server_url: ${SERVICE_MCP_LADBS_URI}/mcp
       project_connection_id: mcp-ladbs
+      authentication:
+        type: entra_agent_identity  # Use agent's identity for authentication
+        scope: ${MCP_LADBS_SCOPE_URI}  # Default ACA audience for the MCP server

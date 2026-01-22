@@ -365,6 +365,9 @@ output cosmosDbEndpoint string = cosmosDb.outputs.endpoint
 @description('API Management name')
 output apiManagementName string = apiManagement.outputs.name
 
+@description('API Management resource ID')
+output apiManagementId string = apiManagement.outputs.id
+
 @description('API Management gateway URL')
 output apiManagementGatewayUrl string = apiManagement.outputs.gatewayUrl
 
@@ -387,3 +390,6 @@ output mcpLadbsFqdn string = mcpLadbs.outputs.fqdn
 
 @description('LADBS MCP Server URI')
 output mcpLadbsUri string = mcpLadbs.outputs.uri
+
+@description('LADBS MCP Server Scope URI for Microsoft Entra authentication')
+output mcpLadbsScopeUri string = 'https://${mcpLadbs.outputs.fqdn}'

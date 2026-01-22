@@ -54,6 +54,12 @@ param ladbsApiEndpoint string = ''
 @secure()
 param ladbsApiKey string = ''
 
+@description('Microsoft Entra tenant ID for authentication')
+param tenantId string = tenant().tenantId
+
+@description('Enable Microsoft Entra authentication')
+param enableAuthentication bool = true
+
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
   name: containerAppsEnvironmentName
 }
@@ -83,6 +89,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         transport: 'auto'
         allowInsecure: false
       }
+      // Microsoft Entra authentication for agent identity access
+      activeRevisionsMode: 'Single'
       registries: [
         {
           server: containerRegistry.properties.loginServer
@@ -167,6 +175,36 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
             }
           }
         ]
+      }
+    }
+  }
+}
+
+// Microsoft Entra authentication configuration
+// This enables Azure Container Apps Easy Auth to validate JWT tokens from Microsoft Entra
+resource containerAppAuthConfig 'Microsoft.App/containerApps/authConfigs@2023-05-01' = if (enableAuthentication) {
+  name: 'current'
+  parent: containerApp
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      unauthenticatedClientAction: 'Return401'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          openIdIssuer: 'https://sts.windows.net/${tenantId}/v2.0'
+          clientId: 'api://default'
+        }
+        validation: {
+          allowedAudiences: [
+            'https://${containerApp.properties.configuration.ingress.fqdn}'
+            'api://${containerApp.name}'
+          ]
+        }
       }
     }
   }
