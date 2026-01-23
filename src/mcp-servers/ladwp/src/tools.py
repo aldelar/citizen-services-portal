@@ -127,10 +127,15 @@ class LADWPTools:
         Returns:
             Service start confirmation
         """
+        try:
+            parsed_date = datetime.fromisoformat(service_date)
+        except ValueError:
+            return {"error": f"Invalid date format: '{service_date}'. Please use YYYY-MM-DD format."}
+
         request = ServiceRequest(
             request_type="start",
             address=address,
-            service_date=datetime.fromisoformat(service_date),
+            service_date=parsed_date,
             service_types=service_types,
         )
         result = await self.service.request_service_start(request)
@@ -151,7 +156,12 @@ class LADWPTools:
         Returns:
             Service stop confirmation
         """
-        result = await self.service.request_service_stop(account_number, datetime.fromisoformat(stop_date))
+        try:
+            parsed_date = datetime.fromisoformat(stop_date)
+        except ValueError:
+            return {"error": f"Invalid date format: '{stop_date}'. Please use YYYY-MM-DD format."}
+
+        result = await self.service.request_service_stop(account_number, parsed_date)
         return result
 
     async def get_usage_history(

@@ -258,8 +258,10 @@ Cost: ${record["cost"]:.2f}""")
     unit = result["usage_records"][0]["usage_unit"] if result["usage_records"] else ""
     output.append(f"Total Usage: {total_usage:.2f} {unit}")
     output.append(f"Total Cost: ${total_cost:.2f}")
-    output.append(f"Average Monthly Usage: {total_usage / len(result['usage_records']):.2f} {unit}")
-    output.append(f"Average Monthly Cost: ${total_cost / len(result['usage_records']):.2f}")
+    if result["usage_records"]:
+        num_records = len(result["usage_records"])
+        output.append(f"Average Monthly Usage: {total_usage / num_records:.2f} {unit}")
+        output.append(f"Average Monthly Cost: ${total_cost / num_records:.2f}")
 
     return "\n".join(output)
 
