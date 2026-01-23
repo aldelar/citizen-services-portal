@@ -8,9 +8,9 @@ This module:
 3. Returns them in a standardized format for agent deployment
 
 Convention:
-- azure.yaml service name: mcp-ladbs
-- azd env variable: mcpLadbsUri
-- Dictionary key: SERVICE_MCP_LADBS_URI
+- azure.yaml service name: mcp-ladbs or mcp-ladwp
+- azd env variable: mcpLadbsUri or mcpLadwpUri
+- Dictionary key: SERVICE_MCP_LADBS_URI or SERVICE_MCP_LADWP_URI
 """
 
 import os
@@ -24,7 +24,9 @@ def service_name_to_env_var(service_name: str) -> str:
     """
     Convert azure.yaml service name to azd environment variable name.
     
-    Example: mcp-ladbs -> mcpLadbsUri
+    Examples: 
+        mcp-ladbs -> mcpLadbsUri
+        mcp-ladwp -> mcpLadwpUri
     """
     parts = service_name.split('-')
     camel_case = parts[0] + ''.join(word.capitalize() for word in parts[1:])
@@ -35,7 +37,9 @@ def service_name_to_export_var(service_name: str) -> str:
     """
     Convert azure.yaml service name to export variable name.
     
-    Example: mcp-ladbs -> SERVICE_MCP_LADBS_URI
+    Examples: 
+        mcp-ladbs -> SERVICE_MCP_LADBS_URI
+        mcp-ladwp -> SERVICE_MCP_LADWP_URI
     """
     return f"SERVICE_{service_name.upper().replace('-', '_')}_URI"
 
@@ -77,7 +81,12 @@ def get_service_urls() -> dict[str, str]:
     
     Returns:
         Dictionary mapping service variable names to their URLs.
-        Example: {"SERVICE_MCP_LADBS_URI": "https://...", "MCP_LADBS_SCOPE_URI": "https://..."}
+        Example: {
+            "SERVICE_MCP_LADBS_URI": "https://...", 
+            "SERVICE_MCP_LADWP_URI": "https://...",
+            "MCP_LADBS_SCOPE_URI": "https://...",
+            "MCP_LADWP_SCOPE_URI": "https://..."
+        }
     """
     services = get_azd_services()
     

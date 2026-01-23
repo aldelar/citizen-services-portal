@@ -10,8 +10,9 @@ This script:
 Usage:
     python deploy_tools.py <agent_name>
     
-Example:
+Examples:
     python deploy_tools.py ladbs
+    python deploy_tools.py ladwp
 """
 
 import asyncio
@@ -235,8 +236,9 @@ def main():
     """Main entry point."""
     if len(sys.argv) < 2:
         print("Usage: python deploy_tools.py <agent_name>")
-        print("\nExample:")
+        print("\nExamples:")
         print("  python deploy_tools.py ladbs")
+        print("  python deploy_tools.py ladwp")
         sys.exit(1)
     
     agent_name = sys.argv[1]

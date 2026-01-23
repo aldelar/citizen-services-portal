@@ -9,8 +9,9 @@ Orchestrates the deployment of:
 Usage:
     python deploy.py <agent_name>
     
-Example:
+Examples:
     python deploy.py ladbs
+    python deploy.py ladwp
 """
 
 import sys
@@ -60,8 +61,9 @@ def main():
     """Main deployment orchestration."""
     if len(sys.argv) < 2:
         print("Usage: python deploy.py <agent_name>")
-        print("\nExample:")
+        print("\nExamples:")
         print("  python deploy.py ladbs")
+        print("  python deploy.py ladwp")
         sys.exit(1)
     
     agent_name = sys.argv[1]
