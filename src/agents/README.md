@@ -18,9 +18,13 @@ cd src/agents
 eval "$(azd env get-values)" && uv run deploy.py <agent_name>
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# Deploy LADBS agent
 eval "$(azd env get-values)" && uv run deploy.py ladbs
+
+# Deploy LADWP agent
+eval "$(azd env get-values)" && uv run deploy.py ladwp
 ```
 
 **What it does:**
@@ -40,9 +44,13 @@ cd src/agents
 eval "$(azd env get-values)" && uv run deploy_tools.py <agent_name>
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# Deploy LADBS agent tools
 eval "$(azd env get-values)" && uv run deploy_tools.py ladbs
+
+# Deploy LADWP agent tools
+eval "$(azd env get-values)" && uv run deploy_tools.py ladwp
 ```
 
 **What it does:**
@@ -63,9 +71,13 @@ cd src/agents
 eval "$(azd env get-values)" && uv run deploy_agent.py <agent_name>
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# Deploy LADBS agent definition
 eval "$(azd env get-values)" && uv run deploy_agent.py ladbs
+
+# Deploy LADWP agent definition
+eval "$(azd env get-values)" && uv run deploy_agent.py ladwp
 ```
 
 **What it does:**
@@ -98,7 +110,7 @@ uv run service_urls.py
 **Output format:**
 ```bash
 export SERVICE_MCP_LADBS_URI="https://..."
-export SERVICE_MCP_OTHER_URI="https://..."
+export SERVICE_MCP_LADWP_URI="https://..."
 ```
 
 ---
@@ -115,11 +127,15 @@ These scripts require the following environment variables to be set (typically v
 
 **Service URLs are automatically discovered** from `azure.yaml` and injected during deployment.
 
-**Example:**
+**Examples:**
 ```bash
-# Load environment from azd and run deployment
-cd /home/aldelar/Code/citizen-services-portal/src/agents
+# Load environment from azd and deploy LADBS agent
+cd src/agents
 eval "$(azd env get-values)" && uv run deploy.py ladbs
+
+# Load environment from azd and deploy LADWP agent
+cd src/agents
+eval "$(azd env get-values)" && uv run deploy.py ladwp
 ```
 
 ---
@@ -135,12 +151,15 @@ src/agents/
     system-prompt.md     # Agent instructions
 ```
 
-**Example for `ladbs` agent:**
+**Examples:**
 ```
 src/agents/
   ladbs/
-    agent.yaml          # Contains agent definition and tools
-    system-prompt.md    # System instructions
+    agent.yaml          # LADBS agent definition and tools
+    system-prompt.md    # LADBS system instructions
+  ladwp/
+    agent.yaml          # LADWP agent definition and tools
+    system-prompt.md    # LADWP system instructions
 ```
 
 **Note:** Tools are defined directly in `agent.yaml` under `definition.tools`, not in a separate folder.

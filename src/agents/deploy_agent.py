@@ -11,8 +11,9 @@ This script:
 Usage:
     python deploy_agent.py <agent_name>
     
-Example:
+Examples:
     python deploy_agent.py ladbs
+    python deploy_agent.py ladwp
 """
 
 import asyncio
@@ -409,8 +410,9 @@ def main():
     """Main entry point."""
     if len(sys.argv) < 2:
         print("Usage: python deploy_agent.py <agent_name>")
-        print("\nExample:")
+        print("\nExamples:")
         print("  python deploy_agent.py ladbs")
+        print("  python deploy_agent.py ladwp")
         sys.exit(1)
     
     agent_name = sys.argv[1]
