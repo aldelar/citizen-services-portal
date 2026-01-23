@@ -106,7 +106,7 @@ The solution is built on a modern, AI-first Azure architecture optimized for int
 - **Network:** Public endpoints with security controls (VNet integration planned for production)
 - **Deployment:** Infrastructure as Code (Bicep) with Azure Developer CLI (azd)
 
-**Key Integration:** API Management is configured as the AI Gateway within the Foundry Project, providing centralized access to AI models (gpt-4.1-mini, gpt-4.1, text-embedding-3-small) and MCP servers (LADBS) with built-in governance, rate limiting, and token tracking.
+**Key Integration:** API Management is configured as the AI Gateway within the Foundry Project, providing centralized access to AI models (gpt-4.1-mini, gpt-4.1, text-embedding-3-small) and MCP servers (LADBS, LADWP) with built-in governance, rate limiting, and token tracking.
 
 For detailed infrastructure documentation, see [infrastructure.md](infrastructure.md).
 
@@ -207,7 +207,7 @@ azd up
 # This will:
 # - Create resource group 'csp'
 # - Deploy all foundation services (Foundry, APIM, Cosmos DB, etc.)
-# - Build and deploy LADBS MCP server to Container Apps
+# - Build and deploy LADBS and LADWP MCP servers to Container Apps
 # - Deploy LADBS AI agent to Azure AI Foundry (via postdeploy hook)
 # - Configure monitoring and security
 # - Take approximately 20-25 minutes
@@ -231,9 +231,14 @@ azd provision
 # Deploy only LADBS MCP server (after infrastructure exists)
 azd deploy mcp-ladbs
 
+# Deploy only LADWP MCP server (after infrastructure exists)
+azd deploy mcp-ladwp
+
 # Deploy services + run agent deployment
 azd deploy
 ```
+
+**Note:** LADWP MCP server deployment via `azd` requires the service to be configured in `azure.yaml` and `infra/main.bicep`. This configuration is pending completion of infrastructure setup.
 
 **Note:** azd saves location and subscription in `.azure/<env-name>/.env` - you won't be prompted again on subsequent deployments.
 
@@ -252,12 +257,23 @@ azd env get-values
 # Get LADBS MCP Server URI (if deployed)
 azd env get-value mcpLadbsUri
 
-# Test MCP server
+# Get LADWP MCP Server URI (if deployed)
+azd env get-value mcpLadwpUri
+
+# Test LADBS MCP server
 cd src/mcp-servers/ladbs
 MCP_SERVER_HOST="$(azd env get-value mcpLadbsUri | sed 's|https://||')" \
 MCP_SERVER_PORT="443" \
 uv run python mcp_client_ladbs.py
+
+# Test LADWP MCP server
+cd src/mcp-servers/ladwp
+MCP_SERVER_HOST="$(azd env get-value mcpLadwpUri | sed 's|https://||')" \
+MCP_SERVER_PORT="443" \
+uv run python mcp_client_ladwp.py
 ```
+
+**Note:** LADWP deployment commands require the service to be configured in `azure.yaml`. Until then, test locally using the instructions in [src/mcp-servers/ladwp/README.md](src/mcp-servers/ladwp/README.md).
 
 **Access AI Agent:**
 - Portal: https://ai.azure.com
@@ -349,6 +365,23 @@ The **Los Angeles Department of Building and Safety (LADBS)** MCP server provide
 **Location:** `src/mcp-servers/ladbs/`  
 **Documentation:** [src/mcp-servers/ladbs/README.md](src/mcp-servers/ladbs/README.md)
 
+### LADWP MCP Server
+
+The **Los Angeles Department of Water and Power (LADWP)** MCP server provides tools for utility services including account management, billing, payments, and outage reporting.
+
+**Tools Available:**
+- `get_account_balance` - Check utility account balance
+- `get_bill_history` - Retrieve billing history
+- `make_payment` - Submit utility payment
+- `report_outage` - Report power/water outage
+- `check_outage_status` - Check outage status
+- `request_service_start` - Start new utility service
+- `request_service_stop` - Stop utility service
+- `get_usage_history` - Get electricity/water usage data
+
+**Location:** `src/mcp-servers/ladwp/`  
+**Documentation:** [src/mcp-servers/ladwp/README.md](src/mcp-servers/ladwp/README.md)
+
 ---
 
 ## AI Agents
@@ -390,6 +423,7 @@ See [technical-specs/](technical-specs/) for in-depth technical documentation on
 - Security for mcp servers using Entra Agent identities.
 - Foundry Declarative Agents code structure, yaml definitions, and deployment scripts.
 - LADBS MCP Server deployed and accessible in Foundry using Microsoft Entra authentication.
+- LADWP MCP Server implemented with comprehensive documentation.
 
 ### Work In Progress
 - LADBS AI Agent created and published, and able to use MCP server tools using Microsoft Entra authentication.
