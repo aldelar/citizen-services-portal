@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 import yaml
 import requests
-from azure.identity.aio import AzureCliCredential
+from azure.identity.aio import DefaultAzureCredential as DefaultAzureCredentialAsync
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects.aio import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition
@@ -232,7 +232,7 @@ async def create_agent(agent_config: dict, system_prompt: str):
     print(f"   Using endpoint: {AZURE_AI_PROJECT_ENDPOINT}")
     
     async with (
-        AzureCliCredential() as credential,
+        DefaultAzureCredentialAsync() as credential,
         AIProjectClient(
             endpoint=AZURE_AI_PROJECT_ENDPOINT,
             credential=credential
@@ -258,15 +258,23 @@ async def create_agent(agent_config: dict, system_prompt: str):
             print(f"   Adding {len(tools)} tool(s) to agent definition...")
             for tool in tools:
                 if tool.get('type') == 'mcp':
-                    # Create MCP tool definition
+                    # Create MCP tool definition with authentication
                     mcp_tool = {
                         "type": "mcp",
                         "server_label": tool.get('server_label'),
                         "server_url": tool.get('server_url'),
                         "project_connection_id": tool.get('project_connection_id')
                     }
+                    
+                    # Include authentication configuration if present
+                    if 'authentication' in tool:
+                        mcp_tool['authentication'] = tool['authentication']
+                        auth_type = tool['authentication'].get('type', 'none')
+                        print(f"      - MCP tool: {tool.get('server_label')} -> {tool.get('server_url')} (auth: {auth_type})")
+                    else:
+                        print(f"      - MCP tool: {tool.get('server_label')} -> {tool.get('server_url')} (no auth)")
+                    
                     agent_tools.append(mcp_tool)
-                    print(f"      - MCP tool: {tool.get('server_label')} -> {tool.get('server_url')}")
         
         created_agent = await project_client.agents.create_version(
             agent_name=agent_config['name'],

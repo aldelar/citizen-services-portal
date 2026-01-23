@@ -60,6 +60,9 @@ param tenantId string = tenant().tenantId
 @description('Enable Microsoft Entra authentication')
 param enableAuthentication bool = true
 
+@description('App Registration Client ID for authentication')
+param appClientId string = ''
+
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
   name: containerAppsEnvironmentName
 }
@@ -182,6 +185,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
 
 // Microsoft Entra authentication configuration
 // This enables Azure Container Apps Easy Auth to validate JWT tokens from Microsoft Entra
+// For Foundry Project identity authentication, the token audience will be api://<AppId>
 resource containerAppAuthConfig 'Microsoft.App/containerApps/authConfigs@2023-05-01' = if (enableAuthentication) {
   name: 'current'
   parent: containerApp
@@ -196,13 +200,17 @@ resource containerAppAuthConfig 'Microsoft.App/containerApps/authConfigs@2023-05
       azureActiveDirectory: {
         enabled: true
         registration: {
-          openIdIssuer: 'https://sts.windows.net/${tenantId}/v2.0'
-          clientId: 'api://default'
+          // openIdIssuer uses the environment's authentication endpoint for multi-cloud support
+          openIdIssuer: '${environment().authentication.loginEndpoint}${tenantId}/v2.0'
+          // clientId must be the App Registration's Application (client) ID
+          clientId: appClientId
         }
         validation: {
+          // allowedAudiences must match what the Foundry agent identity requests
+          // Foundry requests tokens with scope "api://<appId>/.default" which results in audience "api://<appId>"
           allowedAudiences: [
-            'https://${containerApp.properties.configuration.ingress.fqdn}'
-            'api://${containerApp.name}'
+            'api://${appClientId}'
+            appClientId  // Also allow the raw App ID as audience (some token issuers use this)
           ]
         }
       }

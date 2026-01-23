@@ -18,9 +18,9 @@ param principalType string = 'ServicePrincipal'
 // Built-in Azure role definition IDs
 // See: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
 var roles = {
-  // Container Apps Reader - allows reading container app configuration and status
+  // Reader - allows reading resource configuration and status
   // Required for agent identities to discover and invoke MCP servers
-  containerAppsReader: '2eaa1b64-99f8-4e2d-8ed6-3ff1d5b24c2b'
+  reader: 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 }
 
 // Reference to the Container App for scope
@@ -28,16 +28,16 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' existing = {
   name: last(split(containerAppId, '/'))
 }
 
-// Assign Container Apps Reader role to each principal
+// Assign Reader role to each principal
 resource readerRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for principalId in principalIds: {
-  name: guid(containerAppId, principalId, roles.containerAppsReader)
+  name: guid(containerAppId, principalId, roles.reader)
   scope: containerApp
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.containerAppsReader)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.reader)
     principalId: principalId
     principalType: principalType
   }
 }]
 
-@description('Role assignment IDs for Container Apps Reader')
+@description('Role assignment IDs for Reader')
 output readerRoleAssignmentIds array = [for i in range(0, length(principalIds)): readerRoleAssignments[i].id]

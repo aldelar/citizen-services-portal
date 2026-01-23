@@ -294,6 +294,22 @@ module mcpLadbs './app/mcp-ladbs.bicep' = {
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
+    appClientId: ''
+  }
+}
+
+// Grant Foundry Project identity access to MCP server
+// This enables agents to authenticate and call MCP tools using their identity
+module mcpLadbsRbac './core/security/mcp-server-rbac.bicep' = {
+  name: 'mcp-ladbs-rbac-deployment'
+  scope: rg
+  params: {
+    containerAppId: mcpLadbs.outputs.id
+    principalIds: [
+      foundryProject.outputs.principalId  // Foundry Project managed identity for development/testing
+    ]
+    principalType: 'ServicePrincipal'
   }
 }
 
