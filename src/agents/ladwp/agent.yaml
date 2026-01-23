@@ -1,4 +1,5 @@
 # Agent definition matching New Foundry portal schema
+# This can be exported from portal and used as-is (or vice versa)
 
 name: ladwp-assistant
 description: AI assistant for Los Angeles Department of Water and Power (LADWP) services
@@ -10,6 +11,7 @@ definition:
   temperature: 0.7
   tools:
     - type: mcp
-      server_label: mcp-ladwp
+      server_label: mcp-ladwp  # Must match azure.yaml service name
       server_url: ${SERVICE_MCP_LADWP_URI}/mcp
       project_connection_id: mcp-ladwp
+      # Authentication disabled - see technical-specs/mcp-authentication.md
