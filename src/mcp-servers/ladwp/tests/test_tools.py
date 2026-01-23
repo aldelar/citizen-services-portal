@@ -48,7 +48,7 @@ async def test_report_outage(ladwp_tools):
         description="No power since 3pm"
     )
 
-    assert "outage_id" in result
+    assert "report_id" in result
     assert result.get("success") is True
 
 
@@ -78,7 +78,7 @@ async def test_request_service_stop(ladwp_tools):
     """Test stopping service."""
     result = await ladwp_tools.request_service_stop("123456789", "2026-02-15")
 
-    assert "confirmation" in result or "request_id" in result
+    assert "request_id" in result
     assert result.get("success") is True
 
 
