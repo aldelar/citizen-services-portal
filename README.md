@@ -238,6 +238,8 @@ azd deploy mcp-ladwp
 azd deploy
 ```
 
+**Note:** LADWP MCP server deployment via `azd` requires the service to be configured in `azure.yaml` and `infra/main.bicep`. This configuration is pending completion of infrastructure setup.
+
 **Note:** azd saves location and subscription in `.azure/<env-name>/.env` - you won't be prompted again on subsequent deployments.
 
 #### 5. Verify Deployment
@@ -270,6 +272,8 @@ MCP_SERVER_HOST="$(azd env get-value mcpLadwpUri | sed 's|https://||')" \
 MCP_SERVER_PORT="443" \
 uv run python mcp_client_ladwp.py
 ```
+
+**Note:** LADWP deployment commands require the service to be configured in `azure.yaml`. Until then, test locally using the instructions in [src/mcp-servers/ladwp/README.md](src/mcp-servers/ladwp/README.md).
 
 **Access AI Agent:**
 - Portal: https://ai.azure.com
