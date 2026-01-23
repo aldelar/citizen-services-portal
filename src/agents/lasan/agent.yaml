@@ -1,0 +1,17 @@
+# Agent definition matching New Foundry portal schema
+# This can be exported from portal and used as-is (or vice versa)
+
+name: lasan-assistant
+description: AI assistant for Los Angeles Bureau of Sanitation (LASAN) services
+
+definition:
+  kind: prompt
+  model: gpt-4.1
+  instructions: file://system-prompt.md
+  temperature: 0.7
+  tools:
+    - type: mcp
+      server_label: mcp-lasan  # Must match azure.yaml service name
+      server_url: ${SERVICE_MCP_LASAN_URI}/mcp
+      project_connection_id: mcp-lasan
+      # Authentication disabled - see technical-specs/mcp-authentication.md

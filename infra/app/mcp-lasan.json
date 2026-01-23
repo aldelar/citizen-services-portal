@@ -1,0 +1,270 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "167559498003052667"
+    },
+    "description": "Deploys the LASAN MCP server to Azure Container Apps."
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "The Azure region for the container app"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to the container app"
+      }
+    },
+    "containerAppName": {
+      "type": "string",
+      "defaultValue": "aldelar-csp-mcp-lasan",
+      "metadata": {
+        "description": "Name of the Container App"
+      }
+    },
+    "containerAppsEnvironmentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Container Apps Environment"
+      }
+    },
+    "containerRegistryName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Container Registry"
+      }
+    },
+    "containerImage": {
+      "type": "string",
+      "defaultValue": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+      "metadata": {
+        "description": "Container image to deploy"
+      }
+    },
+    "containerCpuCoreCount": {
+      "type": "string",
+      "defaultValue": "0.5",
+      "metadata": {
+        "description": "CPU cores for the container"
+      }
+    },
+    "containerMemory": {
+      "type": "string",
+      "defaultValue": "1Gi",
+      "metadata": {
+        "description": "Memory for the container"
+      }
+    },
+    "containerMinReplicas": {
+      "type": "int",
+      "defaultValue": 0,
+      "minValue": 0,
+      "maxValue": 30,
+      "metadata": {
+        "description": "Minimum number of replicas"
+      }
+    },
+    "containerMaxReplicas": {
+      "type": "int",
+      "defaultValue": 5,
+      "minValue": 1,
+      "maxValue": 30,
+      "metadata": {
+        "description": "Maximum number of replicas"
+      }
+    },
+    "targetPort": {
+      "type": "int",
+      "defaultValue": 8000,
+      "metadata": {
+        "description": "Container port"
+      }
+    },
+    "external": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable external ingress"
+      }
+    },
+    "identityId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Managed identity resource ID"
+      }
+    },
+    "applicationInsightsConnectionString": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Application Insights connection string"
+      }
+    },
+    "lasanApiEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "LASAN API endpoint (optional)"
+      }
+    },
+    "lasanApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "LASAN API key (optional)"
+      }
+    },
+    "tenantId": {
+      "type": "string",
+      "defaultValue": "[tenant().tenantId]",
+      "metadata": {
+        "description": "Microsoft Entra tenant ID for authentication"
+      }
+    },
+    "enableAuthentication": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable Microsoft Entra authentication"
+      }
+    },
+    "appClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "App Registration Client ID for authentication"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('containerAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('azd-service-name', 'mcp-lasan'))]",
+      "identity": "[if(not(empty(parameters('identityId'))), createObject('type', 'UserAssigned', 'userAssignedIdentities', createObject(format('{0}', parameters('identityId')), createObject())), createObject('type', 'None'))]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
+        "configuration": {
+          "ingress": {
+            "external": "[parameters('external')]",
+            "targetPort": "[parameters('targetPort')]",
+            "transport": "auto",
+            "allowInsecure": false
+          },
+          "activeRevisionsMode": "Single",
+          "registries": [
+            {
+              "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer]",
+              "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').username]",
+              "passwordSecretRef": "registry-password"
+            }
+          ],
+          "secrets": "[concat(createArray(createObject('name', 'registry-password', 'value', listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').passwords[0].value)), if(not(empty(parameters('applicationInsightsConnectionString'))), createArray(createObject('name', 'appinsights-connection-string', 'value', parameters('applicationInsightsConnectionString'))), createArray()), if(not(empty(parameters('lasanApiKey'))), createArray(createObject('name', 'lasan-api-key', 'value', parameters('lasanApiKey'))), createArray()))]"
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "[parameters('containerAppName')]",
+              "image": "[parameters('containerImage')]",
+              "resources": {
+                "cpu": "[json(parameters('containerCpuCoreCount'))]",
+                "memory": "[parameters('containerMemory')]"
+              },
+              "env": "[concat(createArray(createObject('name', 'MCP_SERVER_HOST', 'value', '0.0.0.0'), createObject('name', 'MCP_SERVER_PORT', 'value', string(parameters('targetPort')))), if(not(empty(parameters('applicationInsightsConnectionString'))), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'secretRef', 'appinsights-connection-string')), createArray()), if(not(empty(parameters('lasanApiEndpoint'))), createArray(createObject('name', 'LASAN_API_ENDPOINT', 'value', parameters('lasanApiEndpoint'))), createArray()), if(not(empty(parameters('lasanApiKey'))), createArray(createObject('name', 'LASAN_API_KEY', 'secretRef', 'lasan-api-key')), createArray()))]"
+            }
+          ],
+          "scale": {
+            "minReplicas": "[parameters('containerMinReplicas')]",
+            "maxReplicas": "[parameters('containerMaxReplicas')]",
+            "rules": [
+              {
+                "name": "cpu-scaling",
+                "custom": {
+                  "type": "cpu",
+                  "metadata": {
+                    "type": "Utilization",
+                    "value": "70"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "condition": "[parameters('enableAuthentication')]",
+      "type": "Microsoft.App/containerApps/authConfigs",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', parameters('containerAppName'), 'current')]",
+      "properties": {
+        "platform": {
+          "enabled": true
+        },
+        "globalValidation": {
+          "unauthenticatedClientAction": "Return401"
+        },
+        "identityProviders": {
+          "azureActiveDirectory": {
+            "enabled": true,
+            "registration": {
+              "openIdIssuer": "[format('{0}{1}/v2.0', environment().authentication.loginEndpoint, parameters('tenantId'))]",
+              "clientId": "[parameters('appClientId')]"
+            },
+            "validation": {
+              "allowedAudiences": [
+                "[format('api://{0}', parameters('appClientId'))]",
+                "[parameters('appClientId')]"
+              ]
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', parameters('containerAppName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "id": {
+      "type": "string",
+      "metadata": {
+        "description": "The resource ID of the Container App"
+      },
+      "value": "[resourceId('Microsoft.App/containerApps', parameters('containerAppName'))]"
+    },
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the Container App"
+      },
+      "value": "[parameters('containerAppName')]"
+    },
+    "fqdn": {
+      "type": "string",
+      "metadata": {
+        "description": "The FQDN of the Container App"
+      },
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName')), '2023-05-01').configuration.ingress.fqdn]"
+    },
+    "uri": {
+      "type": "string",
+      "metadata": {
+        "description": "The URI of the Container App"
+      },
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName')), '2023-05-01').configuration.ingress.fqdn)]"
+    }
+  }
+}
