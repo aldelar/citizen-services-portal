@@ -31,7 +31,7 @@ hooks:
     posix:
       shell: sh
       run: |
-        # Deploy LADBS agent after infrastructure is provisioned
+        # Deploy agents after infrastructure is provisioned
         echo "Deploying LADBS agent..."
         cd src/agents
         
@@ -43,11 +43,13 @@ hooks:
         export foundryProjectName=$(azd env get-value foundryProjectName)
         
         # Programmatically export all service URIs from azure.yaml services
-        # This creates variables like: SERVICE_MCP_LADBS_URI
         eval "$(uv run export_service_urls.py 2>&1 | grep '^export')"
         
         uv sync --quiet --prerelease=allow
         uv run deploy.py ladbs
+        
+        echo "Deploying LADWP agent..."
+        uv run deploy.py ladwp
 
 infra:
   provider: bicep
@@ -69,6 +71,15 @@ services:
       context: .
       registry: aldelarcspcr.azurecr.io
   
-  # Note: ladbs-agent is deployed via hooks, not as a hosted service
-  # The predeploy hook runs the Python deployment scripts
+  mcp-ladwp:
+    project: ./src/mcp-servers/ladwp
+    language: py
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      registry: aldelarcspcr.azurecr.io
+  
+  # Note: ladbs-agent and ladwp-agent are deployed via hooks, not as hosted services
+  # The postdeploy hook runs the Python deployment scripts
 
