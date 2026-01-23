@@ -1,1 +1,1 @@
-"""Tests for LADWP MCP server."""
+"""Tests for LASAN MCP server."""

@@ -21,13 +21,6 @@ class LASANTools:
         """Initialize LASAN tools with service layer."""
         self.service = LASANService()
 
-class LASANTools:
-    """LASAN MCP tools implementation."""
-
-    def __init__(self):
-        """Initialize LASAN tools with service layer."""
-        self.service = LASANService()
-
     async def get_collection_schedule(self, address: str) -> Dict[str, Any]:
         """
         Get trash and recycling collection schedule for an address.
