@@ -50,6 +50,9 @@ hooks:
         
         echo "Deploying LADWP agent..."
         uv run deploy.py ladwp
+        
+        echo "Deploying LASAN agent..."
+        uv run deploy.py lasan
 
 infra:
   provider: bicep
@@ -80,6 +83,15 @@ services:
       context: .
       registry: aldelarcspcr.azurecr.io
   
-  # Note: ladbs-agent and ladwp-agent are deployed via hooks, not as hosted services
+  mcp-lasan:
+    project: ./src/mcp-servers/lasan
+    language: py
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      registry: aldelarcspcr.azurecr.io
+  
+  # Note: ladbs-agent, ladwp-agent, and lasan-agent are deployed via hooks, not as hosted services
   # The postdeploy hook runs the Python deployment scripts
 

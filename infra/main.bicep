@@ -344,6 +344,37 @@ module mcpLadwpRbac './core/security/mcp-server-rbac.bicep' = {
   }
 }
 
+// LASAN MCP Server
+module mcpLasan './app/mcp-lasan.bicep' = {
+  name: 'mcp-lasan-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    containerAppName: 'aldelar-csp-mcp-lasan'
+    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
+    containerRegistryName: containerRegistry.outputs.name
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
+    identityId: managedIdentity.outputs.identityId
+    applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
+    appClientId: ''
+  }
+}
+
+// Grant Foundry Project identity access to LASAN MCP server
+module mcpLasanRbac './core/security/mcp-server-rbac.bicep' = {
+  name: 'mcp-lasan-rbac-deployment'
+  scope: rg
+  params: {
+    containerAppId: mcpLasan.outputs.id
+    principalIds: [
+      foundryProject.outputs.principalId
+    ]
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // =================================
 // Outputs
 // =================================
@@ -449,3 +480,12 @@ output mcpLadwpUri string = mcpLadwp.outputs.uri
 
 @description('LADWP MCP Server Scope URI for Microsoft Entra authentication')
 output mcpLadwpScopeUri string = 'https://${mcpLadwp.outputs.fqdn}'
+
+@description('LASAN MCP Server FQDN')
+output mcpLasanFqdn string = mcpLasan.outputs.fqdn
+
+@description('LASAN MCP Server URI')
+output mcpLasanUri string = mcpLasan.outputs.uri
+
+@description('LASAN MCP Server Scope URI for Microsoft Entra authentication')
+output mcpLasanScopeUri string = 'https://${mcpLasan.outputs.fqdn}'

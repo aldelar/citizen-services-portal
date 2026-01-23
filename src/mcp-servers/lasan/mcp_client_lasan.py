@@ -1,4 +1,4 @@
-"""LADWP MCP Client - Test client for the LADWP MCP server."""
+"""LASAN MCP Client - Test client for the LASAN MCP server."""
 
 import asyncio
 import os
@@ -11,7 +11,7 @@ load_dotenv()
 
 
 async def run_client():
-    """Test all LADWP MCP server tools."""
+    """Test all LASAN MCP server tools."""
     # Connect to the HTTP MCP server
     host = os.environ.get("MCP_SERVER_HOST", "localhost")
     port = os.environ.get("MCP_SERVER_PORT", "8000")
@@ -26,7 +26,7 @@ async def run_client():
         server_url = f"{protocol}://{host}:{port}/mcp"
 
     print("=" * 60)
-    print("LADWP MCP Server Test Client")
+    print("LASAN MCP Server Test Client")
     print(f"Connecting to: {server_url}")
     print("=" * 60)
 

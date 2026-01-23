@@ -1,16 +1,16 @@
-# LADWP MCP Server
+# LASAN MCP Server
 
-Model Context Protocol (MCP) server for Los Angeles Department of Water and Power (LADWP) services.
+Model Context Protocol (MCP) server for Los Angeles Bureau of Sanitation (LASAN) services.
 
 ## Overview
 
-This MCP server provides tools for interacting with LADWP utility services, including:
-- Account balance inquiries
-- Bill history retrieval
-- Payment submissions
-- Outage reporting and status checks
-- Service start/stop requests
-- Usage history retrieval
+This MCP server provides tools for interacting with LASAN waste management and sanitation services, including:
+- Collection schedule lookups
+- Bulky item pickup scheduling
+- Illegal dumping reports
+- Bin replacement requests
+- Recycling information
+- Missed collection reports
 
 ## Quick Start
 
@@ -35,8 +35,8 @@ pip install uv
 ### Setup Development Environment
 
 ```bash
-# Navigate to the LADWP MCP server directory
-cd src/mcp-servers/ladwp
+# Navigate to the LASAN MCP server directory
+cd src/mcp-servers/lasan
 
 # Create virtual environment and install dependencies
 uv sync
@@ -57,7 +57,7 @@ source .venv/bin/activate  # Linux/macOS
 # .venv\Scripts\activate   # Windows
 
 # Run the server
-uv run python mcp_server_ladwp.py
+uv run python mcp_server_lasan.py
 ```
 
 Server will start on `http://localhost:8000`
@@ -66,30 +66,30 @@ Server will start on `http://localhost:8000`
 
 ```bash
 # In a separate terminal, run the test client
-uv run python mcp_client_ladwp.py
+uv run python mcp_client_lasan.py
 ```
 
 ## Available Tools
 
 | Tool | Description |
 |------|-------------|
-| `get_account_balance` | Check utility account balance |
-| `get_bill_history` | Retrieve billing history |
-| `make_payment` | Submit utility payment |
-| `report_outage` | Report power/water outage |
-| `check_outage_status` | Check status of reported outages |
-| `request_service_start` | Start new utility service |
-| `request_service_stop` | Stop utility service |
-| `get_usage_history` | Get water/power usage data |
+| `get_collection_schedule` | Get trash/recycling pickup schedule for an address |
+| `schedule_bulky_pickup` | Request bulky item pickup (furniture, appliances, etc.) |
+| `check_pickup_status` | Check status of scheduled bulky item pickup |
+| `report_illegal_dumping` | Report illegal dumping at a location |
+| `check_dumping_report_status` | Check status of illegal dumping report |
+| `request_bin_replacement` | Request replacement of damaged/missing trash bin |
+| `get_recycling_info` | Get recycling guidelines and accepted materials |
+| `report_missed_collection` | Report a missed trash/recycling pickup |
 
 ## Development
 
 ### Project Structure
 
 ```
-ladwp/
-├── mcp_server_ladwp.py      # Main server entry point
-├── mcp_client_ladwp.py      # Test client
+lasan/
+├── mcp_server_lasan.py      # Main server entry point
+├── mcp_client_lasan.py      # Test client
 ├── src/                      # Implementation
 │   ├── __init__.py
 │   ├── tools.py             # MCP tools definitions
@@ -102,7 +102,7 @@ ladwp/
 ### Adding New Tools
 
 1. Define tool function in `src/tools.py`
-2. Register with FastMCP in `mcp_server_ladwp.py`
+2. Register with FastMCP in `mcp_server_lasan.py`
 3. Add tests in `tests/test_tools.py`
 
 ### Running Tests
@@ -115,7 +115,7 @@ uv run pytest
 uv run pytest --cov=src --cov-report=html
 
 # Run specific test file
-uv run pytest tests/test_tools.py
+uv run pytest tests/test_tools.py -v
 ```
 
 ### Code Quality
@@ -158,14 +158,14 @@ uv pip compile pyproject.toml -o requirements.txt
 
 ### Option 1: Deploy with azd (Recommended)
 
-From the **repository root**, deploy the entire stack including LADWP:
+From the **repository root**, deploy the entire stack including LASAN:
 
 ```bash
 # Deploy infrastructure + all services
 azd up
 
-# Or deploy only LADWP (after infrastructure exists)
-azd deploy mcp-ladwp
+# Or deploy only LASAN (after infrastructure exists)
+azd deploy mcp-lasan
 ```
 
 This will:
@@ -178,8 +178,8 @@ This will:
 ```bash
 azd env get-values
 
-# Get LADWP URI
-azd env get-value mcpLadwpUri
+# Get LASAN URI
+azd env get-value mcpLasanUri
 ```
 
 ### Option 2: Manual Docker Deployment
@@ -187,17 +187,17 @@ azd env get-value mcpLadwpUri
 If you need to deploy manually:
 
 ```bash
-# From this directory (src/mcp-servers/ladwp)
-cd src/mcp-servers/ladwp
+# From this directory (src/mcp-servers/lasan)
+cd src/mcp-servers/lasan
 
 # Build image
-docker build -t aldelarcspcr.azurecr.io/mcp-ladwp:latest .
+docker build -t aldelarcspcr.azurecr.io/mcp-lasan:latest .
 
 # Login to ACR
 az acr login --name aldelarcspcr
 
 # Push image
-docker push aldelarcspcr.azurecr.io/mcp-ladwp:latest
+docker push aldelarcspcr.azurecr.io/mcp-lasan:latest
 ```
 
 ### Verify Deployment
@@ -206,11 +206,11 @@ Test the deployed server:
 
 ```bash
 # Get the deployed URL
-MCP_URI=$(azd env get-value mcpLadwpUri)
+MCP_URI=$(azd env get-value mcpLasanUri)
 
 # Test with client
-cd src/mcp-servers/ladwp
-MCP_SERVER_HOST="${MCP_URI#https://}" MCP_SERVER_PORT="443" uv run python mcp_client_ladwp.py
+cd src/mcp-servers/lasan
+MCP_SERVER_HOST="${MCP_URI#https://}" MCP_SERVER_PORT="443" uv run python mcp_client_lasan.py
 ```
 
 ## Local Development
@@ -219,10 +219,10 @@ MCP_SERVER_HOST="${MCP_URI#https://}" MCP_SERVER_PORT="443" uv run python mcp_cl
 
 ```bash
 # Build the image
-docker build -t mcp-ladwp:latest .
+docker build -t mcp-lasan:latest .
 
 # Run container
-docker run -p 8000:8000 --env-file .env mcp-ladwp:latest
+docker run -p 8000:8000 --env-file .env mcp-lasan:latest
 ```
 
 ---
@@ -233,8 +233,8 @@ docker run -p 8000:8000 --env-file .env mcp-ladwp:latest
 |----------|-------------|---------|
 | `MCP_SERVER_HOST` | Server host | localhost |
 | `MCP_SERVER_PORT` | Server port | 8000 |
-| `LADWP_API_ENDPOINT` | LADWP API endpoint | - |
-| `LADWP_API_KEY` | LADWP API key | - |
+| `LASAN_API_ENDPOINT` | LASAN API endpoint | - |
+| `LASAN_API_KEY` | LASAN API key | - |
 
 ## API Endpoints
 
