@@ -313,6 +313,37 @@ module mcpLadbsRbac './core/security/mcp-server-rbac.bicep' = {
   }
 }
 
+// LADWP MCP Server
+module mcpLadwp './app/mcp-ladwp.bicep' = {
+  name: 'mcp-ladwp-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    containerAppName: 'aldelar-csp-mcp-ladwp'
+    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
+    containerRegistryName: containerRegistry.outputs.name
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
+    identityId: managedIdentity.outputs.identityId
+    applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
+    appClientId: ''
+  }
+}
+
+// Grant Foundry Project identity access to LADWP MCP server
+module mcpLadwpRbac './core/security/mcp-server-rbac.bicep' = {
+  name: 'mcp-ladwp-rbac-deployment'
+  scope: rg
+  params: {
+    containerAppId: mcpLadwp.outputs.id
+    principalIds: [
+      foundryProject.outputs.principalId
+    ]
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // =================================
 // Outputs
 // =================================
@@ -409,3 +440,12 @@ output mcpLadbsUri string = mcpLadbs.outputs.uri
 
 @description('LADBS MCP Server Scope URI for Microsoft Entra authentication')
 output mcpLadbsScopeUri string = 'https://${mcpLadbs.outputs.fqdn}'
+
+@description('LADWP MCP Server FQDN')
+output mcpLadwpFqdn string = mcpLadwp.outputs.fqdn
+
+@description('LADWP MCP Server URI')
+output mcpLadwpUri string = mcpLadwp.outputs.uri
+
+@description('LADWP MCP Server Scope URI for Microsoft Entra authentication')
+output mcpLadwpScopeUri string = 'https://${mcpLadwp.outputs.fqdn}'
