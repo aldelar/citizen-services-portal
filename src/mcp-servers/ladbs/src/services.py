@@ -1,8 +1,10 @@
 """Business logic and external service integration for LADBS."""
 
+import logging
+import os
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from .config import settings
@@ -25,6 +27,24 @@ from .models import (
     UserActionResponse,
 )
 
+logger = logging.getLogger(__name__)
+
+# Check if CosmosDB is configured
+_cosmos_enabled = bool(os.environ.get("COSMOS_ENDPOINT"))
+
+
+def _get_repositories():
+    """Get repository instances if CosmosDB is enabled."""
+    if not _cosmos_enabled:
+        return None, None
+    
+    try:
+        from .repositories import PermitRepository, InspectionRepository
+        return PermitRepository(), InspectionRepository()
+    except Exception as e:
+        logger.warning(f"Failed to initialize CosmosDB repositories: {e}")
+        return None, None
+
 
 class LADBSService:
     """Service layer for LADBS operations."""
@@ -33,6 +53,12 @@ class LADBSService:
         """Initialize LADBS service."""
         self.api_endpoint = settings.ladbs_api_endpoint
         self.api_key = settings.ladbs_api_key
+        self._permit_repo, self._inspection_repo = _get_repositories()
+
+    @property
+    def cosmos_enabled(self) -> bool:
+        """Check if CosmosDB is enabled."""
+        return self._permit_repo is not None
 
     def _generate_id(self, prefix: str = "ID") -> str:
         """Generate a random ID."""
@@ -79,14 +105,31 @@ class LADBSService:
         self,
         address: Optional[str] = None,
         permit_number: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> PermitSearchResult:
         """
         Search for permits by address or permit number.
 
-        This is a mock implementation.
+        Uses CosmosDB if configured, otherwise returns mock data.
         """
-        # TODO: Replace with actual LADBS API call
+        # Use CosmosDB if available
+        if self._permit_repo:
+            try:
+                permits = []
+                if permit_number:
+                    permit = await self._permit_repo.get_by_permit_number(permit_number)
+                    if permit:
+                        permits = [permit]
+                elif address:
+                    permits = await self._permit_repo.search_by_address(address)
+                elif user_id:
+                    permits = await self._permit_repo.list_by_user(user_id)
+                return PermitSearchResult(permits=permits, total_count=len(permits))
+            except Exception as e:
+                logger.error(f"Error searching permits in CosmosDB: {e}")
+                # Fall through to mock data
 
+        # Mock implementation for local development
         if permit_number:
             # Return specific permit
             permit = Permit(
@@ -129,14 +172,39 @@ class LADBSService:
         work_description: str,
         estimated_cost: float,
         documents: List[str],
+        user_id: Optional[str] = None,
     ) -> PermitSubmitResult:
         """
         Submit a new permit application.
 
-        This is a mock implementation.
+        Uses CosmosDB if configured, otherwise returns mock data.
         """
-        # TODO: Replace with actual LADBS API call
+        # Use CosmosDB if available and user_id is provided
+        if self._permit_repo and user_id:
+            try:
+                permit = await self._permit_repo.create_permit(
+                    user_id=user_id,
+                    permit_type=permit_type,
+                    address=address,
+                    work_description=work_description,
+                    estimated_cost=estimated_cost,
+                    applicant=applicant,
+                    documents=documents,
+                )
+                return PermitSubmitResult(
+                    success=True,
+                    permit_number=permit.permit_number,
+                    status=permit.status,
+                    submitted_at=permit.submitted_at,
+                    fees=permit.fees or PermitFees(plan_check=0, permit_fee=0, other_fees=0, total=0),
+                    estimated_review_time="4-6 weeks",
+                    next_steps=permit.next_steps or "You'll receive email updates on review progress.",
+                )
+            except Exception as e:
+                logger.error(f"Error creating permit in CosmosDB: {e}")
+                # Fall through to mock data
 
+        # Mock implementation for local development
         permit_number = self._generate_id("PERMIT")
 
         # Calculate fees based on estimated cost
@@ -148,21 +216,29 @@ class LADBSService:
             success=True,
             permit_number=permit_number,
             status=PermitStatus.SUBMITTED,
-            submitted_at=datetime.now(),
+            submitted_at=datetime.now(timezone.utc),
             fees=PermitFees(plan_check=plan_check, permit_fee=permit_fee, other_fees=0, total=total),
             estimated_review_time="4-6 weeks",
             next_steps="You'll receive email updates on review progress. Plan check fees are due within 30 days.",
         )
 
-    async def get_permit_status(self, permit_number: str) -> Permit:
+    async def get_permit_status(self, permit_number: str) -> Optional[Permit]:
         """
         Get the current status of a permit.
 
-        This is a mock implementation.
+        Uses CosmosDB if configured, otherwise returns mock data.
         """
-        # TODO: Replace with actual LADBS API call
+        # Use CosmosDB if available
+        if self._permit_repo:
+            try:
+                permit = await self._permit_repo.get_by_permit_number(permit_number)
+                if permit:
+                    return permit
+            except Exception as e:
+                logger.error(f"Error getting permit status from CosmosDB: {e}")
+                # Fall through to mock data
 
-        # Mock response - would query database in real implementation
+        # Mock response for local development
         return Permit(
             permit_number=permit_number,
             permit_type=PermitType.ELECTRICAL,
@@ -181,14 +257,29 @@ class LADBSService:
         self,
         permit_number: Optional[str] = None,
         address: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> InspectionListResult:
         """
         Get scheduled inspections for a permit or address.
 
-        This is a mock implementation.
+        Uses CosmosDB if configured, otherwise returns mock data.
         """
-        # TODO: Replace with actual LADBS API call
+        # Use CosmosDB if available
+        if self._inspection_repo:
+            try:
+                inspections = []
+                if permit_number:
+                    inspections = await self._inspection_repo.list_by_permit(permit_number)
+                elif address:
+                    inspections = await self._inspection_repo.list_by_address(address)
+                elif user_id:
+                    inspections = await self._inspection_repo.list_by_user(user_id)
+                return InspectionListResult(inspections=inspections, total_count=len(inspections))
+            except Exception as e:
+                logger.error(f"Error getting inspections from CosmosDB: {e}")
+                # Fall through to mock data
 
+        # Mock implementation for local development
         inspections = []
         if permit_number or address:
             inspections = [
@@ -197,7 +288,7 @@ class LADBSService:
                     permit_number=permit_number or "PERMIT-2026-001234",
                     inspection_type=InspectionType.ROUGH_ELECTRICAL,
                     status=InspectionStatus.SCHEDULED,
-                    scheduled_date=datetime.now() + timedelta(days=3),
+                    scheduled_date=datetime.now(timezone.utc) + timedelta(days=3),
                     scheduled_time_window="8am-12pm",
                 ),
             ]

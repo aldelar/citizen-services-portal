@@ -1,9 +1,11 @@
 """Business logic and external service integration for LASAN."""
 
+import logging
+import os
 import random
 import string
-from datetime import datetime, timedelta
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 
 from .config import settings
 from .models import (
@@ -21,6 +23,24 @@ from .models import (
     UserActionResponse,
 )
 
+logger = logging.getLogger(__name__)
+
+# Check if CosmosDB is configured
+_cosmos_enabled = bool(os.environ.get("COSMOS_ENDPOINT"))
+
+
+def _get_repositories():
+    """Get repository instances if CosmosDB is enabled."""
+    if not _cosmos_enabled:
+        return None
+    
+    try:
+        from .repositories import PickupRepository
+        return PickupRepository()
+    except Exception as e:
+        logger.warning(f"Failed to initialize CosmosDB repositories: {e}")
+        return None
+
 
 class LASANService:
     """Service layer for LASAN operations."""
@@ -29,6 +49,12 @@ class LASANService:
         """Initialize LASAN service."""
         self.api_endpoint = settings.lasan_api_endpoint
         self.api_key = settings.lasan_api_key
+        self._pickup_repo = _get_repositories()
+
+    @property
+    def cosmos_enabled(self) -> bool:
+        """Check if CosmosDB is enabled."""
+        return self._pickup_repo is not None
 
     def _generate_id(self, prefix: str = "ID") -> str:
         """Generate a random ID."""
@@ -67,13 +93,32 @@ class LASANService:
             total_results=len(mock_chunks),
         )
 
-    async def get_scheduled_pickups(self, address: str) -> PickupScheduledResult:
+    async def get_scheduled_pickups(
+        self,
+        address: str,
+        user_id: Optional[str] = None,
+    ) -> PickupScheduledResult:
         """
         Get scheduled pickups for an address.
 
-        This is a mock implementation.
+        Uses CosmosDB if configured, otherwise returns mock data.
         """
-        # TODO: Replace with actual LASAN API call
+        # Use CosmosDB if available
+        if self._pickup_repo:
+            try:
+                pickups = []
+                if user_id:
+                    pickups = await self._pickup_repo.list_by_user(user_id)
+                elif address:
+                    pickups = await self._pickup_repo.search_by_address(address)
+                return PickupScheduledResult(
+                    address=address,
+                    pickups=pickups,
+                    total_count=len(pickups),
+                )
+            except Exception as e:
+                logger.error(f"Error getting pickups from CosmosDB: {e}")
+                # Fall through to mock data
 
         # Return empty for demo - pickups added as user schedules them
         return PickupScheduledResult(
@@ -133,6 +178,40 @@ class LASANService:
                 expected_info=["scheduled_date", "confirmation_number"],
             ),
         )
+
+    async def create_pickup(
+        self,
+        user_id: str,
+        pickup_type: PickupType,
+        address: str,
+        items: List[str],
+        scheduled_date: str,
+        contact_name: str,
+        contact_phone: str,
+        notes: Optional[str] = None,
+    ) -> Optional[ScheduledPickup]:
+        """
+        Create a pickup record after user schedules via 311.
+
+        Uses CosmosDB if configured, otherwise returns None.
+        """
+        if self._pickup_repo:
+            try:
+                pickup = await self._pickup_repo.create_pickup(
+                    user_id=user_id,
+                    pickup_type=pickup_type,
+                    address=address,
+                    items=items,
+                    scheduled_date=scheduled_date,
+                    contact_name=contact_name,
+                    contact_phone=contact_phone,
+                    notes=notes,
+                )
+                return pickup
+            except Exception as e:
+                logger.error(f"Error creating pickup in CosmosDB: {e}")
+                return None
+        return None
 
     async def check_pickup_eligibility(
         self,

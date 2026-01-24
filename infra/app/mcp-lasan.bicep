@@ -54,6 +54,12 @@ param lasanApiEndpoint string = ''
 @secure()
 param lasanApiKey string = ''
 
+@description('Name of the CosmosDB account')
+param cosmosDbAccountName string = ''
+
+@description('CosmosDB endpoint URL')
+param cosmosEndpoint string = ''
+
 @description('Microsoft Entra tenant ID for authentication')
 param tenantId string = tenant().tenantId
 
@@ -69,6 +75,16 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01'
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: containerRegistryName
+}
+
+// Deploy LASAN CosmosDB database
+module cosmosDb '../../../src/mcp-servers/lasan/infra/cosmos-db.bicep' = if (!empty(cosmosDbAccountName)) {
+  name: 'lasan-cosmos-db-deployment'
+  params: {
+    cosmosDbAccountName: cosmosDbAccountName
+    location: location
+    tags: tags
+  }
 }
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
@@ -158,6 +174,16 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               {
                 name: 'LASAN_API_KEY'
                 secretRef: 'lasan-api-key'
+              }
+            ] : [],
+            !empty(cosmosEndpoint) ? [
+              {
+                name: 'COSMOS_ENDPOINT'
+                value: cosmosEndpoint
+              }
+              {
+                name: 'COSMOS_DATABASE'
+                value: 'lasan'
               }
             ] : []
           )

@@ -1,5 +1,6 @@
 """CosmosDB data access layer for Citizen Services Portal."""
 
+from .base_repository import BaseRepository
 from .client import close_client, get_container, get_cosmos_client, get_database
 from .exceptions import ConflictError, NotFoundError, ValidationError
 from .models import (
@@ -28,6 +29,8 @@ __all__ = [
     "get_database",
     "get_container",
     "close_client",
+    # Base Repository
+    "BaseRepository",
     # Exceptions
     "NotFoundError",
     "ConflictError",
