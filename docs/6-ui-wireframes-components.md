@@ -59,7 +59,13 @@ Agency badges identify which government agency is responsible for a step or acti
 
 ### Dynamic Agency Support
 
-The system supports any agency. Unknown agencies receive the default gray styling. Colors can be configured per-deployment.
+The system supports any agency. Unknown agencies receive the default gray styling. Colors can be configured per-deployment through:
+
+- A configuration file mapping agency codes to colors
+- Auto-assignment from a predefined color palette for unknown agencies
+- Admin UI for customizing agency branding
+
+> **Implementation Note:** During implementation, validate all agency badge colors for WCAG 2.1 AA compliance (4.5:1 contrast ratio).
 
 ### Usage
 
@@ -120,10 +126,12 @@ Status indicators show the state of steps, projects, or processes.
 | Blocked | 🔒 | `#6C757D` | `#E9ECEF` |
 | Ready | ▶ | `#0066CC` | `#E7F1FF` |
 | In Progress | ◐ | `#0066CC` | `#CCE0FF` |
-| Awaiting User | ⚡ | `#E65100` | `#FFF3E0` |
+| Awaiting User | ⚡ | `#BF360C` | `#FFF3E0` |
 | Completed | ✓ | `#28A745` | `#D4EDDA` |
 | Failed | ✗ | `#DC3545` | `#F8D7DA` |
 | Skipped | ⊘ | `#6C757D` | `#E9ECEF` |
+
+> **Note:** All color combinations must be validated for WCAG 2.1 AA compliance (4.5:1 contrast ratio for normal text) during implementation.
 
 ### Status Dots
 

@@ -286,6 +286,8 @@ Chat shows typing indicator while agent generates response (see Chat wireframe d
 | Reduced Motion | Respect `prefers-reduced-motion` |
 | Text Scaling | Support up to 200% zoom |
 
+> **Implementation Note:** All color combinations in the wireframes (especially status indicators, agency badges, and themed elements) must be validated against WCAG contrast ratios during implementation. Status indicators should not rely solely on color—use icons, text labels, and patterns as additional differentiators.
+
 ---
 
 ## Theme Support

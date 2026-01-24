@@ -88,7 +88,7 @@ The system handles four action types:
 │                                                                   │
 │  📞 Contact: 311                                                  │
 │  🕐 Hours: 24/7                                                   │
-│  🔗 Alternative: ladbs.org/inspections                           │
+│  🔗 Alternative: https://ladbs.org/inspections                   │
 │                                                                   │
 ├───────────────────────────────────────────────────────────────────┤
 │                                                                   │

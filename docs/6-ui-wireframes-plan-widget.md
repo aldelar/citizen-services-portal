@@ -31,6 +31,21 @@ class PlanStep(BaseModel):
     user_task: Optional[UserTask]
 ```
 
+#### Step ID Convention
+
+Step IDs are short, unique identifiers within a plan. While the format is flexible, the demo uses a convention:
+
+| Prefix | Category | Examples |
+|--------|----------|----------|
+| P | Permits | P1, P2, P3 |
+| U | Utility | U1, U2 |
+| I | Inspection | I1, I2 |
+| D | Disposal | D1, D2 |
+| F | Final | F1 |
+| R | Rebate | R1 |
+
+> **Note:** Step IDs are dynamically generated. The UI should display the `title` as the primary label, with `id` shown as a secondary reference.
+
 The `depends_on` field creates the graph edges. The widget must render these relationships visually.
 
 ---
