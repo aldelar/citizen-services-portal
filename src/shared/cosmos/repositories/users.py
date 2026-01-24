@@ -100,12 +100,14 @@ class UserRepository:
         try:
             # Read the current user
             item = await container.read_item(item=user_id, partition_key=user_id)
+            user = User.model_validate(item)
             
             # Update last login
-            item["lastLogin"] = datetime.now(timezone.utc).isoformat()
+            user.last_login = datetime.now(timezone.utc)
             
             # Replace the item
-            updated_item = await container.replace_item(item=item, body=item)
+            user_dict = user.model_dump(by_alias=True, mode="json")
+            updated_item = await container.replace_item(item=user_id, body=user_dict)
             return User.model_validate(updated_item)
         except cosmos_exceptions.CosmosResourceNotFoundError:
             raise NotFoundError(f"User with ID {user_id} not found")

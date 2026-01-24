@@ -143,7 +143,7 @@ class ProjectRepository:
             project_id: The project ID.
             user_id: The user ID (partition key).
             step_id: The step ID to update.
-            updates: Dictionary of fields to update.
+            updates: Dictionary of fields to update. Only fields that exist in PlanStep model are allowed.
 
         Returns:
             Project: The updated project object.
@@ -165,10 +165,14 @@ class ProjectRepository:
             step_found = False
             for step in project.plan.steps:
                 if step.id == step_id:
-                    # Update step fields
-                    for key, value in updates.items():
-                        if hasattr(step, key):
-                            setattr(step, key, value)
+                    # Update step fields with validation
+                    step_dict = step.model_dump()
+                    step_dict.update(updates)
+                    # Validate the updated step
+                    updated_step = PlanStep.model_validate(step_dict)
+                    # Copy the validated data back to the step
+                    for key, value in updated_step.model_dump().items():
+                        setattr(step, key, value)
                     step_found = True
                     break
             

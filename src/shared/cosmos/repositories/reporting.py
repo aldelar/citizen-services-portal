@@ -9,6 +9,9 @@ from azure.cosmos import exceptions as cosmos_exceptions
 from ..client import get_container
 from ..models import StepCompletion
 
+# Minimum duration for a step in days
+MIN_STEP_DURATION_DAYS = 1
+
 
 class ReportingRepository:
     """Repository for step completion tracking and metrics."""
@@ -38,9 +41,9 @@ class ReportingRepository:
         """
         container = await get_container(self.container_name)
         
-        # Calculate duration in days
+        # Calculate duration in days (minimum 1 day to avoid zero durations)
         duration = completed_at - started_at
-        duration_days = duration.days if duration.days > 0 else 1
+        duration_days = duration.days if duration.days > 0 else MIN_STEP_DURATION_DAYS
         
         completion = StepCompletion(
             id=str(uuid4()),
