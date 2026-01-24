@@ -2,7 +2,7 @@
 
 Citizens in Los Angeles face fragmented government services for home renovations, often navigating multiple agencies like the Los Angeles Department of Building and Safety (LADBS), Los Angeles Department of Water and Power (LADWP), and LA Sanitation & Environment (LASAN) with manual submissions, inconsistent timelines, and limited digital tracking. This results in delays, redundant paperwork, and unexpected costs, eroding efficiency and trust. Without streamlined coordination, such projects can drag on for months, straining resources and complicating compliance.
 
-Let's follow John, a homeowner in Los Angeles, through the current process for their ambitious remodel: switching to a Time of Use (TOU) meter to better leverage off-hours cheaper power rates and maximize the benefits of solar batteries, replacing his outdated load center with a new smart electrical panel, rewiring the entire house, replacing a gas furnace and AC with ductless heat pumps, adding solar panels and batteries, and installing a full metal roof. John also needs to dispose of old materials like concrete roof tiles, the old electrical panel, furnace, AC unit, and electrical cables. Midway, a neighbor falsely reports a code violation about the heat pump unit. This narrative captures all government interaction points, based on official processes from LADBS, LADWP, LASAN, and related codes, highlighting steps, documents, timelines, and costs where available (note: actual times and fees vary by complexity, workload, and specifics; estimates drawn from 2025-2026 guidelines).
+Let's follow John, a homeowner in Los Angeles, through the current process for their ambitious remodel: switching to a Time of Use (TOU) meter to better leverage off-hours cheaper power rates and maximize the benefits of solar batteries, replacing his outdated load center with a new smart electrical panel, rewiring the entire house, replacing a gas furnace and AC with ductless heat pumps, adding solar panels and batteries, and installing a full metal roof. John also needs to dispose of old materials like concrete roof tiles, the old electrical panel, furnace, AC unit, and electrical cables. This narrative captures all government interaction points, based on official processes from LADBS, LADWP, LASAN, and related codes, highlighting steps, documents, timelines, and costs where available (note: actual times and fees vary by complexity, workload, and specifics; estimates drawn from 2025-2026 guidelines).
 
 #### Phase 1: Project Inception and Planning (1-4 Weeks)
 John starts by researching requirements and hiring licensed professionals—a general contractor, electrician (C-10 licensed), HVAC specialist, and solar installer—to avoid penalties for unpermitted work (fines up to $2,000+). No direct government interaction yet, but John reviews LADBS homeowner guides online for zoning compliance (e.g., via ladbs.org zoning tools) and California Energy Code (Title 24) for energy efficiency. John also researches LADWP's Time of Use (TOU) rate plans to understand how shifting energy usage to off-peak hours (especially with solar batteries) can significantly reduce electricity costs.
@@ -76,22 +76,7 @@ During demo, John disposes of old roof tiles (construction debris), old electric
 - **Government Interactions**: Phone/app requests; no tracking beyond confirmation.
 - **Pain Points**: Limited acceptance (no debris); separate channels for e-waste.
 
-#### Phase 6: Handling the Code Violation Report (2-6 Weeks)
-Mid-construction, a neighbor falsely reports the heat pump outdoor unit as too close to the property line and noisy (violating setbacks/noise codes, e.g., LAMC Sec. 112.01 noise limits).
-
-- **Involved Agency**: LADBS Code Enforcement (report via 311 or ladbs.org form).
-- **Steps** (Neighbor): Submit complaint online/phone with details/address/photos.
-- **Steps (Investigation)**: LADBS assigns inspector (days to weeks); site visit to check compliance (e.g., heat pump setbacks per zoning, noise <50 dBA).
-- **Steps (John)**: Receives notice (mail/email); provides evidence (permits, plans showing compliance, e.g., unit 5+ ft from line, low-noise model).
-- **Resolution**: Inspector verifies invalid (no violation); case closed. If valid, order to comply (fixes within 30-60 days, fines $350+).
-- **Timeline**: Report to inspection 1-3 weeks; resolution 1-3 weeks (total 2-6 weeks).
-- **Costs**: None for John (invalid); potential fines if valid.
-- **Documents**: Complaint form (neighbor); permits/proof (John).
-- **Government Interactions**: 311 reporting; mail notices; phone/email follow-ups.
-- **Pain Points**: No proactive notifications; manual evidence submission; delays halt work.
-
-
-# Phase 7: Project Completion (1-4 Weeks + Rebate Processing)
+# Phase 6: Project Completion (1-4 Weeks + Rebate Processing)
 
 Citizens expect seamless digital-first government services, yet fragmented processes across agencies often extend project timelines and delay financial benefits like rebates. In this final phase, outdated manual submissions and limited tracking for incentives contribute to uncertainty, while AI-powered portals could automate rebate eligibility checks, guide applications, and provide real-time status updates for a more responsive experience.
 
@@ -146,8 +131,6 @@ This table organizes the processes in approximate chronological order based on t
 | I1 | John | LADBS | Rough and Final Inspections (for all permitted work) | C1 in progress | 1-2 weeks per scheduling (multiple over 8-16 weeks) | $100-$200 per re-inspection if failed |
 | D1 | John | LASAN | Bulky Item Pickup Scheduling (for old furnace, AC unit) | C1 started (during demolition) | 2-7 days scheduling + pickup | Free (up to 10 collections/year) |
 | D2 | John | LASAN | E-Waste Curbside Collection Request (for old electrical panel, breakers, cables) | C1 started (during demolition) | 2-7 days scheduling + pickup | Free |
-| V1 | Neighbor | LADBS | Code Violation Reporting (alleged heat pump setback/noise issues) | C1 in progress (mid-construction) | Immediate submission; investigation starts 1-3 weeks | $0 (for reporter) |
-| V2 | John | LADBS | Response to Code Violation Notice (provide evidence of compliance) | V1 filed | 2-6 weeks total resolution | $0 (if invalid; potential fines if valid) |
 | F1 | John | LADWP | Final Utility Inspection and TOU Meter Activation | C1 complete, I1 passed, U1 and U2 approved | 1-4 weeks (after on-site install) | Included in prior fees |
 | R1 | John | LADWP | Rebate Application for Efficient HVAC (Ductless Heat Pumps) | F1 complete, I1 passed | Submission immediate after completion; processing up to 12 weeks | $0 (rebate received: $1,500-$2,500 per ton) |
 
@@ -157,7 +140,6 @@ This table organizes the processes in approximate chronological order based on t
 - **C#**: Construction phase
 - **I#**: Inspections (throughout construction)
 - **D#**: Disposal/waste management (during construction, parallel)
-- **V#**: Violation handling (contingent event)
 - **F#**: Final approvals
 - **R#**: Rebates (post-completion)
 
@@ -184,10 +166,6 @@ graph TD
     C1 --> D1[D1: Bulky Pickup<br/>LASAN, 2-7 days]
     C1 --> D2[D2: E-Waste Pickup<br/>LASAN, 2-7 days]
     
-    C1 -.->|Mid-construction<br/>Contingent| V1[V1: Violation Reported<br/>Neighbor, immediate]
-    V1 --> V2[V2: Respond to Violation<br/>2-6 weeks resolution]
-    V2 --> I1
-    
     I1 --> InspectionsPassed{Inspections<br/>Passed?}
     InspectionsPassed -->|Yes| UtilityReady{Utility Work<br/>Complete?}
     InspectionsPassed -->|No| I1
@@ -207,7 +185,6 @@ graph TD
     classDef constructionClass fill:#FF9800,stroke:#E65100,color:#fff,stroke-width:2px
     classDef inspectionClass fill:#9C27B0,stroke:#6A1B9A,color:#fff,stroke-width:2px
     classDef disposalClass fill:#607D8B,stroke:#37474F,color:#fff,stroke-width:2px
-    classDef violationClass fill:#F44336,stroke:#C62828,color:#fff,stroke-width:2px
     classDef finalClass fill:#00BCD4,stroke:#00838F,color:#fff,stroke-width:2px
     classDef decisionClass fill:#FFF9C4,stroke:#F57F17,color:#000,stroke-width:2px
     
@@ -216,7 +193,6 @@ graph TD
     class C1 constructionClass
     class I1 inspectionClass
     class D1,D2 disposalClass
-    class V1,V2 violationClass
     class F1,R1 finalClass
     class PermitsApproved,InspectionsPassed,UtilityReady,ProjectComplete decisionClass
 ```
@@ -238,7 +214,6 @@ The longest dependency chain (critical path) runs through:
 - **Permit Applications (P1, P2, P3)**: Can all be submitted simultaneously, saving 8-24 weeks vs. sequential
 - **Utility Requests (U1 TOU meter, U2 interconnection)**: Can start as soon as electrical permit is submitted (don't need to wait for approval); TOU meter installation (1-2 weeks)
 - **Disposal Activities (D1, D2)**: Run independently during construction, no blocking
-- **Violation Handling (V1, V2)**: Contingent path that can delay construction by 2-6 weeks if triggered
 
 ### Bottlenecks Identified
 1. **Permit Review Delays**: 4-12 weeks review time with potential for 1-4 week revision rounds

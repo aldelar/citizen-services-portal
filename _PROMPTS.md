@@ -1,3 +1,6 @@
+## DO NOT USE THIS FOR THIS PROJECT / JUST TRACKING PURPOSES, PERSONAL NOTES
+
+
 -- sonnet 4.5 unless noted
 
 ===== USE CASE ANALYSIS / REFININEMENT Assistance =====
@@ -127,3 +130,36 @@ How's the MCP_LADBS_URL retrieved from config?
 We have to make sure it's done in a programmatic way, meaning if the ladbs agent were to require a tool named 'abc', we would know how to fetch the deployment configs using azd to retrieve the ACA deployed URL for that tool, assuming the tools are all deployed before we deploy the agents.
 
 Can you double check all this, make sure the deploy order is correct, and that from the tool 'name' only, we can retrieve the URL via deployed items to make this all work at scale.
+
+
+===== ARCHITECTURE REVIEW Assistance =====
+
+Let's work on the architecture to support this project. Please look at 1-synopis.md, 2-use-cases.md for the long term goals.
+
+We will focus on architecting to support 3-demo-story-line.md, which relies on 3 government agencies.
+
+Look at the 4-architecture.md document. We want to review it for corecteness, suggest changes in the approach. The goal is to keep things simple yet powerful and extensible.
+
+A few things I'm thinking about:
+- MCP tools to support existing online services (online forms: we'll assume there is a backend API that supports them, and that we could submit such requests via an MCP tool)
+- A need to deal with things which only currently have paper form (is there any in our story line?) or phone call? -> how do we want to deal with that?
+- Do we assume that each government agency will deliver its own agent, should they be hosted as single agents
+- How do we build a cross agency agent that enables to deliver the story line use case as one government interaction?
+
+Each agency probably has its own definition of a user (no sharing). Do we deal with that, or do we suggest shared services to streamline all of it.
+
+As part of the review, make sure we strip down the services offered by the MCP servers to the bare minimum to satisfy the story.
+
+Do not implement anything, let's discuss. Create a 4-architecture-v2.md file to help collect thoughts and refine things as needed.
+
+==
+
+Good work, let's continue to try to simplify things:
+- Let's drop the violation sub-plot to simplify the story and tools
+- web research: let's drop it, but this assume we'll collect all necessary documents related to processes, etc from each agency to index them as vector dbs, please include that in the architecture
+- agencies could eventually offer agents... let's not prototype this, but we will document how this architecture can be extended. agree that for now, agencies just need to offer MCP tools. should their MCP tools offer access to their processes documents? how do we solve for this? it seems like each agency would be responsible for offering all their docs/policies/etc as a knowledge source... how do we handle that in the architecture for scalability and to let agencies stay independent from each other
+- the UI should be minimal, but the power comes from seeing the overall plan, and tracking progress? how can we build something that is able to track a (JSON) plam, dusplay it (and relate the current state/status of things). the plan should be able to adjust as new information comes in
+- for anything for which there isn't an online form, we should go with the route of telling the use what to do, and assist with preparing the content of an email, etc and tell them what to do next... this step would then be assigned to the user, and the system would need to check once in a while with the user if things got done, and copy/paste of upload what they got back from that process
+- do we have a requirement for each MCP tool to have specific tools like: operations_not_supported_online.... how do we figure out what is supported online vs requires user to take action. we can do the search now, and establish these tools, or do we define an MCP contract so to speak, which each agency will need to implement to list all services they can take care of but are not automated yet? thoughts?
+
+Let's work on that first for a new pass. Suggest other simplifications.
