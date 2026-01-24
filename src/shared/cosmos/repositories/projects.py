@@ -1,6 +1,6 @@
 """Project repository for CosmosDB operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import uuid4
 
@@ -16,6 +16,7 @@ from ..models import (
     ProjectContext,
     ProjectStatus,
     ProjectSummary,
+    StepStatus,
 )
 
 
@@ -123,7 +124,7 @@ class ProjectRepository:
         container = await get_container(self.container_name)
         
         try:
-            project.updated_at = datetime.utcnow()
+            project.updated_at = datetime.now(timezone.utc)
             project_dict = project.model_dump(by_alias=True, mode="json")
             updated_item = await container.replace_item(
                 item=project.id, body=project_dict
@@ -175,8 +176,8 @@ class ProjectRepository:
                 raise NotFoundError(f"Step {step_id} not found in project {project_id}")
             
             # Update plan and project timestamps
-            project.plan.updated_at = datetime.utcnow()
-            project.updated_at = datetime.utcnow()
+            project.plan.updated_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(timezone.utc)
             
             # Replace the entire project
             project_dict = project.model_dump(by_alias=True, mode="json")
@@ -217,8 +218,8 @@ class ProjectRepository:
             
             # Add the new step
             project.plan.steps.append(step)
-            project.plan.updated_at = datetime.utcnow()
-            project.updated_at = datetime.utcnow()
+            project.plan.updated_at = datetime.now(timezone.utc)
+            project.updated_at = datetime.now(timezone.utc)
             
             # Replace the entire project
             project_dict = project.model_dump(by_alias=True, mode="json")
@@ -256,7 +257,7 @@ class ProjectRepository:
             if project.plan and project.plan.steps:
                 total_steps = len(project.plan.steps)
                 completed_steps = sum(
-                    1 for step in project.plan.steps if step.status.value == "completed"
+                    1 for step in project.plan.steps if step.status == StepStatus.COMPLETED
                 )
                 estimated_duration = sum(
                     step.estimated_duration_days or 0
@@ -271,7 +272,7 @@ class ProjectRepository:
             else:
                 project.summary = ProjectSummary()
             
-            project.updated_at = datetime.utcnow()
+            project.updated_at = datetime.now(timezone.utc)
             
             # Replace the entire project
             project_dict = project.model_dump(by_alias=True, mode="json")

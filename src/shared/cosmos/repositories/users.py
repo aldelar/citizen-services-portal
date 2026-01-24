@@ -1,6 +1,6 @@
 """User repository for CosmosDB operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from azure.cosmos import exceptions as cosmos_exceptions
@@ -102,7 +102,7 @@ class UserRepository:
             item = await container.read_item(item=user_id, partition_key=user_id)
             
             # Update last login
-            item["lastLogin"] = datetime.utcnow().isoformat()
+            item["lastLogin"] = datetime.now(timezone.utc).isoformat()
             
             # Replace the item
             updated_item = await container.replace_item(item=item, body=item)

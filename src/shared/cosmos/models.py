@@ -1,6 +1,6 @@
 """Pydantic models for CosmosDB documents."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -70,7 +70,7 @@ class User(CamelCaseModel):
     id: str
     email: str
     name: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_login: Optional[datetime] = None
     preferences: UserPreferences = Field(default_factory=UserPreferences)
 
@@ -132,8 +132,8 @@ class Plan(CamelCaseModel):
     """Project plan containing steps."""
 
     steps: List[PlanStep] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Project(CamelCaseModel):
@@ -147,8 +147,8 @@ class Project(CamelCaseModel):
     plan: Optional[Plan] = None
     summary: ProjectSummary = Field(default_factory=ProjectSummary)
     references: ProjectReferences = Field(default_factory=ProjectReferences)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # Message models
@@ -175,7 +175,7 @@ class Message(CamelCaseModel):
     project_id: str
     role: str  # "user", "assistant", "system"
     content: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tool_calls: Optional[List[ToolCall]] = None
     token_usage: Optional[TokenUsage] = None
 
