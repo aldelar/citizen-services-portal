@@ -70,3 +70,200 @@ output endpoint string = cosmosDbAccount.properties.documentEndpoint
 
 @description('The principal ID of the Cosmos DB account')
 output principalId string = cosmosDbAccount.identity.principalId
+
+// Database resource
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
+  parent: cosmosDbAccount
+  name: 'citizen-services'
+  properties: {
+    resource: {
+      id: 'citizen-services'
+    }
+  }
+}
+
+// Users container
+resource usersContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
+  parent: database
+  name: 'users'
+  properties: {
+    resource: {
+      id: 'users'
+      partitionKey: {
+        paths: [
+          '/id'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        automatic: true
+        indexingMode: 'consistent'
+        includedPaths: [
+          {
+            path: '/email/?'
+          }
+          {
+            path: '/createdAt/?'
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/preferences/*'
+          }
+          {
+            path: '/*'
+          }
+        ]
+      }
+    }
+  }
+}
+
+// Projects container
+resource projectsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
+  parent: database
+  name: 'projects'
+  properties: {
+    resource: {
+      id: 'projects'
+      partitionKey: {
+        paths: [
+          '/userId'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        automatic: true
+        indexingMode: 'consistent'
+        includedPaths: [
+          {
+            path: '/userId/?'
+          }
+          {
+            path: '/status/?'
+          }
+          {
+            path: '/createdAt/?'
+          }
+          {
+            path: '/updatedAt/?'
+          }
+          {
+            path: '/context/address/?'
+          }
+          {
+            path: '/references/permits/*/?'
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+        compositeIndexes: [
+          [
+            {
+              path: '/userId'
+              order: 'ascending'
+            }
+            {
+              path: '/status'
+              order: 'ascending'
+            }
+            {
+              path: '/updatedAt'
+              order: 'descending'
+            }
+          ]
+        ]
+      }
+    }
+  }
+}
+
+// Messages container
+resource messagesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
+  parent: database
+  name: 'messages'
+  properties: {
+    resource: {
+      id: 'messages'
+      partitionKey: {
+        paths: [
+          '/projectId'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        automatic: true
+        indexingMode: 'consistent'
+        includedPaths: [
+          {
+            path: '/projectId/?'
+          }
+          {
+            path: '/timestamp/?'
+          }
+          {
+            path: '/role/?'
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/content/?'
+          }
+          {
+            path: '/toolCalls/*'
+          }
+          {
+            path: '/*'
+          }
+        ]
+      }
+    }
+  }
+}
+
+// Step completions container with TTL
+resource stepCompletionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
+  parent: database
+  name: 'step_completions'
+  properties: {
+    resource: {
+      id: 'step_completions'
+      partitionKey: {
+        paths: [
+          '/toolName'
+        ]
+        kind: 'Hash'
+      }
+      defaultTtl: 15552000  // 180 days in seconds
+      indexingPolicy: {
+        automatic: true
+        indexingMode: 'consistent'
+        includedPaths: [
+          {
+            path: '/toolName/?'
+          }
+          {
+            path: '/city/?'
+          }
+          {
+            path: '/completedAt/?'
+          }
+          {
+            path: '/durationDays/?'
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+      }
+    }
+  }
+}
+
+@description('The name of the database')
+output databaseName string = database.name
