@@ -299,7 +299,7 @@ Based on `on_complete.expected_info`:
 | `confirmation_number` | Text input | INS-789456 |
 | `time_window` | Dropdown or text | 8am-12pm |
 | `amount` | Number input | $1,250.00 |
-| `reference_number` | Text input | APP-2026-1234 |
+| `reference_number` | Text input | 2026-005678 |
 
 ### Step 3: Confirmation Message
 
