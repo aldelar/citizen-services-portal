@@ -4,6 +4,36 @@ This document provides detailed specifications for the Azure Cosmos DB data laye
 
 ---
 
+## Multi-Database Architecture
+
+The Citizen Services Portal uses a multi-database architecture where each major component has its own dedicated database within a shared CosmosDB account.
+
+### Databases Overview
+
+| Database | Owner | Purpose |
+|----------|-------|---------|
+| `citizen-services` | Agent Orchestrator | User profiles, projects, messages, step completions |
+| `ladbs` | LADBS MCP Server | Permit applications, inspection records |
+| `ladwp` | LADWP MCP Server | Interconnection applications, rebates, TOU enrollments |
+| `lasan` | LASAN MCP Server | Pickup requests and status |
+
+### Architecture Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Shared CosmosDB account** | For MVP, all databases share one account for simplified management and cost efficiency |
+| **Separate databases per agency** | Enables future separation where each agency could host their own CosmosDB account |
+| **Database definitions in MCP server folders** | Each agency's database Bicep is defined in `/src/mcp-servers/{agency}/infra/` |
+| **User reference pattern** | Agency databases reference `userId` from the central orchestrator (no duplicate user storage) |
+
+### Future Considerations
+
+- Each agency can migrate to their own CosmosDB account without schema changes
+- Cross-database references use `userId` as the linking key
+- No user PII is duplicated across databases; only `userId` is stored
+
+---
+
 ## Overview
 
 The Citizen Services Portal uses Azure Cosmos DB with the NoSQL API to store:
@@ -11,6 +41,7 @@ The Citizen Services Portal uses Azure Cosmos DB with the NoSQL API to store:
 - Projects with embedded plans
 - Conversation history (messages)
 - Step completion metrics for reporting
+- Agency-specific data (permits, interconnections, pickups, etc.)
 
 ### Design Principles
 
@@ -587,6 +618,795 @@ WHERE c.toolName = @toolName
 ```
 
 Records automatically expire after 180 days (6 months) to keep the dataset relevant.
+
+---
+
+## LADBS Database
+
+The LADBS (Los Angeles Department of Building and Safety) database stores permit applications and inspection records.
+
+### Database Configuration
+
+| Property | Value |
+|----------|-------|
+| **Database Name** | `ladbs` |
+| **Throughput** | Serverless (automatic) |
+
+### Container Summary
+
+| Container | Partition Key | Purpose | TTL |
+|-----------|---------------|---------|-----|
+| `permits` | `/userId` | Permit applications and status | None |
+| `inspections` | `/permitNumber` | Inspection records linked to permits | None |
+
+---
+
+### Container: `permits`
+
+Stores permit applications and their status.
+
+#### Partition Strategy
+
+- **Partition Key:** `/userId`
+- **Rationale:** Users typically query their own permits; enables efficient "list my permits" queries
+
+#### Schema
+
+```json
+{
+  "id": "permit-uuid",
+  "userId": "user-uuid",
+  "permitNumber": "2026-001234",
+  "permitType": "electrical",
+  "status": "submitted",
+  "address": "123 Main St, Los Angeles, CA 90012",
+  "workDescription": "Solar PV installation with battery storage",
+  "estimatedCost": 25000.00,
+  "applicant": {
+    "name": "John Smith",
+    "email": "john@example.com",
+    "phone": "555-0123",
+    "contractorLicense": "C10-123456"
+  },
+  "documents": ["site-plan.pdf", "single-line-diagram.pdf"],
+  "fees": {
+    "planCheck": 450.00,
+    "permitFee": 800.00,
+    "otherFees": 0.00,
+    "total": 1250.00
+  },
+  "submittedAt": "2026-01-15T10:00:00Z",
+  "approvedAt": null,
+  "expiresAt": null,
+  "nextSteps": "Awaiting plan check review",
+  "createdAt": "2026-01-15T10:00:00Z",
+  "updatedAt": "2026-01-15T10:00:00Z"
+}
+```
+
+#### Model Definition
+
+```python
+from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Optional, List
+from enum import Enum
+
+
+class PermitType(str, Enum):
+    """Type of building permit."""
+    ELECTRICAL = "electrical"
+    MECHANICAL = "mechanical"
+    BUILDING = "building"
+    PLUMBING = "plumbing"
+
+
+class PermitStatus(str, Enum):
+    """Status of a permit application."""
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    CORRECTIONS_REQUIRED = "corrections_required"
+    APPROVED = "approved"
+    ISSUED = "issued"
+    EXPIRED = "expired"
+    REJECTED = "rejected"
+
+
+class PermitApplicant(BaseModel):
+    """Applicant information for a permit."""
+    name: str
+    email: str
+    phone: str
+    contractor_license: Optional[str] = None
+
+
+class PermitFees(BaseModel):
+    """Fee breakdown for a permit."""
+    plan_check: float
+    permit_fee: float
+    other_fees: float = 0.0
+    total: float
+
+
+class PermitDocument(BaseModel):
+    """Permit document stored in the database."""
+    model_config = ConfigDict(populate_by_name=True)
+    
+    id: str
+    user_id: str = Field(alias="userId")
+    permit_number: str = Field(alias="permitNumber")
+    permit_type: PermitType = Field(alias="permitType")
+    status: PermitStatus
+    address: str
+    work_description: str = Field(alias="workDescription")
+    estimated_cost: float = Field(alias="estimatedCost")
+    applicant: PermitApplicant
+    documents: List[str] = Field(default_factory=list)
+    fees: Optional[PermitFees] = None
+    submitted_at: Optional[datetime] = Field(default=None, alias="submittedAt")
+    approved_at: Optional[datetime] = Field(default=None, alias="approvedAt")
+    expires_at: Optional[datetime] = Field(default=None, alias="expiresAt")
+    next_steps: Optional[str] = Field(default=None, alias="nextSteps")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+```
+
+#### Access Patterns
+
+| Operation | Query | RU Estimate |
+|-----------|-------|-------------|
+| Get permit by ID | Point read with partition key `userId` | 1 RU |
+| List user's permits | Query `WHERE c.userId = @userId` | 3-10 RU |
+| Get by permit number | Query `WHERE c.permitNumber = @permitNumber` | 5-10 RU |
+| Search by address | Query `WHERE c.address = @address` | 5-15 RU |
+| Update status | Point write by `id` | 5-10 RU |
+
+#### Indexes
+
+```json
+{
+  "indexingPolicy": {
+    "automatic": true,
+    "indexingMode": "consistent",
+    "includedPaths": [
+      { "path": "/userId/?" },
+      { "path": "/permitNumber/?" },
+      { "path": "/status/?" },
+      { "path": "/address/?" },
+      { "path": "/permitType/?" },
+      { "path": "/submittedAt/?" },
+      { "path": "/createdAt/?" }
+    ],
+    "excludedPaths": [
+      { "path": "/applicant/*" },
+      { "path": "/documents/*" },
+      { "path": "/fees/*" },
+      { "path": "/_etag/?" }
+    ]
+  }
+}
+```
+
+---
+
+### Container: `inspections`
+
+Stores inspection records linked to permits.
+
+#### Partition Strategy
+
+- **Partition Key:** `/permitNumber`
+- **Rationale:** Inspections are typically queried by permit; enables efficient "list inspections for permit" queries
+
+#### Schema
+
+```json
+{
+  "id": "inspection-uuid",
+  "permitNumber": "2026-001234",
+  "userId": "user-uuid",
+  "inspectionId": "INS-789456",
+  "inspectionType": "rough_electrical",
+  "status": "scheduled",
+  "address": "123 Main St, Los Angeles, CA 90012",
+  "scheduledDate": "2026-02-15",
+  "scheduledTimeWindow": "8am-12pm",
+  "completedAt": null,
+  "result": null,
+  "inspectorNotes": null,
+  "contactName": "John Smith",
+  "contactPhone": "555-0123",
+  "createdAt": "2026-02-01T10:00:00Z",
+  "updatedAt": "2026-02-01T10:00:00Z"
+}
+```
+
+#### Model Definition
+
+```python
+from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Optional
+from enum import Enum
+
+
+class InspectionType(str, Enum):
+    """Type of building inspection."""
+    ROUGH_ELECTRICAL = "rough_electrical"
+    FINAL_ELECTRICAL = "final_electrical"
+    ROUGH_MECHANICAL = "rough_mechanical"
+    FINAL_MECHANICAL = "final_mechanical"
+    FRAMING = "framing"
+    FINAL = "final"
+
+
+class InspectionStatus(str, Enum):
+    """Status of an inspection."""
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    PASSED = "passed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class InspectionDocument(BaseModel):
+    """Inspection document stored in the database."""
+    model_config = ConfigDict(populate_by_name=True)
+    
+    id: str
+    permit_number: str = Field(alias="permitNumber")
+    user_id: str = Field(alias="userId")
+    inspection_id: str = Field(alias="inspectionId")
+    inspection_type: InspectionType = Field(alias="inspectionType")
+    status: InspectionStatus
+    address: str
+    scheduled_date: Optional[str] = Field(default=None, alias="scheduledDate")
+    scheduled_time_window: Optional[str] = Field(default=None, alias="scheduledTimeWindow")
+    completed_at: Optional[datetime] = Field(default=None, alias="completedAt")
+    result: Optional[str] = None
+    inspector_notes: Optional[str] = Field(default=None, alias="inspectorNotes")
+    contact_name: str = Field(alias="contactName")
+    contact_phone: str = Field(alias="contactPhone")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+```
+
+#### Access Patterns
+
+| Operation | Query | RU Estimate |
+|-----------|-------|-------------|
+| Get inspection by ID | Point read with partition key `permitNumber` | 1 RU |
+| List inspections for permit | Query `WHERE c.permitNumber = @permitNumber` | 3-10 RU |
+| Search by address | Query `WHERE c.address = @address` | 5-15 RU |
+| Update status | Point write by `id` | 5-10 RU |
+
+#### Indexes
+
+```json
+{
+  "indexingPolicy": {
+    "automatic": true,
+    "indexingMode": "consistent",
+    "includedPaths": [
+      { "path": "/permitNumber/?" },
+      { "path": "/userId/?" },
+      { "path": "/inspectionId/?" },
+      { "path": "/status/?" },
+      { "path": "/address/?" },
+      { "path": "/scheduledDate/?" },
+      { "path": "/createdAt/?" }
+    ],
+    "excludedPaths": [
+      { "path": "/_etag/?" }
+    ]
+  }
+}
+```
+
+---
+
+## LADWP Database
+
+The LADWP (Los Angeles Department of Water and Power) database stores interconnection applications, rebate applications, and TOU enrollments.
+
+### Database Configuration
+
+| Property | Value |
+|----------|-------|
+| **Database Name** | `ladwp` |
+| **Throughput** | Serverless (automatic) |
+
+### Container Summary
+
+| Container | Partition Key | Purpose | TTL |
+|-----------|---------------|---------|-----|
+| `interconnections` | `/userId` | Solar interconnection applications | None |
+| `rebates` | `/userId` | Rebate applications | None |
+| `tou_enrollments` | `/accountNumber` | TOU rate plan enrollments | None |
+
+---
+
+### Container: `interconnections`
+
+Stores solar interconnection applications.
+
+#### Partition Strategy
+
+- **Partition Key:** `/userId`
+- **Rationale:** Users query their own interconnection applications
+
+#### Schema
+
+```json
+{
+  "id": "interconnection-uuid",
+  "userId": "user-uuid",
+  "applicationId": "IA-2026-12345",
+  "address": "123 Main St, Los Angeles, CA 90012",
+  "systemSizeKw": 8.5,
+  "batterySizeKwh": 13.5,
+  "status": "submitted",
+  "applicant": {
+    "name": "John Smith",
+    "email": "john@example.com"
+  },
+  "equipment": {
+    "inverter": "SolarEdge SE7600H",
+    "panels": "REC Alpha Pure 400W x 22",
+    "battery": "Tesla Powerwall 2"
+  },
+  "ladbsPermitNumber": "2026-001234",
+  "submittedAt": "2026-01-20T10:00:00Z",
+  "approvedAt": null,
+  "ptoDate": null,
+  "nextSteps": "Awaiting engineering review",
+  "createdAt": "2026-01-20T10:00:00Z",
+  "updatedAt": "2026-01-20T10:00:00Z"
+}
+```
+
+#### Model Definition
+
+```python
+from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Optional
+from enum import Enum
+
+
+class InterconnectionStatus(str, Enum):
+    """Status of solar interconnection application."""
+    NOT_SUBMITTED = "not_submitted"
+    SUBMITTED = "submitted"
+    ENGINEERING_REVIEW = "engineering_review"
+    APPROVED = "approved"
+    PTO_ISSUED = "pto_issued"
+    DENIED = "denied"
+
+
+class InterconnectionApplicant(BaseModel):
+    """Applicant information for interconnection."""
+    name: str
+    email: str
+
+
+class InterconnectionEquipment(BaseModel):
+    """Equipment details for interconnection."""
+    inverter: str
+    panels: str
+    battery: Optional[str] = None
+
+
+class InterconnectionDocument(BaseModel):
+    """Interconnection document stored in the database."""
+    model_config = ConfigDict(populate_by_name=True)
+    
+    id: str
+    user_id: str = Field(alias="userId")
+    application_id: str = Field(alias="applicationId")
+    address: str
+    system_size_kw: float = Field(alias="systemSizeKw")
+    battery_size_kwh: Optional[float] = Field(default=None, alias="batterySizeKwh")
+    status: InterconnectionStatus
+    applicant: InterconnectionApplicant
+    equipment: InterconnectionEquipment
+    ladbs_permit_number: Optional[str] = Field(default=None, alias="ladbsPermitNumber")
+    submitted_at: Optional[datetime] = Field(default=None, alias="submittedAt")
+    approved_at: Optional[datetime] = Field(default=None, alias="approvedAt")
+    pto_date: Optional[datetime] = Field(default=None, alias="ptoDate")
+    next_steps: Optional[str] = Field(default=None, alias="nextSteps")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+```
+
+#### Access Patterns
+
+| Operation | Query | RU Estimate |
+|-----------|-------|-------------|
+| Get interconnection by ID | Point read with partition key `userId` | 1 RU |
+| List user's interconnections | Query `WHERE c.userId = @userId` | 3-10 RU |
+| Get by application ID | Query `WHERE c.applicationId = @applicationId` | 5-10 RU |
+| Update status | Point write by `id` | 5-10 RU |
+
+#### Indexes
+
+```json
+{
+  "indexingPolicy": {
+    "automatic": true,
+    "indexingMode": "consistent",
+    "includedPaths": [
+      { "path": "/userId/?" },
+      { "path": "/applicationId/?" },
+      { "path": "/status/?" },
+      { "path": "/address/?" },
+      { "path": "/submittedAt/?" },
+      { "path": "/createdAt/?" }
+    ],
+    "excludedPaths": [
+      { "path": "/applicant/*" },
+      { "path": "/equipment/*" },
+      { "path": "/_etag/?" }
+    ]
+  }
+}
+```
+
+---
+
+### Container: `rebates`
+
+Stores rebate applications.
+
+#### Partition Strategy
+
+- **Partition Key:** `/userId`
+- **Rationale:** Users query their own rebate applications
+
+#### Schema
+
+```json
+{
+  "id": "rebate-uuid",
+  "userId": "user-uuid",
+  "applicationId": "CRP-2026-1234",
+  "accountNumber": "1234567890",
+  "equipmentType": "heat_pump_hvac",
+  "status": "submitted",
+  "equipmentDetails": "Mitsubishi 3-zone ductless heat pump, 3 tons",
+  "purchaseDate": "2026-01-10",
+  "invoiceTotal": 15000.00,
+  "ahriCertificate": "AHRI-12345678",
+  "ladbsPermitNumber": "2026-001235",
+  "estimatedRebate": 7500.00,
+  "approvedAmount": null,
+  "denialReason": null,
+  "paidAt": null,
+  "submittedAt": "2026-01-15T10:00:00Z",
+  "createdAt": "2026-01-15T10:00:00Z",
+  "updatedAt": "2026-01-15T10:00:00Z"
+}
+```
+
+#### Model Definition
+
+```python
+from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Optional
+from enum import Enum
+
+
+class EquipmentType(str, Enum):
+    """Type of equipment eligible for rebates."""
+    HEAT_PUMP_HVAC = "heat_pump_hvac"
+    HEAT_PUMP_WATER_HEATER = "heat_pump_water_heater"
+    SMART_THERMOSTAT = "smart_thermostat"
+
+
+class RebateStatus(str, Enum):
+    """Status of a rebate application."""
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    DENIED = "denied"
+    PAID = "paid"
+
+
+class RebateDocument(BaseModel):
+    """Rebate document stored in the database."""
+    model_config = ConfigDict(populate_by_name=True)
+    
+    id: str
+    user_id: str = Field(alias="userId")
+    application_id: str = Field(alias="applicationId")
+    account_number: str = Field(alias="accountNumber")
+    equipment_type: EquipmentType = Field(alias="equipmentType")
+    status: RebateStatus
+    equipment_details: str = Field(alias="equipmentDetails")
+    purchase_date: str = Field(alias="purchaseDate")
+    invoice_total: float = Field(alias="invoiceTotal")
+    ahri_certificate: Optional[str] = Field(default=None, alias="ahriCertificate")
+    ladbs_permit_number: Optional[str] = Field(default=None, alias="ladbsPermitNumber")
+    estimated_rebate: float = Field(alias="estimatedRebate")
+    approved_amount: Optional[float] = Field(default=None, alias="approvedAmount")
+    denial_reason: Optional[str] = Field(default=None, alias="denialReason")
+    paid_at: Optional[datetime] = Field(default=None, alias="paidAt")
+    submitted_at: datetime = Field(alias="submittedAt")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+```
+
+#### Access Patterns
+
+| Operation | Query | RU Estimate |
+|-----------|-------|-------------|
+| Get rebate by ID | Point read with partition key `userId` | 1 RU |
+| List user's rebates | Query `WHERE c.userId = @userId` | 3-10 RU |
+| Get by application ID | Query `WHERE c.applicationId = @applicationId` | 5-10 RU |
+| Update status | Point write by `id` | 5-10 RU |
+
+#### Indexes
+
+```json
+{
+  "indexingPolicy": {
+    "automatic": true,
+    "indexingMode": "consistent",
+    "includedPaths": [
+      { "path": "/userId/?" },
+      { "path": "/applicationId/?" },
+      { "path": "/accountNumber/?" },
+      { "path": "/status/?" },
+      { "path": "/equipmentType/?" },
+      { "path": "/submittedAt/?" },
+      { "path": "/createdAt/?" }
+    ],
+    "excludedPaths": [
+      { "path": "/_etag/?" }
+    ]
+  }
+}
+```
+
+---
+
+### Container: `tou_enrollments`
+
+Stores Time-of-Use rate plan enrollments.
+
+#### Partition Strategy
+
+- **Partition Key:** `/accountNumber`
+- **Rationale:** Enrollments are queried by utility account
+
+#### Schema
+
+```json
+{
+  "id": "enrollment-uuid",
+  "userId": "user-uuid",
+  "accountNumber": "1234567890",
+  "confirmationNumber": "TOU-2026-78901",
+  "ratePlan": "TOU-D-A",
+  "previousPlan": "standard",
+  "status": "pending",
+  "effectiveDate": "2026-02-01",
+  "meterSwapRequired": true,
+  "meterSwapDate": "2026-01-28",
+  "enrolledAt": "2026-01-20T10:00:00Z",
+  "createdAt": "2026-01-20T10:00:00Z",
+  "updatedAt": "2026-01-20T10:00:00Z"
+}
+```
+
+#### Model Definition
+
+```python
+from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Optional
+from enum import Enum
+
+
+class TOURatePlan(str, Enum):
+    """LADWP TOU rate plan options."""
+    TOU_D_A = "TOU-D-A"
+    TOU_D_B = "TOU-D-B"
+    TOU_D_PRIME = "TOU-D-PRIME"
+
+
+class TOUEnrollmentStatus(str, Enum):
+    """Status of TOU enrollment."""
+    PENDING = "pending"
+    ACTIVE = "active"
+    CANCELLED = "cancelled"
+
+
+class TOUEnrollmentDocument(BaseModel):
+    """TOU enrollment document stored in the database."""
+    model_config = ConfigDict(populate_by_name=True)
+    
+    id: str
+    user_id: str = Field(alias="userId")
+    account_number: str = Field(alias="accountNumber")
+    confirmation_number: str = Field(alias="confirmationNumber")
+    rate_plan: TOURatePlan = Field(alias="ratePlan")
+    previous_plan: str = Field(alias="previousPlan")
+    status: TOUEnrollmentStatus
+    effective_date: str = Field(alias="effectiveDate")
+    meter_swap_required: bool = Field(alias="meterSwapRequired")
+    meter_swap_date: Optional[str] = Field(default=None, alias="meterSwapDate")
+    enrolled_at: datetime = Field(alias="enrolledAt")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+```
+
+#### Access Patterns
+
+| Operation | Query | RU Estimate |
+|-----------|-------|-------------|
+| Get enrollment by ID | Point read with partition key `accountNumber` | 1 RU |
+| List account enrollments | Query `WHERE c.accountNumber = @accountNumber` | 3-10 RU |
+| Get by confirmation number | Query `WHERE c.confirmationNumber = @confirmationNumber` | 5-10 RU |
+| Update status | Point write by `id` | 5-10 RU |
+
+#### Indexes
+
+```json
+{
+  "indexingPolicy": {
+    "automatic": true,
+    "indexingMode": "consistent",
+    "includedPaths": [
+      { "path": "/accountNumber/?" },
+      { "path": "/userId/?" },
+      { "path": "/confirmationNumber/?" },
+      { "path": "/status/?" },
+      { "path": "/ratePlan/?" },
+      { "path": "/effectiveDate/?" },
+      { "path": "/createdAt/?" }
+    ],
+    "excludedPaths": [
+      { "path": "/_etag/?" }
+    ]
+  }
+}
+```
+
+---
+
+## LASAN Database
+
+The LASAN (Los Angeles Bureau of Sanitation) database stores pickup requests.
+
+### Database Configuration
+
+| Property | Value |
+|----------|-------|
+| **Database Name** | `lasan` |
+| **Throughput** | Serverless (automatic) |
+
+### Container Summary
+
+| Container | Partition Key | Purpose | TTL |
+|-----------|---------------|---------|-----|
+| `pickups` | `/userId` | Pickup requests and status | None |
+
+---
+
+### Container: `pickups`
+
+Stores pickup requests (bulky items, e-waste, hazardous).
+
+#### Partition Strategy
+
+- **Partition Key:** `/userId`
+- **Rationale:** Users query their own pickup requests
+
+#### Schema
+
+```json
+{
+  "id": "pickup-uuid",
+  "userId": "user-uuid",
+  "pickupId": "PU-2026-5678",
+  "pickupType": "bulky_item",
+  "status": "scheduled",
+  "address": "123 Main St, Los Angeles, CA 90012",
+  "items": [
+    "Old refrigerator",
+    "Broken washing machine"
+  ],
+  "scheduledDate": "2026-02-20",
+  "confirmationNumber": "311-CONF-12345",
+  "contactName": "John Smith",
+  "contactPhone": "555-0123",
+  "notes": "Items in front yard",
+  "completedAt": null,
+  "createdAt": "2026-02-01T10:00:00Z",
+  "updatedAt": "2026-02-01T10:00:00Z"
+}
+```
+
+#### Model Definition
+
+```python
+from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Optional, List
+from enum import Enum
+
+
+class PickupType(str, Enum):
+    """Type of special pickup."""
+    BULKY_ITEM = "bulky_item"
+    EWASTE = "ewaste"
+    HAZARDOUS = "hazardous"
+
+
+class PickupStatus(str, Enum):
+    """Status of a pickup request."""
+    SCHEDULED = "scheduled"
+    CONFIRMED = "confirmed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class PickupDocument(BaseModel):
+    """Pickup document stored in the database."""
+    model_config = ConfigDict(populate_by_name=True)
+    
+    id: str
+    user_id: str = Field(alias="userId")
+    pickup_id: str = Field(alias="pickupId")
+    pickup_type: PickupType = Field(alias="pickupType")
+    status: PickupStatus
+    address: str
+    items: List[str]
+    scheduled_date: str = Field(alias="scheduledDate")
+    confirmation_number: Optional[str] = Field(default=None, alias="confirmationNumber")
+    contact_name: str = Field(alias="contactName")
+    contact_phone: str = Field(alias="contactPhone")
+    notes: Optional[str] = None
+    completed_at: Optional[datetime] = Field(default=None, alias="completedAt")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+```
+
+#### Access Patterns
+
+| Operation | Query | RU Estimate |
+|-----------|-------|-------------|
+| Get pickup by ID | Point read with partition key `userId` | 1 RU |
+| List user's pickups | Query `WHERE c.userId = @userId` | 3-10 RU |
+| Get by pickup ID | Query `WHERE c.pickupId = @pickupId` | 5-10 RU |
+| Search by address | Query `WHERE c.address = @address` | 5-15 RU |
+| Update status | Point write by `id` | 5-10 RU |
+
+#### Indexes
+
+```json
+{
+  "indexingPolicy": {
+    "automatic": true,
+    "indexingMode": "consistent",
+    "includedPaths": [
+      { "path": "/userId/?" },
+      { "path": "/pickupId/?" },
+      { "path": "/status/?" },
+      { "path": "/address/?" },
+      { "path": "/pickupType/?" },
+      { "path": "/scheduledDate/?" },
+      { "path": "/createdAt/?" }
+    ],
+    "excludedPaths": [
+      { "path": "/items/*" },
+      { "path": "/_etag/?" }
+    ]
+  }
+}
+```
 
 ---
 

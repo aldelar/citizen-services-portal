@@ -294,6 +294,8 @@ module mcpLadbs './app/mcp-ladbs.bicep' = {
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    cosmosDbAccountName: cosmosDb.outputs.name
+    cosmosEndpoint: cosmosDb.outputs.endpoint
     enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
     appClientId: ''
   }
@@ -326,6 +328,8 @@ module mcpLadwp './app/mcp-ladwp.bicep' = {
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    cosmosDbAccountName: cosmosDb.outputs.name
+    cosmosEndpoint: cosmosDb.outputs.endpoint
     enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
     appClientId: ''
   }
@@ -357,6 +361,8 @@ module mcpLasan './app/mcp-lasan.bicep' = {
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    cosmosDbAccountName: cosmosDb.outputs.name
+    cosmosEndpoint: cosmosDb.outputs.endpoint
     enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
     appClientId: ''
   }
