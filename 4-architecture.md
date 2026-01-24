@@ -3,12 +3,10 @@
 ## Purpose of This Document
 
 This document reviews and refines the architecture from [4-architecture.md](4-architecture.md), focusing on:
-1. Simplifying scope to match demo story-line (dropping violation sub-plot)
-2. Single orchestrator agent with per-agency MCP tools
-3. Agency knowledge bases stored as repo assets, indexed into AI Search (one index per agency)
-4. Handling manual/offline processes with user task assignment
-5. Chat-first UI with plan widget sidebar
-6. Simple MCP tools that either execute or delegate to user (no manifest layer)
+1. Single orchestrator agent with per-agency MCP tools
+2. Agency knowledge bases stored as repo assets, indexed into AI Search (one index per agency)
+3. Simple MCP tools that either execute or delegate to user. Handling manual/offline processes with user task assignment
+4. Chat-first UI with plan widget sidebar
 
 ---
 
@@ -96,13 +94,13 @@ Repository Assets                 Ingestion Pipeline           Azure AI Search
 
 #### How Agent Uses Knowledge
 
-Each MCP server exposes a `queryKnowledge` tool that searches its agency's index:
+Each MCP server exposes a `queryKB` tool that searches its agency's index:
 
 ```python
 # Agent needs to know permit requirements
-# Calls LADBS MCP server's queryKnowledge tool
+# Calls LADBS MCP server's queryKB tool
 
-results = await ladbs_mcp.queryKnowledge(
+results = await ladbs_mcp.queryKB(
     query="What documents do I need for an electrical permit with solar panels?",
     top=5
 )
@@ -220,7 +218,7 @@ Each MCP server is a standalone service exposing tools for its agency. Below are
 
 | Tool | Type | Action | Key Inputs | Returns |
 |------|------|--------|------------|---------|
-| `queryKnowledge` | Query | Search LADBS docs index | `query: string`, `top?: number` | Relevant document chunks |
+| `queryKB` | Query | Search LADBS docs index | `query: string`, `top?: number` | Relevant document chunks |
 | `permits.search` | Query | Find existing permits | `address: string` or `permitNumber: string` | List of permits with status |
 | `permits.submit` | **Automated** | Submit permit application | `permitType`, `address`, `applicant`, `documents[]` | `permitNumber`, status, fees |
 | `permits.getStatus` | **Automated** | Check permit status | `permitNumber: string` | Status, approvalDate, nextSteps |
@@ -241,7 +239,7 @@ Each MCP server is a standalone service exposing tools for its agency. Below are
 
 | Tool | Type | Action | Key Inputs | Returns |
 |------|------|--------|------------|---------|
-| `queryKnowledge` | Query | Search LADWP docs index | `query: string`, `top?: number` | Relevant document chunks |
+| `queryKB` | Query | Search LADWP docs index | `query: string`, `top?: number` | Relevant document chunks |
 | `account.show` | Query | Get current account info | `accountNumber: string` | Current rate plan, meter type, pending requests |
 | `plans.list` | Query | List available LADWP rate plans | `accountNumber` | Available plans (standard and TOU) with rates |
 | `tou.enroll` | **Automated** | Enroll in TOU rate plan | `accountNumber`, `ratePlan: enum` | Confirmation, effective date |
@@ -265,7 +263,7 @@ Each MCP server is a standalone service exposing tools for its agency. Below are
 
 | Tool | Type | Action | Key Inputs | Returns |
 |------|------|--------|------------|---------|
-| `queryKnowledge` | Query | Search LASAN docs index | `query: string`, `top?: number` | Relevant document chunks |
+| `queryKB` | Query | Search LASAN docs index | `query: string`, `top?: number` | Relevant document chunks |
 | `pickup.scheduled` | Query | View scheduled pickups | `address: string` | Scheduled pickups with dates, items, status |
 | `pickup.schedule` | **User Action** | Prepare pickup request | `pickupType: enum`, `items[]`, `address` | 311 script, scheduling instructions |
 | `pickup.getEligibility` | Query | Check pickup eligibility | `address`, `itemTypes[]` | Eligible items, limits, alternatives |
@@ -276,17 +274,66 @@ Each MCP server is a standalone service exposing tools for its agency. Below are
 
 ---
 
-#### 3.4 Tool Summary
+#### 3.4 Reporting MCP Server
+
+**Purpose:** Track step durations for reporting and surface average times to users
+
+**Base URL:** `https://mcp-reporting.{environment}.azurecontainerapps.io`
+
+| Tool | Type | Action | Key Inputs | Returns |
+|------|------|--------|------------|--------|
+| `steps.logCompleted` | **Automated** | Log a completed step for reporting | `toolName`, `city`, `startedAt`, `completedAt` | Confirmation |
+| `steps.getAverageDuration` | Query | Get average duration for step type | `toolName`, `city?` | Average days, sample count |
+
+**How it works:**
+
+1. When agent completes a plan step, it calls `steps.logCompleted` with:
+   - `toolName`: The MCP tool used (e.g., `permits.submit`, `tou.enroll`)
+   - `city`: Geographic filter (e.g., `Los Angeles`)
+   - `startedAt` / `completedAt`: Timestamps from the step
+
+2. When building a plan or answering "how long will this take?", agent calls `steps.getAverageDuration`:
+   - Returns average duration based on last 6 months of data
+   - Filtered by city for local relevance
+
+**Normalized Step Names (toolName values):**
+
+Step names are normalized to MCP tool names for consistent aggregation:
+
+| toolName | Description |
+|----------|-------------|
+| `permits.submit` | Permit application (any type) |
+| `permits.getStatus` | Permit status check |
+| `inspections.schedule` | Schedule an inspection |
+| `tou.enroll` | TOU rate enrollment |
+| `interconnection.submit` | Solar interconnection application |
+| `rebates.apply` | Rebate application |
+| `pickup.schedule` | Waste pickup scheduling |
+
+**Example usage:**
+
+```
+Agent: "Based on recent data in Los Angeles, electrical permits 
+        typically take 6-8 weeks from submission to approval."
+        
+        [calls steps.getAverageDuration with toolName="permits.submit", city="Los Angeles"]
+        → { "averageDays": 47, "sampleCount": 234 }
+```
+
+---
+
+#### 3.5 Tool Summary
 
 | Server | Total Tools | Automated | User Action | Query |
 |--------|-------------|-----------|-------------|-------|
 | LADBS | 6 | 2 | 1 | 3 |
 | LADWP | 9 | 3 | 1 | 5 |
 | LASAN | 4 | 0 | 1 | 3 |
-| **Total** | **19** | **5** | **3** | **11** |
+| Reporting | 2 | 1 | 0 | 1 |
+| **Total** | **21** | **6** | **3** | **12** |
 
 ---
-#### 3.5 Tool Coverage Validation
+#### 3.6 Tool Coverage Validation
 
 This section validates that the 19 tools cover all story-line interactions and natural conversation patterns.
 
@@ -309,7 +356,7 @@ This section validates that the 19 tools cover all story-line interactions and n
 
 | User Question | Tool(s) Used | Notes |
 |---------------|--------------|-------|
-| "What permits do I need for solar?" | `queryKnowledge` (LADBS) | Agent learns requirements from indexed docs |
+| "What permits do I need for solar?" | `queryKB` (LADBS) | Agent learns requirements from indexed docs |
 | "Have I filed anything at this address?" | `permits.search` | Lists existing permits by address |
 | "What's my permit status?" | `permits.getStatus` | Returns status, approval date, next steps |
 | "When's my inspection?" | `inspections.scheduled` | Lists scheduled inspections |
@@ -322,7 +369,7 @@ This section validates that the 19 tools cover all story-line interactions and n
 | "What rebates have I filed?" | `rebates.filed` | All applications with IDs and status |
 | "What pickups are scheduled?" | `pickup.scheduled` | Lists pickups with dates |
 | "Can you pick up my roof tiles?" | `pickup.getEligibility` | Returns no + alternatives |
-| "How do I get a heat pump rebate?" | `queryKnowledge` (LADWP) | Agent learns requirements from docs |
+| "How do I get a heat pump rebate?" | `queryKB` (LADWP) | Agent learns requirements from docs |
 
 ##### Design Pattern: List → Detail
 
@@ -480,13 +527,21 @@ Each project has one plan. Plans track the multi-step journey across agencies.
 #### Project Lifecycle
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   ACTIVE     │ ──► │  COMPLETED   │ ──► │  ARCHIVED    │
-│              │     │  (read-only) │     │              │
-│ • Plan edits │     │ • View only  │     │ • Historical │
-│ • Chat open  │     │ • Full hist. │     │ • Reference  │
-│ • Tasks due  │     │ • Reference  │     │              │
-└──────────────┘     └──────────────┘     └──────────────┘
+┌──────────────┐     ┌──────────────┐
+│   ACTIVE     │ ──► │  COMPLETED   │
+│              │     │  (read-only) │
+│ • Plan edits │     │ • View only  │
+│ • Chat open  │     │ • Full hist. │
+│ • Tasks due  │     │ • Reference  │
+└──────────────┘     └──────────────┘
+        │
+        ▼
+┌──────────────┐
+│  CANCELED    │
+│  (read-only) │
+│ • View only  │
+│ • Full hist. │
+└──────────────┘
 ```
 
 ---
@@ -541,7 +596,8 @@ Each project has one plan. Plans track the multi-step journey across agencies.
    - Always visible, reflects current plan state
    - Updates when agent modifies plan
    - Shows pending user tasks prominently
-   - Collapsible phases with step details
+   - Rendered as markdown/mermaid for simplicity (MVP)
+   - Plan stored as JSON in CosmosDB, rendered client-side
 
 3. **Chat (Left Side)**:
    - Primary interaction surface
@@ -607,19 +663,24 @@ Each project has one plan. Plans track the multi-step journey across agencies.
 │    FOUNDRY          │   │   (Container Apps)  │   │                     │
 │                     │   │                     │   │  ┌───────────────┐  │
 │  ┌───────────────┐  │   │  ┌───────────────┐  │   │  │   CosmosDB    │  │
-│  │    Citizen    │  │   │  │    LADBS      │  │   │  │   • Projects  │  │
-│  │    Agent      │◄─┼───┼─►│    4 tools    │  │   │  │   • Plans     │  │
-│  │               │  │   │  └───────────────┘  │   │  │   • Sessions  │  │
-│  └───────────────┘  │   │                     │   │  └───────────────┘  │
-│                     │   │  ┌───────────────┐  │   │                     │
-│  ┌───────────────┐  │   │  │    LADWP      │  │   │  ┌───────────────┐  │
-│  │    GPT-4o     │  │◄──┼─►│    5 tools    │  │   │  │  AI Search    │  │
-│  │    Model      │  │   │  └───────────────┘  │   │  │  • ladbs-docs │  │
-│  └───────────────┘  │   │                     │   │  │  • ladwp-docs │  │
-│                     │   │  ┌───────────────┐  │   │  │  • lasan-docs │  │
-│  ┌───────────────┐  │   │  │    LASAN      │  │   │  └───────────────┘  │
-│  │   Tracing     │  │◄──┼─►│    2 tools    │  │   │                     │
+│  │    Citizen    │  │   │  │    LADBS      │  │   │  │   • Users     │  │
+│  │    Agent      │◄─┼───┼─►│    6 tools    │  │   │  │   • Projects  │  │
+│  │               │  │   │  └───────────────┘  │   │  │   • Messages  │  │
+│  └───────────────┘  │   │                     │   │  │   • Steps     │  │
+│                     │   │  ┌───────────────┐  │   │  └───────────────┘  │
+│  ┌───────────────┐  │   │  │    LADWP      │  │   │                     │
+│  │    GPT-4o     │  │◄──┼─►│    9 tools    │  │   │  ┌───────────────┐  │
+│  │    Model      │  │   │  └───────────────┘  │   │  │  AI Search    │  │
+│  └───────────────┘  │   │                     │   │  │  • ladbs-docs │  │
+│                     │   │  ┌───────────────┐  │   │  │  • ladwp-docs │  │
+│  ┌───────────────┐  │   │  │    LASAN      │  │   │  │  • lasan-docs │  │
+│  │   Tracing     │  │◄──┼─►│    4 tools    │  │   │  └───────────────┘  │
 │  └───────────────┘  │   │  └───────────────┘  │   │                     │
+│                     │   │                     │   │                     │
+│                     │   │  ┌───────────────┐  │   │                     │
+│                     │◄──┼─►│  Reporting    │  │   │                     │
+│                     │   │  │    2 tools    │  │   │                     │
+│                     │   │  └───────────────┘  │   │                     │
 └─────────────────────┘   └─────────────────────┘   └─────────────────────┘
                                       │
                                       ▼
@@ -679,6 +740,284 @@ Because tools follow the simple execute-or-delegate pattern:
 - No manifest coordination needed
 - Agent discovers tool capabilities by calling them
 - Easy to add new agencies
+
+---
+
+## Plan Schema
+
+The plan is a JSON document that the agent generates and updates. It must be:
+- Simple enough for an LLM to generate reliably
+- Structured enough to render as mermaid
+- Flexible for different project types
+
+### Plan Structure
+
+```json
+{
+  "id": "plan-uuid",
+  "title": "Home Renovation - Solar & Heat Pumps",
+  "status": "active",
+  "steps": [
+    {
+      "id": "P1",
+      "title": "Electrical Permit",
+      "agency": "LADBS",
+      "toolName": "permits.submit",
+      "status": "completed",
+      "dependsOn": [],
+      "startedAt": "2026-01-15T10:00:00Z",
+      "completedAt": "2026-01-28T14:30:00Z",
+      "result": {
+        "permitNumber": "2026-001234"
+      }
+    },
+    {
+      "id": "P2",
+      "title": "Mechanical Permit",
+      "agency": "LADBS",
+      "status": "completed",
+      "dependsOn": [],
+      "result": {
+        "permitNumber": "2026-001235",
+        "completedAt": "2026-01-28"
+      }
+    },
+    {
+      "id": "U1",
+      "title": "TOU Rate Enrollment",
+      "agency": "LADWP",
+      "status": "completed",
+      "dependsOn": ["P1"],
+      "result": {
+        "effectiveDate": "2026-02-01"
+      }
+    },
+    {
+      "id": "I1",
+      "title": "Schedule Rough Inspection",
+      "agency": "LADBS",
+      "status": "awaiting_user",
+      "dependsOn": ["P1", "P2"],
+      "userTask": {
+        "type": "phone_call",
+        "target": "311",
+        "assignedAt": "2026-02-01"
+      }
+    },
+    {
+      "id": "I2",
+      "title": "Final Inspection",
+      "agency": "LADBS",
+      "status": "not_started",
+      "dependsOn": ["I1"]
+    }
+  ]
+}
+```
+
+### Step Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Short identifier (P1, U1, I1, etc.) |
+| `title` | string | Yes | Human-readable step name |
+| `agency` | enum | Yes | `LADBS`, `LADWP`, `LASAN` |
+| `toolName` | string | Yes | Normalized step type = MCP tool name (e.g., `permits.submit`, `tou.enroll`) |
+| `status` | enum | Yes | `not_started`, `in_progress`, `awaiting_user`, `completed`, `blocked` |
+| `dependsOn` | string[] | Yes | Array of step IDs that must complete first (empty = no deps) |
+| `startedAt` | datetime | No | When step began (set when status → `in_progress`) |
+| `completedAt` | datetime | No | When step finished (set when status → `completed`) |
+| `result` | object | No | Outcome data when completed (permit numbers, dates, etc.) |
+| `userTask` | object | No | Present when `status: awaiting_user` - details for user action |
+| `blockedReason` | string | No | Present when `status: blocked` - why it's blocked |
+
+**Note:** `toolName` is the normalized step type used for reporting. It maps directly to MCP tool names, enabling aggregation of durations across projects.
+
+### Step Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `not_started` | Dependencies not met or not yet begun |
+| `in_progress` | Agent/system is actively working on it |
+| `awaiting_user` | User must take action (call 311, email docs, etc.) |
+| `completed` | Done, result captured |
+| `blocked` | Cannot proceed (failed inspection, rejected, etc.) |
+
+### Mermaid Rendering
+
+The plan renders as a flowchart. Client converts JSON → mermaid:
+
+```mermaid
+flowchart TD
+    P1[✅ Electrical Permit<br/>LADBS] --> U1[✅ TOU Enrollment<br/>LADWP]
+    P1 --> I1[⏳ Rough Inspection<br/>LADBS<br/>Awaiting your call]
+    P2[✅ Mechanical Permit<br/>LADBS] --> I1
+    I1 --> I2[⬜ Final Inspection<br/>LADBS]
+    
+    style P1 fill:#4CAF50,color:#fff
+    style P2 fill:#4CAF50,color:#fff
+    style U1 fill:#4CAF50,color:#fff
+    style I1 fill:#FF9800,color:#fff
+    style I2 fill:#E0E0E0,color:#666
+```
+
+### Rendering Rules
+
+| Status | Icon | Color |
+|--------|------|-------|
+| `completed` | ✅ | Green (#4CAF50) |
+| `in_progress` | 🔄 | Blue (#2196F3) |
+| `awaiting_user` | ⏳ | Orange (#FF9800) |
+| `not_started` | ⬜ | Gray (#E0E0E0) |
+| `blocked` | ❌ | Red (#F44336) |
+
+---
+
+## CosmosDB Schema
+
+Simple document model for MVP. Single database, multiple containers.
+
+### Container: `users`
+
+Partition key: `/id`
+
+```json
+{
+  "id": "user-uuid",
+  "email": "john@example.com",
+  "name": "John Smith",
+  "createdAt": "2026-01-15T10:00:00Z",
+  "lastLoginAt": "2026-02-01T14:30:00Z"
+}
+```
+
+### Container: `projects`
+
+Partition key: `/userId`
+
+Each project contains its plan inline (no separate plan collection).
+
+```json
+{
+  "id": "project-uuid",
+  "userId": "user-uuid",
+  "title": "Home Renovation - 123 Main St",
+  "status": "active",
+  "createdAt": "2026-01-15T10:00:00Z",
+  "updatedAt": "2026-02-01T14:30:00Z",
+  
+  "context": {
+    "address": "123 Main St, Los Angeles, CA 90012",
+    "projectType": "home_renovation",
+    "description": "Solar panels, battery, heat pumps, metal roof"
+  },
+  
+  "plan": {
+    "id": "plan-uuid",
+    "title": "Home Renovation - Solar & Heat Pumps",
+    "status": "active",
+    "steps": [ /* ... step objects as defined above ... */ ]
+  },
+  
+  "references": {
+    "permits": {
+      "electrical": "2026-001234",
+      "mechanical": "2026-001235"
+    },
+    "accounts": {
+      "ladwp": "1234567890"
+    }
+  }
+}
+```
+
+### Container: `messages`
+
+Partition key: `/projectId`
+
+One conversation per project, stored as individual messages.
+
+```json
+{
+  "id": "msg-uuid",
+  "projectId": "project-uuid",
+  "role": "user",
+  "content": "Yes! Scheduled for Feb 15, confirmation INS-789456",
+  "timestamp": "2026-02-01T14:32:00Z"
+}
+```
+
+```json
+{
+  "id": "msg-uuid-2",
+  "projectId": "project-uuid",
+  "role": "assistant",
+  "content": "Perfect! ✅ I've updated your plan...",
+  "timestamp": "2026-02-01T14:32:05Z",
+  "toolCalls": [
+    {
+      "tool": "inspections.scheduled",
+      "input": { "permitNumber": "2026-001234" },
+      "output": { /* ... */ }
+    }
+  ]
+}
+```
+
+### Container: `step_completions`
+
+Partition key: `/toolName`
+
+Anonymized step completion records for reporting. No PII, just timing data.
+
+```json
+{
+  "id": "completion-uuid",
+  "toolName": "permits.submit",
+  "city": "Los Angeles",
+  "startedAt": "2026-01-15T10:00:00Z",
+  "completedAt": "2026-01-28T14:30:00Z",
+  "durationDays": 13.2
+}
+```
+
+**Query pattern:** Get average duration for a tool in a city (last 6 months):
+```sql
+SELECT AVG(c.durationDays) as avgDays, COUNT(1) as sampleCount
+FROM c
+WHERE c.toolName = @toolName
+  AND c.city = @city
+  AND c.completedAt > @sixMonthsAgo
+```
+
+---
+
+### Schema Summary
+
+| Container | Partition Key | Purpose |
+|-----------|---------------|---------|
+| `users` | `/id` | User profiles |
+| `projects` | `/userId` | Projects with inline plans |
+| `messages` | `/projectId` | Conversation history |
+| `step_completions` | `/toolName` | Anonymized step timing for reporting |
+
+### Design Decisions
+
+1. **Plan inside Project**: Simpler than separate collection. One read gets everything.
+
+2. **Messages separate from Project**: 
+   - Conversation can grow large
+   - Efficient pagination
+   - Don't reload full history on every project read
+
+3. **One conversation per project**: 
+   - Simplest model for MVP
+   - All context in one thread
+   - User returns, continues same conversation
+
+4. **References object**: 
+   - Quick lookup of key IDs (permits, accounts)
+   - Agent can reference without parsing full plan
 
 ---
 

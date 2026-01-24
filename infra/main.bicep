@@ -375,6 +375,38 @@ module mcpLasanRbac './core/security/mcp-server-rbac.bicep' = {
   }
 }
 
+// Reporting MCP Server
+module mcpReporting './app/mcp-reporting.bicep' = {
+  name: 'mcp-reporting-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    containerAppName: 'aldelar-csp-mcp-reporting'
+    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
+    containerRegistryName: containerRegistry.outputs.name
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
+    identityId: managedIdentity.outputs.identityId
+    applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    cosmosEndpoint: cosmosDb.outputs.endpoint
+    enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
+    appClientId: ''
+  }
+}
+
+// Grant Foundry Project identity access to Reporting MCP server
+module mcpReportingRbac './core/security/mcp-server-rbac.bicep' = {
+  name: 'mcp-reporting-rbac-deployment'
+  scope: rg
+  params: {
+    containerAppId: mcpReporting.outputs.id
+    principalIds: [
+      foundryProject.outputs.principalId
+    ]
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // =================================
 // Outputs
 // =================================
@@ -489,3 +521,12 @@ output mcpLasanUri string = mcpLasan.outputs.uri
 
 @description('LASAN MCP Server Scope URI for Microsoft Entra authentication')
 output mcpLasanScopeUri string = 'https://${mcpLasan.outputs.fqdn}'
+
+@description('Reporting MCP Server FQDN')
+output mcpReportingFqdn string = mcpReporting.outputs.fqdn
+
+@description('Reporting MCP Server URI')
+output mcpReportingUri string = mcpReporting.outputs.uri
+
+@description('Reporting MCP Server Scope URI for Microsoft Entra authentication')
+output mcpReportingScopeUri string = 'https://${mcpReporting.outputs.fqdn}'

@@ -1,11 +1,29 @@
 """Business logic and external service integration for LADBS."""
 
-from typing import Dict, Any, Optional
-from datetime import datetime
 import random
 import string
-from .models import PermitApplication, PermitStatus, InspectionRequest, ViolationReport
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 from .config import settings
+from .models import (
+    Applicant,
+    DocumentChunk,
+    Inspection,
+    InspectionListResult,
+    InspectionStatus,
+    InspectionType,
+    KnowledgeResult,
+    OnCompletePrompt,
+    Permit,
+    PermitFees,
+    PermitSearchResult,
+    PermitStatus,
+    PermitSubmitResult,
+    PermitType,
+    PreparedMaterials,
+    UserActionResponse,
+)
 
 
 class LADBSService:
@@ -18,94 +36,211 @@ class LADBSService:
 
     def _generate_id(self, prefix: str = "ID") -> str:
         """Generate a random ID."""
-        random_suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        return f"{prefix}-{random_suffix}"
+        random_suffix = "".join(random.choices(string.digits, k=6))
+        return f"{prefix}-2026-{random_suffix}"
 
-    async def submit_permit(self, application: PermitApplication) -> Dict[str, Any]:
+    async def query_knowledge_base(self, query: str, top: int = 5) -> KnowledgeResult:
         """
-        Submit a permit application to LADBS.
+        Query the LADBS knowledge base (AI Search).
 
-        This is a mock implementation. Replace with actual LADBS API integration.
+        This is a mock implementation. Replace with actual Azure AI Search integration.
+        """
+        # TODO: Replace with actual Azure AI Search call
+        # Example:
+        # search_client = SearchClient(endpoint, index_name, credential)
+        # results = search_client.search(query, top=top)
+
+        # Mock response with realistic LADBS content
+        mock_chunks = [
+            DocumentChunk(
+                content="For electrical permits involving solar PV systems, you need: 1) Site plan showing panel layout, 2) Single-line electrical diagram, 3) Equipment specifications (inverter, panels), 4) Structural calculations for roof mounting, 5) C-10 contractor license documentation.",
+                source="ladbs-electrical-permits.pdf",
+                relevance_score=0.94,
+            ),
+            DocumentChunk(
+                content="Electrical permit fees for solar installations: Plan check fee is typically $450 for residential systems under 10kW. Permit fee is based on valuation, approximately $800 for a standard residential solar installation. Additional fees may apply for battery storage systems.",
+                source="ladbs-fee-schedule-2026.pdf",
+                relevance_score=0.87,
+            ),
+            DocumentChunk(
+                content="Inspection requirements for solar PV: 1) Rough electrical inspection after conduit and wiring installation, before covering. 2) Final electrical inspection after all equipment is installed and operational. Both inspections must pass before interconnection.",
+                source="ladbs-inspection-guide.pdf",
+                relevance_score=0.82,
+            ),
+        ]
+
+        return KnowledgeResult(
+            query=query,
+            results=mock_chunks[:top],
+            total_results=len(mock_chunks),
+        )
+
+    async def search_permits(
+        self,
+        address: Optional[str] = None,
+        permit_number: Optional[str] = None,
+    ) -> PermitSearchResult:
+        """
+        Search for permits by address or permit number.
+
+        This is a mock implementation.
         """
         # TODO: Replace with actual LADBS API call
-        # Example:
-        # async with httpx.AsyncClient() as client:
-        #     response = await client.post(
-        #         f"{self.api_endpoint}/permits",
-        #         json=application.model_dump(),
-        #         headers={"Authorization": f"Bearer {self.api_key}"}
-        #     )
-        #     return response.json()
+
+        if permit_number:
+            # Return specific permit
+            permit = Permit(
+                permit_number=permit_number,
+                permit_type=PermitType.ELECTRICAL,
+                status=PermitStatus.APPROVED,
+                address=address or "123 Main St, Los Angeles, CA 90012",
+                description="Solar PV installation with battery storage",
+                applicant_name="John Smith",
+                submitted_at=datetime(2026, 1, 15, 10, 0, 0),
+                approved_at=datetime(2026, 1, 28, 14, 30, 0),
+                expires_at=datetime(2027, 1, 28),
+                fees=PermitFees(plan_check=450, permit_fee=800, other_fees=0, total=1250),
+                next_steps="Schedule rough electrical inspection before starting work",
+            )
+            return PermitSearchResult(permits=[permit], total_count=1)
+
+        if address:
+            # Return permits for address
+            permit = Permit(
+                permit_number=self._generate_id("PERMIT"),
+                permit_type=PermitType.ELECTRICAL,
+                status=PermitStatus.SUBMITTED,
+                address=address,
+                description="Electrical upgrade",
+                applicant_name="Property Owner",
+                submitted_at=datetime.now() - timedelta(days=7),
+                fees=PermitFees(plan_check=200, permit_fee=350, other_fees=0, total=550),
+                next_steps="Awaiting plan review",
+            )
+            return PermitSearchResult(permits=[permit], total_count=1)
+
+        return PermitSearchResult(permits=[], total_count=0)
+
+    async def submit_permit(
+        self,
+        permit_type: PermitType,
+        address: str,
+        applicant: Applicant,
+        work_description: str,
+        estimated_cost: float,
+        documents: List[str],
+    ) -> PermitSubmitResult:
+        """
+        Submit a new permit application.
+
+        This is a mock implementation.
+        """
+        # TODO: Replace with actual LADBS API call
 
         permit_number = self._generate_id("PERMIT")
 
-        return {
-            "success": True,
-            "permit_number": permit_number,
-            "application_id": self._generate_id("APP"),
-            "status": "pending",
-            "submitted_at": application.submitted_at.isoformat() if application.submitted_at else None,
-            "estimated_review_time": "5-10 business days",
-            "message": f"Application submitted successfully. Permit number: {permit_number}",
-        }
+        # Calculate fees based on estimated cost
+        plan_check = round(estimated_cost * 0.018, 2)  # ~1.8% of project cost
+        permit_fee = round(estimated_cost * 0.032, 2)  # ~3.2% of project cost
+        total = round(plan_check + permit_fee, 2)
 
-    async def get_permit_status(self, permit_number: str) -> Optional[PermitStatus]:
-        """
-        Get permit status from LADBS.
-
-        This is a mock implementation. Replace with actual LADBS API integration.
-        """
-        # TODO: Replace with actual LADBS API call
-
-        # Mock response
-        return PermitStatus(
+        return PermitSubmitResult(
+            success=True,
             permit_number=permit_number,
-            status="under_review",
-            submitted_date=datetime.now(),
-            updated_date=datetime.now(),
-            assigned_inspector="J. Smith",
-            notes="Application is being reviewed by the planning department.",
+            status=PermitStatus.SUBMITTED,
+            submitted_at=datetime.now(),
+            fees=PermitFees(plan_check=plan_check, permit_fee=permit_fee, other_fees=0, total=total),
+            estimated_review_time="4-6 weeks",
+            next_steps="You'll receive email updates on review progress. Plan check fees are due within 30 days.",
         )
 
-    async def schedule_inspection(self, request: InspectionRequest) -> Dict[str, Any]:
+    async def get_permit_status(self, permit_number: str) -> Permit:
         """
-        Schedule an inspection with LADBS.
+        Get the current status of a permit.
 
-        This is a mock implementation. Replace with actual LADBS API integration.
-        """
-        # TODO: Replace with actual LADBS API call
-
-        inspection_id = self._generate_id("INSP")
-
-        return {
-            "success": True,
-            "inspection_id": inspection_id,
-            "permit_number": request.permit_number,
-            "inspection_type": request.inspection_type,
-            "scheduled_date": request.requested_date.isoformat(),
-            "assigned_inspector": "Inspector A. Johnson",
-            "time_window": "8:00 AM - 12:00 PM",
-            "message": f"Inspection scheduled successfully. Inspection ID: {inspection_id}",
-        }
-
-    async def report_violation(self, report: ViolationReport) -> Dict[str, Any]:
-        """
-        Submit a violation report to LADBS.
-
-        This is a mock implementation. Replace with actual LADBS API integration.
+        This is a mock implementation.
         """
         # TODO: Replace with actual LADBS API call
 
-        report_id = self._generate_id("VIO")
+        # Mock response - would query database in real implementation
+        return Permit(
+            permit_number=permit_number,
+            permit_type=PermitType.ELECTRICAL,
+            status=PermitStatus.APPROVED,
+            address="123 Main St, Los Angeles, CA 90012",
+            description="Solar PV installation with battery storage",
+            applicant_name="John Smith",
+            submitted_at=datetime(2026, 1, 15, 10, 0, 0),
+            approved_at=datetime(2026, 1, 28, 14, 30, 0),
+            expires_at=datetime(2027, 1, 28),
+            fees=PermitFees(plan_check=450, permit_fee=800, other_fees=0, total=1250),
+            next_steps="Schedule rough electrical inspection before starting work",
+        )
 
-        return {
-            "success": True,
-            "report_id": report_id,
-            "property_address": report.property_address,
-            "violation_type": report.violation_type,
-            "status": "submitted",
-            "reported_at": report.reported_at.isoformat() if report.reported_at else None,
-            "case_number": self._generate_id("CASE"),
-            "estimated_response_time": "3-5 business days",
-            "message": f"Violation report submitted successfully. Report ID: {report_id}",
-        }
+    async def get_scheduled_inspections(
+        self,
+        permit_number: Optional[str] = None,
+        address: Optional[str] = None,
+    ) -> InspectionListResult:
+        """
+        Get scheduled inspections for a permit or address.
+
+        This is a mock implementation.
+        """
+        # TODO: Replace with actual LADBS API call
+
+        inspections = []
+        if permit_number or address:
+            inspections = [
+                Inspection(
+                    inspection_id=self._generate_id("INS"),
+                    permit_number=permit_number or "PERMIT-2026-001234",
+                    inspection_type=InspectionType.ROUGH_ELECTRICAL,
+                    status=InspectionStatus.SCHEDULED,
+                    scheduled_date=datetime.now() + timedelta(days=3),
+                    scheduled_time_window="8am-12pm",
+                ),
+            ]
+
+        return InspectionListResult(inspections=inspections, total_count=len(inspections))
+
+    async def prepare_inspection_scheduling(
+        self,
+        permit_number: str,
+        inspection_type: InspectionType,
+        address: str,
+        contact_name: str,
+        contact_phone: str,
+    ) -> UserActionResponse:
+        """
+        Prepare materials for inspection scheduling (user must call 311).
+
+        This returns prepared materials since inspection scheduling requires a phone call.
+        """
+        inspection_name = inspection_type.value.replace("_", " ")
+
+        return UserActionResponse(
+            requires_user_action=True,
+            action_type="phone_call",
+            target="311",
+            reason="LADBS inspection scheduling is only available via phone or the LADBS website",
+            prepared_materials=PreparedMaterials(
+                phone_script=f"Call 311 and say: 'I need to schedule a {inspection_name} inspection for permit number {permit_number} at {address}. My name is {contact_name} and my phone number is {contact_phone}.'",
+                checklist=[
+                    f"Have permit number ready: {permit_number}",
+                    "Confirm work is ready for inspection (wiring complete, accessible)",
+                    "Request morning slot (8am-12pm) if preferred",
+                    "Note: 24-48 hours advance notice typically required",
+                ],
+                contact_info={
+                    "phone": "311",
+                    "hours": "24/7",
+                    "alternative": "https://www.ladbs.org/inspections",
+                },
+                documents_needed=[],
+            ),
+            on_complete=OnCompletePrompt(
+                prompt="Once scheduled, please tell me the inspection date and confirmation number",
+                expected_info=["scheduled_date", "confirmation_number", "time_window"],
+            ),
+        )

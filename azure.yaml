@@ -92,6 +92,15 @@ services:
       context: .
       registry: aldelarcspcr.azurecr.io
   
+  mcp-reporting:
+    project: ./src/mcp-servers/reporting
+    language: py
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      registry: aldelarcspcr.azurecr.io
+  
   # Note: ladbs-agent, ladwp-agent, and lasan-agent are deployed via hooks, not as hosted services
   # The postdeploy hook runs the Python deployment scripts
 

@@ -2,18 +2,23 @@
 
 import random
 import string
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, Optional
+from datetime import datetime, timedelta
+from typing import List
 
 from .config import settings
 from .models import (
-    BinReplacementRequest,
-    BulkyPickupRequest,
-    BulkyPickupStatus,
-    CollectionSchedule,
-    DumpingReportStatus,
-    IllegalDumpingReport,
-    MissedCollectionReport,
+    DocumentChunk,
+    EligibilityResult,
+    EligibleItem,
+    IneligibleItem,
+    KnowledgeResult,
+    OnCompletePrompt,
+    PickupScheduledResult,
+    PickupStatus,
+    PickupType,
+    PreparedMaterials,
+    ScheduledPickup,
+    UserActionResponse,
 )
 
 
@@ -27,265 +32,181 @@ class LASANService:
 
     def _generate_id(self, prefix: str = "ID") -> str:
         """Generate a random ID."""
-        random_suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=5))
-        return f"{prefix}-{random_suffix}"
+        random_suffix = "".join(random.choices(string.digits, k=6))
+        return f"{prefix}-2026-{random_suffix}"
 
-    async def get_collection_schedule(self, address: str) -> CollectionSchedule:
+    async def query_knowledge_base(self, query: str, top: int = 5) -> KnowledgeResult:
         """
-        Get collection schedule for an address.
+        Query the LASAN knowledge base (AI Search).
 
-        This is a mock implementation. Replace with actual LASAN API integration.
+        This is a mock implementation.
+        """
+        # TODO: Replace with actual Azure AI Search call
+
+        mock_chunks = [
+            DocumentChunk(
+                content="LASAN bulky item pickup service: LA residents get 10 free bulky item collections per year, up to 10 items each. Items accepted include furniture, appliances (including refrigerators with Freon), mattresses, and electronics. Place items curbside by 6am on collection day.",
+                source="lasan-bulky-item-guide.pdf",
+                relevance_score=0.94,
+            ),
+            DocumentChunk(
+                content="Construction debris is NOT accepted for city pickup. This includes concrete, roof tiles, drywall, lumber, and dirt. Options for disposal: 1) Private hauling service (Junkluggers, 1-800-GOT-JUNK), 2) Self-haul to LA County landfill, 3) S.A.F.E. Centers for small quantities (weekends 9am-3pm).",
+                source="lasan-what-we-collect.pdf",
+                relevance_score=0.89,
+            ),
+            DocumentChunk(
+                content="E-waste curbside pickup: Schedule through 311 or MyLA311 app. Accepted items include TVs, computers, monitors, printers, cables, and small electronics. Items must be at curb by 6am. No lithium batteries loose - tape terminals or bring to S.A.F.E. Center.",
+                source="lasan-ewaste-guide.pdf",
+                relevance_score=0.82,
+            ),
+        ]
+
+        return KnowledgeResult(
+            query=query,
+            results=mock_chunks[:top],
+            total_results=len(mock_chunks),
+        )
+
+    async def get_scheduled_pickups(self, address: str) -> PickupScheduledResult:
+        """
+        Get scheduled pickups for an address.
+
+        This is a mock implementation.
         """
         # TODO: Replace with actual LASAN API call
 
-        # Mock response with rotating days based on address
-        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        trash_day_idx = hash(address) % 5
-        recycling_day_idx = (trash_day_idx + 3) % 5
-        green_waste_day_idx = (trash_day_idx + 1) % 5
-
-        next_pickup = date.today() + timedelta(days=(trash_day_idx - date.today().weekday()) % 7 + 1)
-
-        return CollectionSchedule(
+        # Return empty for demo - pickups added as user schedules them
+        return PickupScheduledResult(
             address=address,
-            trash_day=days[trash_day_idx],
-            recycling_day=days[recycling_day_idx],
-            green_waste_day=days[green_waste_day_idx],
-            next_pickup=next_pickup,
-            holiday_adjustments=[
-                {"holiday": "Memorial Day", "date": "2026-05-25", "adjustment": "Delayed by 1 day"},
-                {"holiday": "Independence Day", "date": "2026-07-04", "adjustment": "Delayed by 1 day"},
-            ],
+            pickups=[],
+            total_count=0,
         )
 
-    async def schedule_bulky_pickup(self, request: BulkyPickupRequest) -> Dict[str, Any]:
+    async def prepare_pickup_scheduling(
+        self,
+        address: str,
+        pickup_type: PickupType,
+        items: List[str],
+        contact_name: str,
+        contact_phone: str,
+    ) -> UserActionResponse:
         """
-        Schedule a bulky item pickup.
-
-        This is a mock implementation. Replace with actual LASAN API integration.
+        Prepare materials for pickup scheduling (user must call 311).
         """
-        # TODO: Replace with actual LASAN API call
+        pickup_name = pickup_type.value.replace("_", " ")
+        items_list = ", ".join(items)
 
-        request_id = self._generate_id("BULKY")
+        # Determine item-specific notes
+        item_notes = []
+        for item in items:
+            item_lower = item.lower()
+            if "furnace" in item_lower or "ac" in item_lower or "refrigerator" in item_lower:
+                item_notes.append(f"{item} (appliances with Freon - LASAN handles refrigerant)")
+            elif "tv" in item_lower or "computer" in item_lower or "monitor" in item_lower:
+                item_notes.append(f"{item} (e-waste)")
+            else:
+                item_notes.append(item)
 
-        return {
-            "success": True,
-            "request_id": request_id,
-            "address": request.address,
-            "contact_name": request.contact_name,
-            "contact_phone": request.contact_phone,
-            "items": request.items,
-            "scheduled_date": request.preferred_date.isoformat(),
-            "status": "scheduled",
-            "message": (
-                f"Bulky item pickup scheduled for {request.preferred_date.strftime('%Y-%m-%d')}. "
-                f"Request ID: {request_id}. Please place items at curb by 6 AM on pickup day."
+        return UserActionResponse(
+            requires_user_action=True,
+            action_type="phone_call",
+            target="311",
+            reason=f"LASAN {pickup_name} pickup scheduling requires 311 call or MyLA311 app",
+            prepared_materials=PreparedMaterials(
+                phone_script=f"Call 311 and say: 'I need to schedule a {pickup_name} pickup at {address}. I have {items_list} to dispose of. My name is {contact_name}, phone {contact_phone}.'",
+                checklist=[
+                    f"Items to pick up: {', '.join(item_notes)}",
+                    "Maximum 10 bulky pickups per year, up to 10 items each",
+                    "Place items curbside by 6am on collection day",
+                    "Do not block sidewalk or street",
+                ],
+                contact_info={
+                    "phone": "311",
+                    "hours": "24/7",
+                    "app": "MyLA311 (iOS/Android)",
+                    "website": "https://myla311.lacity.org",
+                },
+                documents_needed=[],
             ),
-        }
-
-    async def check_pickup_status(self, request_id: str) -> Optional[BulkyPickupStatus]:
-        """
-        Check status of a bulky item pickup request.
-
-        This is a mock implementation. Replace with actual LASAN API integration.
-        """
-        # TODO: Replace with actual LASAN API call
-
-        # Mock response
-        statuses = ["scheduled", "confirmed", "completed"]
-        status = random.choice(statuses)
-
-        return BulkyPickupStatus(
-            request_id=request_id,
-            status=status,
-            scheduled_date=date.today() + timedelta(days=random.randint(1, 7)),
-            items=["sofa", "mattress", "refrigerator"],
-            notes="Crew will arrive between 7 AM and 3 PM." if status != "completed" else "Pickup completed.",
+            on_complete=OnCompletePrompt(
+                prompt="Once scheduled, please tell me the pickup date and confirmation number",
+                expected_info=["scheduled_date", "confirmation_number"],
+            ),
         )
 
-    async def report_illegal_dumping(self, report: IllegalDumpingReport) -> Dict[str, Any]:
+    async def check_pickup_eligibility(
+        self,
+        address: str,
+        item_types: List[str],
+    ) -> EligibilityResult:
         """
-        Report illegal dumping.
+        Check what items are eligible for pickup.
 
-        This is a mock implementation. Replace with actual LASAN API integration.
-        """
-        # TODO: Replace with actual LASAN API call
-
-        report_id = self._generate_id("DUMP")
-
-        return {
-            "success": True,
-            "report_id": report_id,
-            "location": report.location_address,
-            "description": report.description,
-            "materials": report.materials,
-            "status": "received",
-            "reported_at": report.reported_at.isoformat(),
-            "message": (
-                f"Illegal dumping report received. Report ID: {report_id}. "
-                "Investigation will begin within 24-48 hours."
-            ),
-        }
-
-    async def check_dumping_report_status(self, report_id: str) -> Optional[DumpingReportStatus]:
-        """
-        Check status of an illegal dumping report.
-
-        This is a mock implementation. Replace with actual LASAN API integration.
+        This is a mock implementation.
         """
         # TODO: Replace with actual LASAN API call
 
-        # Mock response
-        statuses = ["received", "investigating", "cleanup_scheduled", "resolved"]
-        status = random.choice(statuses)
+        eligible_items = []
+        ineligible_items = []
 
-        status_notes = {
-            "received": "Report received and pending review.",
-            "investigating": "Investigation team has been dispatched to assess the situation.",
-            "cleanup_scheduled": "Cleanup has been scheduled for within 3 business days.",
-            "resolved": "Cleanup completed. Area has been restored.",
-        }
+        for item in item_types:
+            item_lower = item.lower()
 
-        return DumpingReportStatus(
-            report_id=report_id,
-            status=status,
-            location="Location under investigation",
-            last_updated=datetime.now(),
-            notes=status_notes[status],
+            # Check for construction debris (not accepted)
+            if any(debris in item_lower for debris in ["concrete", "tile", "drywall", "lumber", "dirt", "brick"]):
+                ineligible_items.append(
+                    IneligibleItem(
+                        item_type=item,
+                        reason="Construction debris is not accepted for city pickup",
+                        alternatives=[
+                            "Private hauling service (e.g., Junkluggers, 1-800-GOT-JUNK)",
+                            "Self-haul to landfill",
+                            "S.A.F.E. Centers (limited quantities, weekends 9am-3pm)",
+                        ],
+                    )
+                )
+            # Check for e-waste
+            elif any(ewaste in item_lower for ewaste in ["tv", "computer", "monitor", "cable", "wire", "panel", "electronic"]):
+                eligible_items.append(
+                    EligibleItem(
+                        item_type=item,
+                        pickup_type=PickupType.EWASTE,
+                        notes="E-waste curbside pickup available",
+                    )
+                )
+            # Check for appliances with refrigerant
+            elif any(appliance in item_lower for appliance in ["furnace", "ac", "air condition", "refrigerator", "freezer"]):
+                eligible_items.append(
+                    EligibleItem(
+                        item_type=item,
+                        pickup_type=PickupType.BULKY_ITEM,
+                        notes="Freon-containing appliances accepted; LASAN handles refrigerant disposal",
+                    )
+                )
+            # Check for hazardous materials
+            elif any(hazard in item_lower for hazard in ["paint", "battery", "chemical", "oil", "pesticide"]):
+                eligible_items.append(
+                    EligibleItem(
+                        item_type=item,
+                        pickup_type=PickupType.HAZARDOUS,
+                        notes="Hazardous materials - take to S.A.F.E. Center or schedule HHW pickup",
+                    )
+                )
+            # Default to bulky item
+            else:
+                eligible_items.append(
+                    EligibleItem(
+                        item_type=item,
+                        pickup_type=PickupType.BULKY_ITEM,
+                        notes="Standard bulky item pickup",
+                    )
+                )
+
+        return EligibilityResult(
+            address=address,
+            eligible_items=eligible_items,
+            ineligible_items=ineligible_items,
+            annual_limit=10,
+            collections_used=2,  # Mock value
+            collections_remaining=8,
         )
-
-    async def request_bin_replacement(self, request: BinReplacementRequest) -> Dict[str, Any]:
-        """
-        Request bin replacement.
-
-        This is a mock implementation. Replace with actual LASAN API integration.
-        """
-        # TODO: Replace with actual LASAN API call
-
-        request_id = self._generate_id("BIN")
-
-        bin_names = {
-            "black": "Black Trash Bin",
-            "blue": "Blue Recycling Bin",
-            "green": "Green Waste Bin",
-        }
-
-        return {
-            "success": True,
-            "request_id": request_id,
-            "address": request.address,
-            "bin_type": bin_names.get(request.bin_type.value, request.bin_type.value),
-            "reason": request.reason,
-            "status": "scheduled",
-            "estimated_delivery": (date.today() + timedelta(days=random.randint(3, 7))).isoformat(),
-            "message": (
-                f"Bin replacement request received. Request ID: {request_id}. "
-                f"Your new {bin_names.get(request.bin_type.value)} will be delivered within 3-7 business days."
-            ),
-        }
-
-    async def get_recycling_info(self, material: str = "") -> Dict[str, Any]:
-        """
-        Get recycling information.
-
-        This is a mock implementation. Replace with actual LASAN API integration.
-        """
-        # TODO: Replace with actual LASAN API call
-
-        recycling_guidelines = {
-            "accepted_materials": [
-                "Paper (newspapers, magazines, office paper, cardboard)",
-                "Plastic bottles and containers (#1-#7)",
-                "Glass bottles and jars",
-                "Aluminum and steel cans",
-                "Cartons (milk, juice, soup containers)",
-            ],
-            "not_accepted": [
-                "Plastic bags (take to store drop-off)",
-                "Styrofoam",
-                "Food waste (use green waste bin)",
-                "Hazardous materials",
-                "Electronic waste (schedule e-waste pickup)",
-            ],
-            "preparation_tips": [
-                "Rinse containers to remove food residue",
-                "Remove caps and lids",
-                "Flatten cardboard boxes",
-                "Keep materials loose (no bags)",
-            ],
-        }
-
-        if material:
-            material_lower = material.lower()
-            # Provide specific info for requested material
-            material_specific = {
-                "plastic": {
-                    "accepted": True,
-                    "details": "Plastic bottles and containers (#1-#7) are accepted. Rinse and remove caps.",
-                    "special_notes": "Plastic bags should be taken to store drop-off locations.",
-                },
-                "glass": {
-                    "accepted": True,
-                    "details": "Glass bottles and jars of all colors are accepted. Rinse clean.",
-                    "special_notes": "Remove metal lids. Broken glass should be wrapped and placed in trash.",
-                },
-                "paper": {
-                    "accepted": True,
-                    "details": "All paper including newspapers, magazines, and office paper are accepted.",
-                    "special_notes": "Shredded paper should be in a paper bag. No wet or food-soiled paper.",
-                },
-                "cardboard": {
-                    "accepted": True,
-                    "details": "Cardboard and corrugated boxes are accepted. Flatten boxes.",
-                    "special_notes": "Remove all packing materials and tape if possible.",
-                },
-                "electronics": {
-                    "accepted": False,
-                    "details": "Electronics require special e-waste pickup.",
-                    "special_notes": "Schedule a bulky item pickup for electronics or take to e-waste facility.",
-                },
-            }
-
-            specific_info = material_specific.get(material_lower, {
-                "accepted": "Unknown",
-                "details": f"For specific information about {material}, please contact LASAN at 1-800-773-2489.",
-            })
-
-            return {
-                "material_query": material,
-                **specific_info,
-                "general_guidelines": recycling_guidelines,
-            }
-
-        return recycling_guidelines
-
-    async def report_missed_collection(self, report: MissedCollectionReport) -> Dict[str, Any]:
-        """
-        Report a missed collection.
-
-        This is a mock implementation. Replace with actual LASAN API integration.
-        """
-        # TODO: Replace with actual LASAN API call
-
-        report_id = self._generate_id("MISS")
-
-        collection_names = {
-            "trash": "Trash",
-            "recycling": "Recycling",
-            "green_waste": "Green Waste",
-        }
-
-        return {
-            "success": True,
-            "report_id": report_id,
-            "address": report.address,
-            "collection_type": collection_names.get(report.collection_type.value, report.collection_type.value),
-            "scheduled_date": report.scheduled_date.isoformat(),
-            "status": "received",
-            "follow_up_date": (date.today() + timedelta(days=1)).isoformat(),
-            "message": (
-                f"Missed collection report received. Report ID: {report_id}. "
-                "We will attempt to service your location within 1 business day. "
-                "Please ensure containers are accessible at the curb."
-            ),
-        }

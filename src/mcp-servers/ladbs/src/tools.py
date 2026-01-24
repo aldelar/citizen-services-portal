@@ -1,8 +1,21 @@
 """MCP tools for LADBS services."""
 
-from typing import Dict, Any, Optional
-from datetime import datetime
-from .models import PermitApplication, PermitStatus, InspectionRequest, ViolationReport
+from typing import Any, Dict, List, Optional, Union
+
+from .models import (
+    Applicant,
+    Inspection,
+    InspectionListResult,
+    InspectionStatus,
+    InspectionType,
+    KnowledgeResult,
+    Permit,
+    PermitSearchResult,
+    PermitStatus,
+    PermitSubmitResult,
+    PermitType,
+    UserActionResponse,
+)
 from .services import LADBSService
 
 
@@ -13,110 +26,150 @@ class LADBSTools:
         """Initialize LADBS tools with service layer."""
         self.service = LADBSService()
 
-    async def submit_permit_application(
+    async def queryKB(
         self,
-        applicant_name: str,
-        property_address: str,
-        work_description: str,
-        estimated_cost: float,
+        query: str,
+        top: int = 5,
     ) -> Dict[str, Any]:
         """
-        Submit a building permit application.
+        Search LADBS knowledge base for permit requirements, fees, processes.
 
         Args:
-            applicant_name: Name of the applicant
-            property_address: Property address
-            work_description: Description of proposed work
-            estimated_cost: Estimated cost of work
+            query: Natural language query
+            top: Number of results to return (default 5)
 
         Returns:
-            Application confirmation with permit number
+            KnowledgeResult with matching document chunks
         """
-        application = PermitApplication(
-            applicant_name=applicant_name,
-            property_address=property_address,
+        result = await self.service.query_knowledge_base(query, top)
+        return result.model_dump()
+
+    async def permits_search(
+        self,
+        address: Optional[str] = None,
+        permit_number: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Find existing permits by address or permit number.
+
+        Args:
+            address: Property address to search
+            permit_number: Specific permit number to look up
+
+        Returns:
+            PermitSearchResult with matching permits
+        """
+        result = await self.service.search_permits(address=address, permit_number=permit_number)
+        return result.model_dump()
+
+    async def permits_submit(
+        self,
+        permit_type: str,
+        address: str,
+        applicant_name: str,
+        applicant_email: str,
+        applicant_phone: str,
+        work_description: str,
+        estimated_cost: float,
+        documents: List[str],
+        contractor_license: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Submit a new permit application.
+
+        Args:
+            permit_type: Type of permit (electrical, mechanical, building, plumbing)
+            address: Property address
+            applicant_name: Applicant's name
+            applicant_email: Applicant's email
+            applicant_phone: Applicant's phone number
+            work_description: Description of the proposed work
+            estimated_cost: Estimated cost of the work
+            documents: List of document references/URLs
+            contractor_license: Contractor license number (optional)
+
+        Returns:
+            PermitSubmitResult with permit number and next steps
+        """
+        applicant = Applicant(
+            name=applicant_name,
+            email=applicant_email,
+            phone=applicant_phone,
+            contractor_license=contractor_license,
+        )
+        result = await self.service.submit_permit(
+            permit_type=PermitType(permit_type),
+            address=address,
+            applicant=applicant,
             work_description=work_description,
             estimated_cost=estimated_cost,
-            submitted_at=datetime.now(),
+            documents=documents,
         )
+        return result.model_dump()
 
-        result = await self.service.submit_permit(application)
-        return result
-
-    async def check_permit_status(self, permit_number: str) -> Dict[str, Any]:
+    async def permits_getStatus(
+        self,
+        permit_number: str,
+    ) -> Dict[str, Any]:
         """
-        Check the status of a building permit.
+        Check the current status of a permit.
 
         Args:
             permit_number: Permit number to check
 
         Returns:
-            Current permit status information
+            Permit with current status and next steps
         """
-        status = await self.service.get_permit_status(permit_number)
-        return status.model_dump() if status else {"error": "Permit not found"}
+        result = await self.service.get_permit_status(permit_number)
+        return result.model_dump()
 
-    async def schedule_inspection(
+    async def inspections_scheduled(
+        self,
+        permit_number: Optional[str] = None,
+        address: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        View scheduled inspections for a permit or address.
+
+        Args:
+            permit_number: Permit number to look up inspections for
+            address: Address to look up inspections for
+
+        Returns:
+            InspectionListResult with scheduled inspections
+        """
+        result = await self.service.get_scheduled_inspections(
+            permit_number=permit_number,
+            address=address,
+        )
+        return result.model_dump()
+
+    async def inspections_schedule(
         self,
         permit_number: str,
         inspection_type: str,
-        requested_date: str,
+        address: str,
         contact_name: str,
         contact_phone: str,
     ) -> Dict[str, Any]:
         """
-        Schedule a building inspection.
+        Prepare materials for scheduling an inspection (requires user action - phone call to 311).
 
         Args:
-            permit_number: Permit number
-            inspection_type: Type of inspection (foundation, framing, final, etc.)
-            requested_date: Requested inspection date (YYYY-MM-DD)
-            contact_name: Contact person name
+            permit_number: Permit number for the inspection
+            inspection_type: Type of inspection (rough_electrical, final_electrical, etc.)
+            address: Property address
+            contact_name: Contact person's name
             contact_phone: Contact phone number
 
         Returns:
-            Inspection confirmation details
+            UserActionResponse with phone script and checklist
         """
-        request = InspectionRequest(
+        result = await self.service.prepare_inspection_scheduling(
             permit_number=permit_number,
-            inspection_type=inspection_type,
-            requested_date=datetime.fromisoformat(requested_date),
+            inspection_type=InspectionType(inspection_type),
+            address=address,
             contact_name=contact_name,
             contact_phone=contact_phone,
         )
-
-        result = await self.service.schedule_inspection(request)
-        return result
-
-    async def report_violation(
-        self,
-        property_address: str,
-        violation_type: str,
-        description: str,
-        reporter_name: Optional[str] = None,
-        reporter_contact: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Report a code violation.
-
-        Args:
-            property_address: Address of violation
-            violation_type: Type of violation
-            description: Detailed description
-            reporter_name: Reporter name (optional)
-            reporter_contact: Reporter contact (optional)
-
-        Returns:
-            Violation report confirmation
-        """
-        report = ViolationReport(
-            property_address=property_address,
-            violation_type=violation_type,
-            description=description,
-            reporter_name=reporter_name,
-            reporter_contact=reporter_contact,
-            reported_at=datetime.now(),
-        )
-
-        result = await self.service.report_violation(report)
-        return result
+        return result.model_dump()

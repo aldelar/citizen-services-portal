@@ -163,3 +163,10 @@ Good work, let's continue to try to simplify things:
 - do we have a requirement for each MCP tool to have specific tools like: operations_not_supported_online.... how do we figure out what is supported online vs requires user to take action. we can do the search now, and establish these tools, or do we define an MCP contract so to speak, which each agency will need to implement to list all services they can take care of but are not automated yet? thoughts?
 
 Let's work on that first for a new pass. Suggest other simplifications.
+
+
+======= BUILDING KNOWLEDGE BASES Assistance =====
+
+(see Github Copilot Issue to see how knewledge bases were researched)
+
+I want you to process the /assets/agency-knowledge-base-document-inventory.md file, and download all documents listed there (PDFs, and for HTML, download them as well) and place them into the appropriate respective folders (/assets/ladbs, etc.)

@@ -1,7 +1,8 @@
 """LADWP (Los Angeles Department of Water and Power) MCP Server."""
 
 import asyncio
-from typing import List
+import json
+from typing import List, Optional
 
 from fastmcp import FastMCP
 
@@ -14,256 +15,206 @@ mcp = FastMCP("LADWP")
 tools = LADWPTools()
 
 
-@mcp.tool(title="Get Account Balance")
-async def get_account_balance(account_number: str) -> str:
+@mcp.tool(title="Query Knowledge Base")
+async def queryKB(
+    query: str,
+    top: int = 5,
+) -> str:
     """
-    Check the current balance for a LADWP utility account.
+    Search LADWP knowledge base for rate plans, rebates, solar programs.
 
     Args:
-        account_number: The utility account number
+        query: Natural language query
+        top: Number of results to return (default 5)
 
     Returns:
-        Account balance information including electricity and water balances
+        KnowledgeResult with matching document chunks
     """
-    result = await tools.get_account_balance(account_number=account_number)
-    return f"""Account Balance for {result["account_number"]}:
-Account Holder: {result["account_holder_name"]}
-Service Address: {result["service_address"]}
-Electricity Balance: ${result["electricity_balance"]:.2f}
-Water Balance: ${result["water_balance"]:.2f}
-Total Balance Due: ${result["total_balance"]:.2f}
-Due Date: {result["due_date"]}
-Account Status: {result["status"]}"""
+    result = await tools.queryKB(query=query, top=top)
+    return json.dumps(result, indent=2)
 
 
-@mcp.tool(title="Get Bill History")
-async def get_bill_history(account_number: str, months: int = 12) -> str:
-    """
-    Retrieve billing history for a LADWP utility account.
-
-    Args:
-        account_number: The utility account number
-        months: Number of months of history to retrieve (default: 12)
-
-    Returns:
-        List of bills with usage and charges
-    """
-    result = await tools.get_bill_history(account_number=account_number, months=months)
-
-    output = [f"Billing History for Account {result['account_number']} (Last {result['months_requested']} months):"]
-    output.append("-" * 60)
-
-    for bill in result["bills"]:
-        output.append(f"""
-Bill ID: {bill["bill_id"]}
-Period: {bill["billing_period_start"]} to {bill["billing_period_end"]}
-Electricity: {bill["electricity_usage_kwh"]:.2f} kWh - ${bill["electricity_charges"]:.2f}
-Water: {bill["water_usage_gallons"]:.2f} gallons - ${bill["water_charges"]:.2f}
-Total: ${bill["total_amount"]:.2f}
-Due Date: {bill["due_date"]}
-Status: {"Paid" if bill["paid"] else "Unpaid"}
-""")
-
-    return "\n".join(output)
-
-
-@mcp.tool(title="Make Payment")
-async def make_payment(
+@mcp.tool(title="Show Account")
+async def account_show(
     account_number: str,
-    amount: float,
-    payment_method: str,
 ) -> str:
     """
-    Submit a payment for a LADWP utility account.
+    Get current account information including rate plan and pending requests.
 
     Args:
         account_number: The utility account number
-        amount: Payment amount in USD
-        payment_method: Payment method (credit_card, debit_card, bank_account, check)
 
     Returns:
-        Payment confirmation with confirmation number
+        Account information with rate plan, meter type, and pending requests
     """
-    result = await tools.make_payment(
-        account_number=account_number,
-        amount=amount,
-        payment_method=payment_method,
-    )
-    return f"""Payment Processed Successfully!
-Payment ID: {result["payment_id"]}
-Account Number: {result["account_number"]}
-Amount: ${result["amount"]:.2f}
-Payment Method: {result["payment_method"]}
-Confirmation Number: {result["confirmation_number"]}
-Date: {result["payment_date"]}
-Status: {result["status"]}"""
+    result = await tools.account_show(account_number=account_number)
+    return json.dumps(result, indent=2)
 
 
-@mcp.tool(title="Report Outage")
-async def report_outage(
-    address: str,
-    outage_type: str,
-    description: str,
+@mcp.tool(title="List Rate Plans")
+async def plans_list(
+    account_number: str,
 ) -> str:
     """
-    Report a power or water outage to LADWP.
+    List available LADWP rate plans.
 
     Args:
-        address: Address where the outage is occurring
-        outage_type: Type of outage - "power" or "water"
-        description: Detailed description of the outage
+        account_number: The utility account number
 
     Returns:
-        Outage report confirmation with report ID
+        PlansListResult with available plans and recommendation
     """
-    result = await tools.report_outage(
-        address=address,
-        outage_type=outage_type,
-        description=description,
-    )
-    return f"""Outage Report Submitted Successfully!
-Report ID: {result["report_id"]}
-Address: {result["address"]}
-Outage Type: {result["outage_type"]}
-Status: {result["status"]}
-Reported At: {result["reported_at"]}
-Estimated Response Time: {result["estimated_response_time"]}
-{result["message"]}"""
+    result = await tools.plans_list(account_number=account_number)
+    return json.dumps(result, indent=2)
 
 
-@mcp.tool(title="Check Outage Status")
-async def check_outage_status(outage_id: str) -> str:
-    """
-    Check the status of a reported outage.
-
-    Args:
-        outage_id: The outage report ID
-
-    Returns:
-        Current status and estimated restoration time
-    """
-    result = await tools.check_outage_status(outage_id=outage_id)
-    if "error" in result:
-        return f"Error: {result['error']}"
-    return f"""Outage Status for {result["outage_id"]}:
-Address: {result["address"]}
-Outage Type: {result["outage_type"]}
-Status: {result["status"]}
-Reported At: {result["reported_at"]}
-Estimated Restoration: {result["estimated_restoration"]}
-Crew Assigned: {"Yes" if result["crew_assigned"] else "No"}
-Notes: {result["notes"]}"""
-
-
-@mcp.tool(title="Request Service Start")
-async def request_service_start(
-    address: str,
-    service_date: str,
-    service_types: List[str],
+@mcp.tool(title="Enroll in Time-of-Use Plan")
+async def tou_enroll(
+    account_number: str,
+    rate_plan: str,
 ) -> str:
     """
-    Request to start new utility service at an address.
+    Enroll in a Time-of-Use rate plan.
+
+    Args:
+        account_number: The utility account number
+        rate_plan: Rate plan to enroll in (TOU-D-A, TOU-D-B, TOU-D-PRIME)
+
+    Returns:
+        TOUEnrollmentResult with confirmation and effective date
+    """
+    result = await tools.tou_enroll(account_number=account_number, rate_plan=rate_plan)
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool(title="Submit Solar Interconnection")
+async def interconnection_submit(
+    address: str,
+    system_size_kw: float,
+    applicant_name: str,
+    applicant_email: str,
+    battery_size_kwh: Optional[float] = None,
+    inverter: Optional[str] = None,
+    panels: Optional[str] = None,
+    battery: Optional[str] = None,
+) -> str:
+    """
+    Prepare solar interconnection application (requires user action - email submission).
 
     Args:
         address: Service address
-        service_date: Requested service start date (YYYY-MM-DD format)
-        service_types: List of service types to start (e.g., ["electricity", "water"])
+        system_size_kw: Solar system size in kW
+        applicant_name: Applicant's name
+        applicant_email: Applicant's email
+        battery_size_kwh: Battery size in kWh (optional)
+        inverter: Inverter model (optional)
+        panels: Panel specifications (optional)
+        battery: Battery model (optional)
 
     Returns:
-        Service start confirmation with new account number
+        UserActionResponse with email draft and checklist
     """
-    result = await tools.request_service_start(
+    result = await tools.interconnection_submit(
         address=address,
-        service_date=service_date,
-        service_types=service_types,
+        system_size_kw=system_size_kw,
+        applicant_name=applicant_name,
+        applicant_email=applicant_email,
+        battery_size_kwh=battery_size_kwh,
+        inverter=inverter,
+        panels=panels,
+        battery=battery,
     )
-    return f"""Service Start Request Submitted!
-Request ID: {result["request_id"]}
-New Account Number: {result["new_account_number"]}
-Address: {result["address"]}
-Service Date: {result["service_date"]}
-Service Types: {", ".join(result["service_types"])}
-Status: {result["status"]}
-{result["message"]}"""
+    return json.dumps(result, indent=2)
 
 
-@mcp.tool(title="Request Service Stop")
-async def request_service_stop(
-    account_number: str,
-    stop_date: str,
+@mcp.tool(title="Get Interconnection Status")
+async def interconnection_getStatus(
+    application_id: Optional[str] = None,
+    address: Optional[str] = None,
 ) -> str:
     """
-    Request to stop utility service.
+    Check interconnection application status.
+
+    Args:
+        application_id: Interconnection application ID
+        address: Service address (alternative to application_id)
+
+    Returns:
+        Interconnection status with next steps
+    """
+    result = await tools.interconnection_getStatus(application_id=application_id, address=address)
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool(title="List Filed Rebates")
+async def rebates_filed(
+    account_number: str,
+) -> str:
+    """
+    List all rebate applications for an account.
 
     Args:
         account_number: The utility account number
-        stop_date: Requested service stop date (YYYY-MM-DD format)
 
     Returns:
-        Service stop confirmation
+        RebatesFiledResult with all applications and their status
     """
-    result = await tools.request_service_stop(
-        account_number=account_number,
-        stop_date=stop_date,
-    )
-    return f"""Service Stop Request Submitted!
-Request ID: {result["request_id"]}
-Account Number: {result["account_number"]}
-Stop Date: {result["stop_date"]}
-Status: {result["status"]}
-Final Bill Date: {result["final_bill_date"]}
-{result["message"]}"""
+    result = await tools.rebates_filed(account_number=account_number)
+    return json.dumps(result, indent=2)
 
 
-@mcp.tool(title="Get Usage History")
-async def get_usage_history(
+@mcp.tool(title="Apply for Rebate")
+async def rebates_apply(
     account_number: str,
-    utility_type: str,
-    months: int = 12,
+    equipment_type: str,
+    equipment_details: str,
+    purchase_date: str,
+    invoice_total: float,
+    ahri_certificate: str,
+    ladbs_permit_number: str,
 ) -> str:
     """
-    Get historical usage data for electricity or water.
+    Submit a rebate application.
 
     Args:
         account_number: The utility account number
-        utility_type: Type of utility - "electricity" or "water"
-        months: Number of months of history to retrieve (default: 12)
+        equipment_type: Type of equipment (heat_pump_hvac, heat_pump_water_heater, smart_thermostat)
+        equipment_details: Equipment make, model, specs
+        purchase_date: Date of purchase (YYYY-MM-DD)
+        invoice_total: Total invoice amount
+        ahri_certificate: AHRI certificate number
+        ladbs_permit_number: LADBS permit number
 
     Returns:
-        Usage history with amounts and costs
+        RebateApplyResult with application ID and estimated rebate
     """
-    result = await tools.get_usage_history(
+    result = await tools.rebates_apply(
         account_number=account_number,
-        utility_type=utility_type,
-        months=months,
+        equipment_type=equipment_type,
+        equipment_details=equipment_details,
+        purchase_date=purchase_date,
+        invoice_total=invoice_total,
+        ahri_certificate=ahri_certificate,
+        ladbs_permit_number=ladbs_permit_number,
     )
+    return json.dumps(result, indent=2)
 
-    output = [f"Usage History for Account {result['account_number']}"]
-    output.append(f"Utility Type: {result['utility_type'].capitalize()}")
-    output.append(f"Period: Last {result['months_requested']} months")
-    output.append("-" * 60)
 
-    total_usage = 0
-    total_cost = 0
+@mcp.tool(title="Get Rebate Status")
+async def rebates_getStatus(
+    application_id: str,
+) -> str:
+    """
+    Get detailed status of a specific rebate application.
 
-    for record in result["usage_records"]:
-        output.append(f"""
-Period: {record["period_start"]} to {record["period_end"]}
-Usage: {record["usage_amount"]:.2f} {record["usage_unit"]}
-Cost: ${record["cost"]:.2f}""")
-        total_usage += record["usage_amount"]
-        total_cost += record["cost"]
+    Args:
+        application_id: The rebate application ID
 
-    output.append("-" * 60)
-    unit = result["usage_records"][0]["usage_unit"] if result["usage_records"] else ""
-    output.append(f"Total Usage: {total_usage:.2f} {unit}")
-    output.append(f"Total Cost: ${total_cost:.2f}")
-    if result["usage_records"]:
-        num_records = len(result["usage_records"])
-        output.append(f"Average Monthly Usage: {total_usage / num_records:.2f} {unit}")
-        output.append(f"Average Monthly Cost: ${total_cost / num_records:.2f}")
-
-    return "\n".join(output)
+    Returns:
+        RebateApplication with detailed status
+    """
+    result = await tools.rebates_getStatus(application_id=application_id)
+    return json.dumps(result, indent=2)
 
 
 if __name__ == "__main__":

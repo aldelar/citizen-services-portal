@@ -1,9 +1,22 @@
 """MCP tools for LADWP services."""
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from .models import OutageReport, Payment, ServiceRequest
+from .models import (
+    Account,
+    EquipmentType,
+    Interconnection,
+    InterconnectionStatus,
+    KnowledgeResult,
+    PlansListResult,
+    RatePlan,
+    RebateApplication,
+    RebateApplyResult,
+    RebatesFiledResult,
+    TOUEnrollmentResult,
+    UserActionResponse,
+)
 from .services import LADWPService
 
 
@@ -14,177 +27,204 @@ class LADWPTools:
         """Initialize LADWP tools with service layer."""
         self.service = LADWPService()
 
-    async def get_account_balance(self, account_number: str) -> Dict[str, Any]:
+    async def queryKB(
+        self,
+        query: str,
+        top: int = 5,
+    ) -> Dict[str, Any]:
         """
-        Get account balance information.
+        Search LADWP knowledge base for rate plans, rebates, solar programs.
 
         Args:
-            account_number: The utility account number
+            query: Natural language query
+            top: Number of results to return (default 5)
 
         Returns:
-            Account balance information
+            KnowledgeResult with matching document chunks
         """
-        account = await self.service.get_account_balance(account_number)
-        return account.model_dump()
+        result = await self.service.query_knowledge_base(query, top)
+        return result.model_dump()
 
-    async def get_bill_history(self, account_number: str, months: int = 12) -> Dict[str, Any]:
-        """
-        Get billing history for an account.
-
-        Args:
-            account_number: The utility account number
-            months: Number of months of history to retrieve
-
-        Returns:
-            List of bills
-        """
-        bills = await self.service.get_bill_history(account_number, months)
-        return {
-            "account_number": account_number,
-            "months_requested": months,
-            "bills": [bill.model_dump() for bill in bills],
-        }
-
-    async def make_payment(
+    async def account_show(
         self,
         account_number: str,
-        amount: float,
-        payment_method: str,
     ) -> Dict[str, Any]:
         """
-        Submit a payment.
+        Get current account information including rate plan and pending requests.
 
         Args:
             account_number: The utility account number
-            amount: Payment amount
-            payment_method: Payment method (credit_card, debit_card, bank_account, check)
 
         Returns:
-            Payment confirmation
+            Account information with rate plan, meter type, and pending requests
         """
-        payment = Payment(
-            account_number=account_number,
-            amount=amount,
-            payment_method=payment_method,
-            payment_date=datetime.now(),
-        )
-        result = await self.service.make_payment(payment)
-        return result
+        result = await self.service.get_account(account_number)
+        return result.model_dump()
 
-    async def report_outage(
+    async def plans_list(
         self,
-        address: str,
-        outage_type: str,
-        description: str,
+        account_number: str,
     ) -> Dict[str, Any]:
         """
-        Report a power or water outage.
+        List available LADWP rate plans.
 
         Args:
-            address: Address where the outage is occurring
-            outage_type: Type of outage (power or water)
-            description: Description of the outage
+            account_number: The utility account number
 
         Returns:
-            Outage report confirmation
+            PlansListResult with available plans and recommendation
         """
-        report = OutageReport(
-            address=address,
-            outage_type=outage_type,
-            description=description,
-            reported_at=datetime.now(),
-        )
-        result = await self.service.report_outage(report)
-        return result
+        result = await self.service.list_rate_plans(account_number)
+        return result.model_dump()
 
-    async def check_outage_status(self, outage_id: str) -> Dict[str, Any]:
-        """
-        Check the status of a reported outage.
-
-        Args:
-            outage_id: The outage report ID
-
-        Returns:
-            Current outage status information
-        """
-        status = await self.service.check_outage_status(outage_id)
-        return status.model_dump() if status else {"error": "Outage report not found"}
-
-    async def request_service_start(
+    async def tou_enroll(
         self,
-        address: str,
-        service_date: str,
-        service_types: List[str],
+        account_number: str,
+        rate_plan: str,
     ) -> Dict[str, Any]:
         """
-        Request to start utility service at an address.
+        Enroll in a Time-of-Use rate plan.
+
+        Args:
+            account_number: The utility account number
+            rate_plan: Rate plan to enroll in (TOU-D-A, TOU-D-B, TOU-D-PRIME)
+
+        Returns:
+            TOUEnrollmentResult with confirmation and effective date
+        """
+        result = await self.service.enroll_tou(account_number, RatePlan(rate_plan))
+        return result.model_dump()
+
+    async def interconnection_submit(
+        self,
+        address: str,
+        system_size_kw: float,
+        applicant_name: str,
+        applicant_email: str,
+        battery_size_kwh: Optional[float] = None,
+        inverter: Optional[str] = None,
+        panels: Optional[str] = None,
+        battery: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Prepare solar interconnection application (requires user action - email submission).
 
         Args:
             address: Service address
-            service_date: Requested service start date (YYYY-MM-DD)
-            service_types: List of service types (electricity, water)
+            system_size_kw: Solar system size in kW
+            applicant_name: Applicant's name
+            applicant_email: Applicant's email
+            battery_size_kwh: Battery size in kWh (optional)
+            inverter: Inverter model (optional)
+            panels: Panel specifications (optional)
+            battery: Battery model (optional)
 
         Returns:
-            Service start confirmation
+            UserActionResponse with email draft and checklist
         """
-        try:
-            parsed_date = datetime.fromisoformat(service_date)
-        except ValueError:
-            return {"error": f"Invalid date format: '{service_date}'. Please use YYYY-MM-DD format."}
+        equipment_specs = {}
+        if inverter:
+            equipment_specs["inverter"] = inverter
+        if panels:
+            equipment_specs["panels"] = panels
+        if battery:
+            equipment_specs["battery"] = battery
 
-        request = ServiceRequest(
-            request_type="start",
+        result = await self.service.prepare_interconnection_submission(
             address=address,
-            service_date=parsed_date,
-            service_types=service_types,
+            system_size_kw=system_size_kw,
+            battery_size_kwh=battery_size_kwh,
+            equipment_specs=equipment_specs,
+            applicant_name=applicant_name,
+            applicant_email=applicant_email,
         )
-        result = await self.service.request_service_start(request)
-        return result
+        return result.model_dump()
 
-    async def request_service_stop(
+    async def interconnection_getStatus(
         self,
-        account_number: str,
-        stop_date: str,
+        application_id: Optional[str] = None,
+        address: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Request to stop utility service.
+        Check interconnection application status.
+
+        Args:
+            application_id: Interconnection application ID
+            address: Service address (alternative to application_id)
+
+        Returns:
+            Interconnection status with next steps
+        """
+        result = await self.service.get_interconnection_status(
+            application_id=application_id,
+            address=address,
+        )
+        return result.model_dump()
+
+    async def rebates_filed(
+        self,
+        account_number: str,
+    ) -> Dict[str, Any]:
+        """
+        List all rebate applications for an account.
 
         Args:
             account_number: The utility account number
-            stop_date: Requested service stop date (YYYY-MM-DD)
 
         Returns:
-            Service stop confirmation
+            RebatesFiledResult with all applications and their status
         """
-        try:
-            parsed_date = datetime.fromisoformat(stop_date)
-        except ValueError:
-            return {"error": f"Invalid date format: '{stop_date}'. Please use YYYY-MM-DD format."}
+        result = await self.service.get_filed_rebates(account_number)
+        return result.model_dump()
 
-        result = await self.service.request_service_stop(account_number, parsed_date)
-        return result
-
-    async def get_usage_history(
+    async def rebates_apply(
         self,
         account_number: str,
-        utility_type: str,
-        months: int = 12,
+        equipment_type: str,
+        equipment_details: str,
+        purchase_date: str,
+        invoice_total: float,
+        ahri_certificate: str,
+        ladbs_permit_number: str,
     ) -> Dict[str, Any]:
         """
-        Get usage history for an account.
+        Submit a rebate application.
 
         Args:
             account_number: The utility account number
-            utility_type: Type of utility (electricity or water)
-            months: Number of months of history to retrieve
+            equipment_type: Type of equipment (heat_pump_hvac, heat_pump_water_heater, smart_thermostat)
+            equipment_details: Equipment make, model, specs
+            purchase_date: Date of purchase (YYYY-MM-DD)
+            invoice_total: Total invoice amount
+            ahri_certificate: AHRI certificate number
+            ladbs_permit_number: LADBS permit number
 
         Returns:
-            Usage history records
+            RebateApplyResult with application ID and estimated rebate
         """
-        records = await self.service.get_usage_history(account_number, utility_type, months)
-        return {
-            "account_number": account_number,
-            "utility_type": utility_type,
-            "months_requested": months,
-            "usage_records": [record.model_dump() for record in records],
-        }
+        result = await self.service.apply_for_rebate(
+            account_number=account_number,
+            equipment_type=EquipmentType(equipment_type),
+            equipment_details=equipment_details,
+            purchase_date=datetime.fromisoformat(purchase_date),
+            invoice_total=invoice_total,
+            ahri_certificate=ahri_certificate,
+            ladbs_permit_number=ladbs_permit_number,
+        )
+        return result.model_dump()
+
+    async def rebates_getStatus(
+        self,
+        application_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Get detailed status of a specific rebate application.
+
+        Args:
+            application_id: The rebate application ID
+
+        Returns:
+            RebateApplication with detailed status
+        """
+        result = await self.service.get_rebate_status(application_id)
+        return result.model_dump()

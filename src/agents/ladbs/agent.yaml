@@ -15,3 +15,9 @@ definition:
       server_url: ${SERVICE_MCP_LADBS_URI}/mcp
       project_connection_id: mcp-ladbs
       # Authentication disabled - see technical-specs/mcp-authentication.md
+    - type: mcp
+      server_label: mcp-reporting  # Shared reporting service for step logging
+      server_url: ${SERVICE_MCP_REPORTING_URI}/mcp
+      project_connection_id: mcp-reporting
+      # Authentication disabled - see technical-specs/mcp-authentication.md
+
