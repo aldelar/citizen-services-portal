@@ -217,12 +217,10 @@ class RebateRepository(BaseRepository):
             account_number=item.get("accountNumber", ""),
             equipment_type=EquipmentType(item.get("equipmentType", "heat_pump_hvac")),
             status=RebateStatus(item.get("status", "submitted")),
-            submitted_at=datetime.fromisoformat(item["submittedAt"].replace("Z", "+00:00"))
-                if item.get("submittedAt") else datetime.now(timezone.utc),
+            submitted_at=self.parse_datetime(item.get("submittedAt")) or datetime.now(timezone.utc),
             equipment_details=item.get("equipmentDetails", ""),
             estimated_rebate=item.get("estimatedRebate", 0.0),
             approved_amount=item.get("approvedAmount"),
-            paid_at=datetime.fromisoformat(item["paidAt"].replace("Z", "+00:00"))
-                if item.get("paidAt") else None,
+            paid_at=self.parse_datetime(item.get("paidAt")),
             denial_reason=item.get("denialReason"),
         )

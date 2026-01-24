@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 from uuid import uuid4
 
 from azure.cosmos import exceptions as cosmos_exceptions
@@ -23,13 +23,54 @@ class BaseRepository(Generic[T]):
     
     Subclasses should set:
         - container_name: str - The name of the container
-        - model_class: Type[T] - The Pydantic model class for documents
         - partition_key_field: str - The field name used as partition key
     """
 
     container_name: str
-    model_class: Type[T]
     partition_key_field: str = "id"
+
+    @staticmethod
+    def parse_datetime(value: Optional[str]) -> Optional[datetime]:
+        """
+        Parse a datetime string from CosmosDB format.
+
+        Args:
+            value: ISO format datetime string, optionally with 'Z' suffix.
+
+        Returns:
+            Optional[datetime]: Parsed datetime or None.
+        """
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
+
+    @staticmethod
+    def parse_date_as_datetime(value: Optional[str]) -> Optional[datetime]:
+        """
+        Parse a date string as a datetime at midnight UTC.
+
+        Args:
+            value: ISO format date string (YYYY-MM-DD) or datetime string.
+
+        Returns:
+            Optional[datetime]: Parsed datetime or None.
+        """
+        if not value:
+            return None
+        try:
+            # Try as datetime first
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            try:
+                # Fall back to date only
+                from datetime import date
+                d = date.fromisoformat(value)
+                return datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+            except (ValueError, AttributeError):
+                return None
 
     async def create(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """

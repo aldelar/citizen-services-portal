@@ -205,18 +205,7 @@ class PickupRepository(BaseRepository):
 
     def _to_pickup(self, item: Dict[str, Any]) -> ScheduledPickup:
         """Convert a CosmosDB document to a ScheduledPickup model."""
-        scheduled_date = None
-        if item.get("scheduledDate"):
-            try:
-                # Parse as datetime if it includes time
-                scheduled_date = datetime.fromisoformat(
-                    item["scheduledDate"].replace("Z", "+00:00")
-                )
-            except ValueError:
-                # It's just a date string, convert to datetime
-                from datetime import date
-                d = date.fromisoformat(item["scheduledDate"])
-                scheduled_date = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+        scheduled_date = self.parse_date_as_datetime(item.get("scheduledDate"))
         
         return ScheduledPickup(
             pickup_id=item.get("pickupId", ""),

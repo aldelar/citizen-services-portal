@@ -208,11 +208,8 @@ class InterconnectionRepository(BaseRepository):
             system_size_kw=item.get("systemSizeKw", 0.0),
             battery_size_kwh=item.get("batterySizeKwh"),
             status=InterconnectionStatus(item.get("status", "not_submitted")),
-            submitted_at=datetime.fromisoformat(item["submittedAt"].replace("Z", "+00:00"))
-                if item.get("submittedAt") else None,
-            approved_at=datetime.fromisoformat(item["approvedAt"].replace("Z", "+00:00"))
-                if item.get("approvedAt") else None,
-            pto_date=datetime.fromisoformat(item["ptoDate"].replace("Z", "+00:00"))
-                if item.get("ptoDate") else None,
+            submitted_at=self.parse_datetime(item.get("submittedAt")),
+            approved_at=self.parse_datetime(item.get("approvedAt")),
+            pto_date=self.parse_datetime(item.get("ptoDate")),
             next_steps=item.get("nextSteps"),
         )

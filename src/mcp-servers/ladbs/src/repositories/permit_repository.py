@@ -237,12 +237,9 @@ class PermitRepository(BaseRepository):
             address=item.get("address", ""),
             description=item.get("workDescription", ""),
             applicant_name=item.get("applicant", {}).get("name", ""),
-            submitted_at=datetime.fromisoformat(item["submittedAt"].replace("Z", "+00:00"))
-                if item.get("submittedAt") else datetime.now(timezone.utc),
-            approved_at=datetime.fromisoformat(item["approvedAt"].replace("Z", "+00:00"))
-                if item.get("approvedAt") else None,
-            expires_at=datetime.fromisoformat(item["expiresAt"].replace("Z", "+00:00"))
-                if item.get("expiresAt") else None,
+            submitted_at=self.parse_datetime(item.get("submittedAt")) or datetime.now(timezone.utc),
+            approved_at=self.parse_datetime(item.get("approvedAt")),
+            expires_at=self.parse_datetime(item.get("expiresAt")),
             fees=fees,
             next_steps=item.get("nextSteps"),
         )

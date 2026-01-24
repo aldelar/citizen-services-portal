@@ -229,18 +229,7 @@ class InspectionRepository(BaseRepository):
 
     def _to_inspection(self, item: Dict[str, Any]) -> Inspection:
         """Convert a CosmosDB document to an Inspection model."""
-        scheduled_date = None
-        if item.get("scheduledDate"):
-            try:
-                # Parse as datetime if it includes time
-                scheduled_date = datetime.fromisoformat(
-                    item["scheduledDate"].replace("Z", "+00:00")
-                )
-            except ValueError:
-                # It's just a date string, convert to datetime
-                from datetime import date
-                d = date.fromisoformat(item["scheduledDate"])
-                scheduled_date = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+        scheduled_date = self.parse_date_as_datetime(item.get("scheduledDate"))
         
         return Inspection(
             inspection_id=item.get("inspectionId", ""),
@@ -249,8 +238,7 @@ class InspectionRepository(BaseRepository):
             status=InspectionStatus(item.get("status", "scheduled")),
             scheduled_date=scheduled_date,
             scheduled_time_window=item.get("scheduledTimeWindow"),
-            completed_at=datetime.fromisoformat(item["completedAt"].replace("Z", "+00:00"))
-                if item.get("completedAt") else None,
+            completed_at=self.parse_datetime(item.get("completedAt")),
             result=item.get("result"),
             inspector_notes=item.get("inspectorNotes"),
         )

@@ -29,6 +29,7 @@ except ImportError:
 
 # TOU Enrollment status enum (not in models.py, define here)
 from enum import Enum
+from pydantic import BaseModel, Field
 
 
 class TOUEnrollmentStatus(str, Enum):
@@ -38,30 +39,18 @@ class TOUEnrollmentStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class TOUEnrollment:
-    """TOU Enrollment data class."""
+class TOUEnrollment(BaseModel):
+    """TOU Enrollment data model."""
     
-    def __init__(
-        self,
-        confirmation_number: str,
-        account_number: str,
-        rate_plan: RatePlan,
-        previous_plan: str,
-        status: TOUEnrollmentStatus,
-        effective_date: str,
-        meter_swap_required: bool,
-        meter_swap_date: Optional[str] = None,
-        enrolled_at: Optional[datetime] = None,
-    ):
-        self.confirmation_number = confirmation_number
-        self.account_number = account_number
-        self.rate_plan = rate_plan
-        self.previous_plan = previous_plan
-        self.status = status
-        self.effective_date = effective_date
-        self.meter_swap_required = meter_swap_required
-        self.meter_swap_date = meter_swap_date
-        self.enrolled_at = enrolled_at
+    confirmation_number: str = Field(description="Unique confirmation number")
+    account_number: str = Field(description="LADWP account number")
+    rate_plan: RatePlan = Field(description="TOU rate plan")
+    previous_plan: str = Field(description="Previous rate plan")
+    status: TOUEnrollmentStatus = Field(description="Enrollment status")
+    effective_date: str = Field(description="When new rate takes effect")
+    meter_swap_required: bool = Field(description="Whether meter swap is needed")
+    meter_swap_date: Optional[str] = Field(default=None, description="Meter swap date")
+    enrolled_at: Optional[datetime] = Field(default=None, description="When enrolled")
 
 
 class TOUEnrollmentRepository(BaseRepository):
@@ -231,6 +220,5 @@ class TOUEnrollmentRepository(BaseRepository):
             effective_date=item.get("effectiveDate", ""),
             meter_swap_required=item.get("meterSwapRequired", False),
             meter_swap_date=item.get("meterSwapDate"),
-            enrolled_at=datetime.fromisoformat(item["enrolledAt"].replace("Z", "+00:00"))
-                if item.get("enrolledAt") else None,
+            enrolled_at=self.parse_datetime(item.get("enrolledAt")),
         )
