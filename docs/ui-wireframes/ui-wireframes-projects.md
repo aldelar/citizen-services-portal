@@ -25,26 +25,26 @@ The Projects Panel serves as the navigation hub for all user projects. It displa
 │ └─────────────────────────┘ │
 ├─────────────────────────────┤
 │ ┌─────────────────────────┐ │
-│ │ 🏠 Home Renovation      │ │
+│ │ ⚡ Home Renovation       │ │
 │ │ 123 Main St             │ │
 │ │ ████████░░ 80%          │ │
-│ │ ⚡ 1 action needed       │ │
+│ │ 1 action needed         │ │
 │ │ Updated 2 hours ago     │ │
 │ └─────────────────────────┘ │
 │                             │
 │ ┌─────────────────────────┐ │
-│ │ 🏢 Business License     │ │
+│ │ 🔄 Business License     │ │
 │ │ Downtown Café           │ │
 │ │ ██░░░░░░░░ 20%          │ │
-│ │ 🔄 In progress          │ │
+│ │ In progress             │ │
 │ │ Updated 1 day ago       │ │
 │ └─────────────────────────┘ │
 │                             │
 │ ┌─────────────────────────┐ │
-│ │ ♻️ Bulk Pickup          │ │
+│ │ ✅ Bulk Pickup          │ │
 │ │ 456 Oak Ave             │ │
 │ │ ██████████ 100%         │ │
-│ │ ✅ Completed            │ │
+│ │ Completed               │ │
 │ │ Completed Dec 15        │ │
 │ └─────────────────────────┘ │
 │                             │
@@ -52,23 +52,23 @@ The Projects Panel serves as the navigation hub for all user projects. It displa
 └─────────────────────────────┘
 ```
 
-### Collapsed View (Icon Strip)
+### Narrow View
 
-When the left panel is collapsed, it shows only project icons:
+The left panel can be resized narrower. In narrow mode, project cards show abbreviated info:
 
 ```
-┌──────┐
-│  +   │  ← New project
-├──────┤
-│  🏠  │  ← Home Renovation (active, has actions)
-│  ·   │     Status dot: orange
-├──────┤
-│  🏢  │  ← Business License (in progress)
-│      │
-├──────┤
-│  ♻️  │  ← Bulk Pickup (completed)
-│  ✓   │     Checkmark
-└──────┘
+┌────────────────────┐
+│  +  New            │
+├────────────────────┤
+│ ⚡ Home Renov...   │
+│    80%             │
+├────────────────────┤
+│ 🔄 Business...     │
+│    20%             │
+├────────────────────┤
+│ ✅ Bulk Pick...    │
+│    Done            │
+└────────────────────┘
 ```
 
 ---
@@ -100,19 +100,18 @@ Each project is displayed as a card with consistent information:
 | Status Message | Current state | Derived from step statuses |
 | Last Updated | Time since last activity | `project.updatedAt` |
 
-### Project Icons (Dynamic)
+### Project Icons (Status-Based)
 
-Icons are assigned based on project type discovered through conversation:
+Icons indicate project status, not project type (keeping the UI simple for MVP):
 
-| Project Type | Icon | Example |
-|--------------|------|---------|
-| `home_renovation` | 🏠 | Solar installation, remodeling |
-| `business_license` | 🏢 | New business, permit renewal |
-| `utility_service` | ⚡ | New connection, TOU enrollment |
-| `waste_disposal` | ♻️ | Bulk pickup, e-waste |
-| `permit_application` | 📋 | Generic permit |
-| `inspection` | 🔍 | Scheduled inspection |
-| `unknown` | 📁 | Default/fallback |
+| Status | Icon | Meaning |
+|--------|------|---------|
+| Active (needs action) | ⚡ | User action required |
+| Active (in progress) | 🔄 | Work in progress |
+| Waiting | ⏳ | Waiting for external response |
+| Completed | ✅ | All steps done |
+| Cancelled | ❌ | Project cancelled |
+| New | 📋 | Just started |
 
 ---
 
@@ -284,8 +283,6 @@ The selected project is highlighted:
 |-------------|--------|
 | Click project card | Select project, load chat + plan |
 | Click current project | No change (already selected) |
-| Keyboard arrow keys | Navigate between cards |
-| Enter on focused card | Select project |
 
 ---
 
@@ -449,20 +446,9 @@ On mobile, the projects panel becomes a full-screen tab:
 
 ---
 
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+N` | Create new project |
-| `↑` / `↓` | Navigate project list |
-| `Enter` | Select focused project |
-| `Ctrl+F` | Focus search box |
-| `Escape` | Clear search |
-
----
-
 ## Related Documentation
 
-- [Overview](6-ui-wireframes-overview.md) - Overall layout structure
-- [Chat Interface](6-ui-wireframes-chat.md) - Message handling
-- [Plan Widget](6-ui-wireframes-plan-widget.md) - Project plan visualization
+- [Overview](ui-wireframes-overview.md) - Overall layout structure
+- [User Account](ui-wireframes-user-account.md) - Account creation and profile management
+- [Chat Interface](ui-wireframes-chat.md) - Message handling
+- [Plan Widget](ui-wireframes-plan-widget.md) - Project plan visualization

@@ -48,9 +48,9 @@ The primary layout consists of three panels optimized for the chat-first experie
 
 ### Panel Collapse Behavior
 
-- **Left panel**: Collapses to icon strip (48px) showing project avatars
+- **Left panel**: Collapses to narrow strip showing project status indicators
 - **Right panel**: Can be hidden entirely or collapsed to summary bar (48px)
-- **Keyboard shortcuts**: `Ctrl+B` toggle left, `Ctrl+P` toggle right
+- **Toggle controls**: Use panel header buttons to collapse/expand
 
 ---
 
@@ -70,7 +70,7 @@ The header provides global navigation and user context.
 |-----------|---------|----------|
 | Logo/Brand | Identity | Click returns to project list |
 | Project Title | Context | Shows current project name; hidden if no project selected |
-| User Menu | Account | Dropdown: Settings, Sign Out |
+| User Menu | Account | Dropdown: Profile, Settings, Sign Out (see [User Account](ui-wireframes-user-account.md)) |
 | Help | Assistance | Opens help panel/modal |
 
 ---
@@ -310,8 +310,9 @@ The portal supports light and dark themes:
 
 ## Related Documentation
 
-- [Projects Panel](6-ui-wireframes-projects.md) - Project list and creation
-- [Chat Interface](6-ui-wireframes-chat.md) - Message types and input
-- [Plan Widget](6-ui-wireframes-plan-widget.md) - Dynamic graph visualization
-- [User Actions](6-ui-wireframes-user-actions.md) - Action prompts and completion
-- [Components](6-ui-wireframes-components.md) - Reusable UI components
+- [User Account](ui-wireframes-user-account.md) - Account creation and profile management
+- [Projects Panel](ui-wireframes-projects.md) - Project list and creation
+- [Chat Interface](ui-wireframes-chat.md) - Message types and input
+- [Plan Widget](ui-wireframes-plan-widget.md) - Dynamic graph visualization
+- [User Actions](ui-wireframes-user-actions.md) - Action prompts and completion
+- [Components](ui-wireframes-components.md) - Reusable UI components

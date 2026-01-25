@@ -15,27 +15,15 @@ The component library ensures consistency across the portal. All components are 
 
 ---
 
-## Agency Badges
+## Source Badges
 
-Agency badges identify which government agency is responsible for a step or action.
+Source badges identify which MCP server provided the information or is handling a step. These are simple indicators showing the data source.
 
 ### Design
 
 ```
 ┌──────────────┐
-│   [LADBS]    │  ← Blue background, white text
-└──────────────┘
-
-┌──────────────┐
-│   [LADWP]    │  ← Green background, white text
-└──────────────┘
-
-┌──────────────┐
-│   [LASAN]    │  ← Orange background, white text
-└──────────────┘
-
-┌──────────────┐
-│   [OTHER]    │  ← Gray background, white text
+│  via ladbs   │  ← Muted style, small text
 └──────────────┘
 ```
 
@@ -43,38 +31,24 @@ Agency badges identify which government agency is responsible for a step or acti
 
 | Property | Value |
 |----------|-------|
-| Font | System font, 11px, bold, uppercase |
+| Font | System font, 10px, lowercase |
 | Padding | 2px 6px |
 | Border Radius | 4px |
-| Min Width | 48px |
-
-### Color Mapping
-
-| Agency | Background | Text |
-|--------|------------|------|
-| LADBS | `#0066CC` | `#FFFFFF` |
-| LADWP | `#28A745` | `#FFFFFF` |
-| LASAN | `#FD7E14` | `#FFFFFF` |
-| Default/Other | `#6C757D` | `#FFFFFF` |
-
-### Dynamic Agency Support
-
-The system supports any agency. Unknown agencies receive the default gray styling. Colors can be configured per-deployment through:
-
-- A configuration file mapping agency codes to colors
-- Auto-assignment from a predefined color palette for unknown agencies
-- Admin UI for customizing agency branding
-
-> **Implementation Note:** During implementation, validate all agency badge colors for WCAG 2.1 AA compliance (4.5:1 contrast ratio).
+| Background | `#F5F5F5` (light gray) |
+| Text | `#6C757D` (muted gray) |
 
 ### Usage
 
+Source badges appear in responses to indicate which MCP server tool was used:
+
 ```
 ┌─────────────────────────────────────────┐
-│ [LADBS]  Electrical Permit              │
-│          Submit application             │
+│ Electrical Permit                       │
+│ Submit application            via ladbs │
 └─────────────────────────────────────────┘
 ```
+
+> **Note:** The source indicator is informational only. Users don't need to understand MCP servers—this just provides transparency about where data comes from.
 
 ---
 
@@ -670,37 +644,6 @@ Edge styles by state:
 
 ---
 
-## Keyboard Shortcuts Overlay
-
-```
-┌───────────────────────────────────────────────────────────────┐
-│ Keyboard Shortcuts                                       [×] │
-├───────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Navigation                                                   │
-│  ─────────────────────────────────────────────────────────   │
-│  Ctrl+B         Toggle projects panel                        │
-│  Ctrl+P         Toggle plan panel                            │
-│  ↑ / ↓          Navigate project list                        │
-│  Enter          Select item                                   │
-│                                                               │
-│  Chat                                                         │
-│  ─────────────────────────────────────────────────────────   │
-│  Enter          Send message                                  │
-│  Shift+Enter    New line                                      │
-│  Escape         Cancel input                                  │
-│                                                               │
-│  General                                                      │
-│  ─────────────────────────────────────────────────────────   │
-│  Ctrl+N         New project                                   │
-│  Ctrl+F         Search                                        │
-│  ?              Show this overlay                             │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
-```
-
----
-
 ## Responsive Breakpoints
 
 | Breakpoint | Name | Min Width | Columns |
@@ -775,8 +718,9 @@ Edge styles by state:
 
 ## Related Documentation
 
-- [Overview](6-ui-wireframes-overview.md) - Layout structure
-- [Projects](6-ui-wireframes-projects.md) - Project panel components
-- [Chat](6-ui-wireframes-chat.md) - Chat interface components
-- [Plan Widget](6-ui-wireframes-plan-widget.md) - Graph components
-- [User Actions](6-ui-wireframes-user-actions.md) - Action card components
+- [Overview](ui-wireframes-overview.md) - Layout structure
+- [User Account](ui-wireframes-user-account.md) - Account creation and profile management
+- [Projects](ui-wireframes-projects.md) - Project panel components
+- [Chat](ui-wireframes-chat.md) - Chat interface components
+- [Plan Widget](ui-wireframes-plan-widget.md) - Graph components
+- [User Actions](ui-wireframes-user-actions.md) - Action card components

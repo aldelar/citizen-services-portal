@@ -100,16 +100,12 @@ Each step is rendered as a node:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ ┌─────────────────────────────────────────────────────────┐ │
-│ │ ┌────────────┐                           ┌────────────┐ │ │
-│ │ │ Agency     │                           │ Status     │ │ │
-│ │ │ Badge      │                           │ Indicator  │ │ │
-│ │ └────────────┘                           └────────────┘ │ │
-│ │                                                         │ │
-│ │  Step Title (Primary Text)                              │ │
-│ │  Reference ID (Secondary, if available)                 │ │
-│ │                                                         │ │
+│ │                                          ┌────────────┐ │ │
+│ │  Step Title (Primary Text)               │ Status     │ │ │
+│ │  Reference ID (Secondary, if available)  │ Indicator  │ │ │
+│ │                                          └────────────┘ │ │
 │ │ ─────────────────────────────────────────────────────── │ │
-│ │  Automation Level Indicator                             │ │
+│ │  Automation Level          via source                   │ │
 │ └─────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -118,11 +114,11 @@ Each step is rendered as a node:
 
 | Component | Description | Source |
 |-----------|-------------|--------|
-| Agency Badge | Color-coded agency tag | `step.agency` |
 | Status Indicator | Visual state (icon + color) | `step.status` |
 | Step Title | Main label | `step.title` |
 | Reference ID | Permit/application number | `step.result.permitNumber` etc. |
 | Automation Level | ⚡ Automated or 👤 User Action | Derived from `step.user_task` |
+| Source Badge | MCP server that handles this step | `step.tool_name` (muted, optional) |
 
 ---
 
@@ -327,13 +323,9 @@ When a step has multiple dependencies:
 
 ---
 
-## Graph Layout Options
+## Graph Layout
 
-The widget supports multiple layout algorithms:
-
-### 1. Hierarchical/DAG (Default)
-
-Steps flow top-to-bottom or left-to-right based on dependencies:
+The widget uses a hierarchical/DAG layout where steps flow top-to-bottom based on dependencies:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -354,94 +346,6 @@ Steps flow top-to-bottom or left-to-right based on dependencies:
 │            ┌──────────┐                                     │
 │            │    I1    │ Inspection                          │
 │            └──────────┘                                     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 2. Grouped by Phase
-
-Steps clustered by project phase:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  ┌─────────────── PERMITS ───────────────┐                  │
-│  │  ┌────────┐ ┌────────┐ ┌────────┐     │                  │
-│  │  │   P1   │ │   P2   │ │   P3   │     │                  │
-│  │  └────────┘ └────────┘ └────────┘     │                  │
-│  └───────────────────────────────────────┘                  │
-│                      │                                      │
-│                      ▼                                      │
-│  ┌─────────────── UTILITY ───────────────┐                  │
-│  │  ┌────────┐ ┌────────┐                │                  │
-│  │  │   U1   │ │   U2   │                │                  │
-│  │  └────────┘ └────────┘                │                  │
-│  └───────────────────────────────────────┘                  │
-│                      │                                      │
-│                      ▼                                      │
-│  ┌─────────────── CONSTRUCTION ──────────┐                  │
-│  │  ┌────────┐ ┌────────┐                │                  │
-│  │  │   I1   │ │   F1   │                │                  │
-│  │  └────────┘ └────────┘                │                  │
-│  └───────────────────────────────────────┘                  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 3. Grouped by Agency
-
-Steps clustered by responsible agency:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  ┌─────── LADBS ───────┐  ┌─────── LADWP ───────┐          │
-│  │ ┌────┐┌────┐┌────┐  │  │ ┌────┐ ┌────┐       │          │
-│  │ │ P1 ││ P2 ││ P3 │  │  │ │ U1 │ │ U2 │       │          │
-│  │ └──┬─┘└──┬─┘└──┬─┘  │  │ └──┬─┘ └──┬─┘       │          │
-│  │    │     │     │    │  │    │      │         │          │
-│  │    └──┬──┴──┬──┘    │  │    └───┬──┘         │          │
-│  │       │     │       │  │        │            │          │
-│  │    ┌──┴─┐ ┌─┴──┐    │  │     ┌──┴──┐         │          │
-│  │    │ I1 │ │ F1 │←───┼──┼─────│ F1  │         │          │
-│  │    └────┘ └────┘    │  │     └─────┘         │          │
-│  └─────────────────────┘  └─────────────────────┘          │
-│                                                             │
-│  ┌─────── LASAN ────────┐                                   │
-│  │ ┌────┐ ┌────┐        │                                   │
-│  │ │ D1 │ │ D2 │        │                                   │
-│  │ └────┘ └────┘        │                                   │
-│  └──────────────────────┘                                   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 4. List View (Simplified)
-
-For simple plans or accessibility:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  ✓ P1 - Electrical Permit [LADBS]                          │
-│  │                                                          │
-│  ├── ✓ P2 - Mechanical Permit [LADBS]                      │
-│  │                                                          │
-│  ├── ✓ P3 - Building Permit [LADBS]                        │
-│  │                                                          │
-│  ├── ✓ U1 - TOU Enrollment [LADWP]                         │
-│  │                                                          │
-│  ├── ◐ U2 - Interconnection [LADWP]                        │
-│  │                                                          │
-│  ├── ⚡ I1 - Schedule Inspection [LADBS] ← ACTION NEEDED    │
-│  │                                                          │
-│  ├── ○ D1 - Bulky Pickup [LASAN]                           │
-│  │                                                          │
-│  ├── ○ D2 - E-waste Pickup [LASAN]                         │
-│  │                                                          │
-│  ├── 🔒 F1 - Final Inspection [LADWP]                      │
-│  │                                                          │
-│  └── 🔒 R1 - Rebate Application [LADWP]                    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -772,37 +676,20 @@ Settings menu (⚙️):
 
 ```
 ┌──────────────────────────────────┐
-│ Layout                           │
-│ ● Hierarchical (Dependencies)    │
-│ ○ Grouped by Phase               │
-│ ○ Grouped by Agency              │
-│ ○ List View                      │
-├──────────────────────────────────┤
 │ Display                          │
-│ ☑ Show agency badges            │
+│ ☑ Show source indicators        │
 │ ☑ Show automation level         │
-│ ☐ Show timestamps               │
 │ ☐ Compact mode                  │
 ├──────────────────────────────────┤
 │ [Export as PDF]                  │
-│ [Export as Image]                │
 └──────────────────────────────────┘
 ```
 
 ---
 
-## Agency Badge Colors
+## Source Indicators
 
-Agency badges are color-coded for quick identification:
-
-| Agency | Color | Example |
-|--------|-------|---------|
-| LADBS | Blue | `#0066CC` |
-| LADWP | Green | `#28A745` |
-| LASAN | Orange | `#FD7E14` |
-| Other (generic) | Gray | `#6C757D` |
-
-The system should support any agency dynamically—colors can be auto-assigned or configured.
+Nodes display the MCP server source in a muted badge (e.g., "via ladbs"). This provides transparency about where data comes from without requiring users to understand the technical details. All source badges use the same muted gray styling for simplicity.
 
 ---
 
@@ -854,7 +741,7 @@ On mobile, the plan widget becomes a full-screen tab:
 
 ## Related Documentation
 
-- [Overview](6-ui-wireframes-overview.md) - Layout structure
-- [Chat Interface](6-ui-wireframes-chat.md) - Where plan updates originate
-- [User Actions](6-ui-wireframes-user-actions.md) - Handling awaiting_user steps
-- [Components](6-ui-wireframes-components.md) - Node and badge components
+- [Overview](ui-wireframes-overview.md) - Layout structure
+- [Chat Interface](ui-wireframes-chat.md) - Where plan updates originate
+- [User Actions](ui-wireframes-user-actions.md) - Handling awaiting_user steps
+- [Components](ui-wireframes-components.md) - Node and badge components

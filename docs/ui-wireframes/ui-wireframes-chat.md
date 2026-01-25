@@ -95,17 +95,13 @@ Shown when the agent is executing tools or processing.
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │                                                               │
-│   🤖  ●●● Checking LADBS permit requirements...              │
-│       ─────────────────────────────────────                  │
-│       🔍 Searching knowledge base...                         │
+│   🤖  ●●●              │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
 ```
 
 #### Visual Treatment
 - Animated dots or spinner
-- Shows current tool being called (optional detail level)
-- Collapsible for technical users
 - Disappears when response starts streaming
 
 ---
@@ -176,10 +172,7 @@ When something fails.
 │   ❌ Failed to connect to LADWP service                      │
 │                                                               │
 │      The LADWP system is temporarily unavailable.            │
-│      I'll retry automatically in a few minutes, or           │
-│      you can try again now.                                  │
-│                                                               │
-│      [Retry Now]  [Continue with other steps]                │
+│                                                               │           │
 │                                                     10:48 AM │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
@@ -324,7 +317,6 @@ When the agent generates responses, text streams token-by-token:
 |----------|----------------|
 | Cursor indicator | Blinking cursor at stream end |
 | Auto-scroll | Keep latest content visible |
-| User scroll | Pause auto-scroll if user scrolls up |
 | "New messages" | Button appears when paused and new content arrives |
 | Completion | Remove cursor, finalize message |
 
@@ -353,20 +345,6 @@ When the agent generates responses, text streams token-by-token:
 │ │ - Install solar panels (8-10 kW system)              │   │ │
 │ │ - Add battery storage                                 │   │ │
 │ │ - Replace gas furnace with heat pump                 │ → │ │
-│ └───────────────────────────────────────────────────────┴───┘ │
-└───────────────────────────────────────────────────────────────┘
-```
-
-### Input with Attachments (Future)
-
-```
-┌───────────────────────────────────────────────────────────────┐
-│ ┌─────────────────────────────────────────────────────────┐   │
-│ │ 📎 site-plan.pdf (2.3 MB)                          [×] │   │
-│ │ 📎 electrical-diagram.pdf (1.1 MB)                 [×] │   │
-│ └─────────────────────────────────────────────────────────┘   │
-│ ┌───────────────────────────────────────────────────────┬───┐ │
-│ │ Here are the plans from my contractor...          📎  │ → │ │
 │ └───────────────────────────────────────────────────────┴───┘ │
 └───────────────────────────────────────────────────────────────┘
 ```
@@ -504,22 +482,10 @@ Full-screen chat with simplified controls:
 
 ---
 
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Enter` | Send message |
-| `Shift+Enter` | New line in message |
-| `Escape` | Cancel current input |
-| `↑` | Edit last sent message |
-| `Ctrl+/` | Show keyboard shortcuts |
-
----
-
 ## Related Documentation
 
-- [Overview](6-ui-wireframes-overview.md) - Layout structure
-- [Projects](6-ui-wireframes-projects.md) - Project navigation
-- [Plan Widget](6-ui-wireframes-plan-widget.md) - Plan visualization
-- [User Actions](6-ui-wireframes-user-actions.md) - UserActionResponse handling
-- [Components](6-ui-wireframes-components.md) - Reusable components
+- [Overview](ui-wireframes-overview.md) - Layout structure
+- [Projects](ui-wireframes-projects.md) - Project navigation
+- [Plan Widget](ui-wireframes-plan-widget.md) - Plan visualization
+- [User Actions](ui-wireframes-user-actions.md) - UserActionResponse handling
+- [Components](ui-wireframes-components.md) - Reusable components

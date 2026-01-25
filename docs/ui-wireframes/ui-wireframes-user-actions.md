@@ -577,6 +577,6 @@ Full-width on mobile:
 
 ## Related Documentation
 
-- [Chat Interface](6-ui-wireframes-chat.md) - Where cards appear
-- [Plan Widget](6-ui-wireframes-plan-widget.md) - Step status updates
-- [Components](6-ui-wireframes-components.md) - Reusable elements
+- [Chat Interface](ui-wireframes-chat.md) - Where cards appear
+- [Plan Widget](ui-wireframes-plan-widget.md) - Step status updates
+- [Components](ui-wireframes-components.md) - Reusable elements

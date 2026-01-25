@@ -152,7 +152,7 @@ resource projectsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
             path: '/context/address/?'
           }
           {
-            path: '/references/permits/*/?'
+            path: '/references/*'
           }
         ]
         excludedPaths: [
