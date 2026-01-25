@@ -170,3 +170,17 @@ Let's work on that first for a new pass. Suggest other simplifications.
 (see Github Copilot Issue to see how knewledge bases were researched)
 
 I want you to process the /assets/agency-knowledge-base-document-inventory.md file, and download all documents listed there (PDFs, and for HTML, download them as well) and place them into the appropriate respective folders (/assets/ladbs, etc.)
+
+
+====== UI framework Assistance ======
+
+Create an Issue in the repo to do some research about best UI framework to select to implement this solution. We'd be looking for something that provides a lot of good widgets/patterns for our requirements (chat application, with some rich visuals, as well as composed views with right panel for project diagram overview, mid panel for chat, left panel likely to select projects (collapsible bar)).
+
+I am a python developer, so python friendly preferred.
+
+This framework doesn't have to be something we'd use for production, the goal is speed and simplicity to demonstrate the concepts of the underlying implementation and project.
+
+Can you do a research around what's used for most project, analyze their strengths against our requirements here and propose a selection or a few choices? Ask questions in your final report if options are open and depend on priorities not clearly defined yet.
+
+Create the issue, and create a system prompt assist for the agent I'm going to delegate it to (github agent) to make sure the task stays on track and deliver maximum value so we quickly select the right framework.
+
