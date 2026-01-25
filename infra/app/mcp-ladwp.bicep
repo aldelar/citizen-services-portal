@@ -78,7 +78,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' e
 }
 
 // Deploy LADWP CosmosDB database
-module cosmosDb '../../../src/mcp-servers/ladwp/infra/cosmos-db.bicep' = if (!empty(cosmosDbAccountName)) {
+module cosmosDb '../../src/mcp-servers/ladwp/infra/cosmos-db.bicep' = if (!empty(cosmosDbAccountName)) {
   name: 'ladwp-cosmos-db-deployment'
   params: {
     cosmosDbAccountName: cosmosDbAccountName
