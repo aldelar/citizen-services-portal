@@ -4,7 +4,7 @@ from nicegui import ui
 from models.message import Message, MessageType
 from models.project import Project, StepStatus
 from components.user_action_card import user_action_card
-from typing import Callable, Optional
+from typing import Callable, Optional, Awaitable, Union
 
 
 def format_timestamp(timestamp) -> str:
@@ -17,19 +17,21 @@ def format_timestamp(timestamp) -> str:
 def chat_panel(
     project: Optional[Project],
     messages: list[Message],
-    on_send: Optional[Callable[[str], None]] = None,
+    on_send: Optional[Callable[[str], Awaitable[None]]] = None,
+    scroll_area_ref: Optional[list] = None,
 ) -> ui.column:
     """Render the chat panel (center content).
     
     Args:
         project: The currently selected project.
         messages: List of messages to display.
-        on_send: Callback when a message is sent.
+        on_send: Async callback when a message is sent.
+        scroll_area_ref: Optional list to store scroll area reference for external updates.
         
     Returns:
         A NiceGUI column element containing the chat panel.
     """
-    with ui.column().classes('w-full h-full') as panel:
+    with ui.column().classes('w-full h-full min-h-0') as panel:
         if project:
             # Header with project context
             with ui.row().classes('w-full items-center p-4 bg-gray-50 border-b'):
@@ -40,7 +42,11 @@ def chat_panel(
                         ui.label(project.description).classes('text-sm text-gray-500')
             
             # Scrollable message history
-            with ui.scroll_area().classes('flex-grow p-4'):
+            with ui.scroll_area().classes('flex-grow p-4 min-h-0') as scroll:
+                if scroll_area_ref is not None:
+                    scroll_area_ref.clear()
+                    scroll_area_ref.append(scroll)
+                    
                 for message in messages:
                     is_user = message.message_type == MessageType.USER
                     ui.chat_message(
@@ -67,11 +73,9 @@ def chat_panel(
                 async def send_message():
                     text = message_input.value
                     if text and text.strip():
-                        if on_send:
-                            on_send(text.strip())
                         message_input.value = ''
-                        # Mock response
-                        ui.notify('Message sent (mock mode)', type='info')
+                        if on_send:
+                            await on_send(text.strip())
                 
                 ui.button(icon='send', on_click=send_message).props('round color=primary')
         else:

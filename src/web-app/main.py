@@ -4,131 +4,116 @@ This is the main entry point for the NiceGUI web application.
 Run with: uv run python main.py
 """
 
+from datetime import datetime
+from uuid import uuid4
 from nicegui import ui, app
 from config import settings
 from services.auth_service import get_current_user
+from services.agent_service import get_agent_service
 from services.mock_data import get_mock_projects, get_mock_messages, MOCK_PROJECTS
+from models.message import Message, MessageType
 from components.projects_panel import projects_panel
 from components.chat_panel import chat_panel
 from components.plan_widget import plan_widget
 
 
-# Application state
-class AppState:
-    """Simple application state container."""
-    def __init__(self):
-        self.selected_project_id: str | None = None
-        self.projects = []
-        self.messages = []
-    
-    def select_project(self, project_id: str):
-        """Select a project and load its data."""
-        self.selected_project_id = project_id
-        self.messages = get_mock_messages(project_id)
-    
-    def get_selected_project(self):
-        """Get the currently selected project."""
-        if not self.selected_project_id:
-            return None
-        for project in self.projects:
-            if project.id == self.selected_project_id:
-                return project
-        return None
-
-
 @ui.page('/')
 def main_page():
-    """Main application page with three-panel layout."""
-    # Get current user
-    user = get_current_user()
+    """Main application page with simple chat."""
+    # Get agent service
+    agent_service = get_agent_service()
     
-    # Initialize state
-    state = AppState()
-    state.projects = get_mock_projects(user.id if user else 'local-dev-user')
-    
-    # Select first project by default if available
-    if state.projects:
-        state.select_project(state.projects[0].id)
+    # Simple message storage - just a list of dicts for now
+    messages = []
     
     # Header
     with ui.header().classes('items-center justify-between px-4 bg-blue-800'):
-        with ui.row().classes('items-center gap-4'):
-            # Mobile drawer toggle
-            left_drawer_toggle = ui.button(icon='menu').props('flat color=white')
+        ui.icon('account_balance').classes('text-2xl text-white')
+        ui.label('Citizen Services Portal').classes('text-xl text-white font-bold')
+    
+    # Add custom CSS for better markdown styling in chat
+    ui.add_head_html('''
+    <style>
+        .chat-markdown h1 { font-size: 1.25rem; font-weight: 600; margin: 0.5rem 0; }
+        .chat-markdown h2 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0; }
+        .chat-markdown h3 { font-size: 1rem; font-weight: 600; margin: 0.4rem 0; }
+        .chat-markdown h4, .chat-markdown h5, .chat-markdown h6 { font-size: 0.95rem; font-weight: 600; margin: 0.3rem 0; }
+        .chat-markdown p { margin: 0.3rem 0; }
+        .chat-markdown ul, .chat-markdown ol { margin: 0.3rem 0; padding-left: 1.5rem; }
+        .chat-markdown li { margin: 0.15rem 0; }
+        .chat-markdown code { background: rgba(0,0,0,0.1); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
+        .chat-markdown pre { background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 5px; overflow-x: auto; }
+        .chat-markdown strong { font-weight: 600; }
+    </style>
+    ''')
+    
+    # Chat container
+    with ui.column().classes('w-full max-w-3xl mx-auto p-4 h-full'):
+        # Messages area
+        chat_area = ui.column().classes('w-full flex-grow overflow-auto gap-2')
+        
+        # Input row
+        with ui.row().classes('w-full items-end gap-2'):
+            message_input = ui.textarea(placeholder='Type your message...').classes('flex-grow')
+            message_input.props('autogrow rows=1 outlined')
+            send_button = ui.button(icon='send').props('round color=primary')
+        
+        async def handle_keydown(e):
+            """Send on Enter, allow Shift+Enter for new line."""
+            if e.args.get('shiftKey', False):
+                # Shift+Enter: insert newline
+                message_input.value = (message_input.value or '') + '\n'
+            else:
+                # Enter alone: send message
+                await send_message()
+        
+        # Prevent default Enter behavior and handle manually
+        message_input.on('keydown.enter.prevent', handle_keydown, ['shiftKey'])
+        
+        async def send_message():
+            text = message_input.value
+            if not text or not text.strip():
+                return
             
-            # Brand
-            ui.icon('account_balance').classes('text-2xl text-white')
-            ui.label('Citizen Services Portal').classes('text-xl text-white font-bold hidden sm:block')
-        
-        # Spacer
-        ui.element('div').classes('flex-grow')
-        
-        # Right side: Plan toggle and user menu
-        with ui.row().classes('items-center gap-2'):
-            # Plan toggle button
-            right_drawer_toggle = ui.button(icon='analytics').props('flat color=white')
-            right_drawer_toggle.tooltip('Toggle Plan View')
+            user_msg = text.strip()
+            message_input.set_value('')  # Clear input properly
+            send_button.disable()
             
-            # User menu
-            if user:
-                with ui.button(icon='person').props('flat color=white'):
-                    with ui.menu():
-                        ui.menu_item(f'👤 {user.name}').props('disable')
-                        ui.separator()
-                        ui.menu_item('Profile', on_click=lambda: ui.notify('Profile coming soon'))
-                        ui.menu_item('Settings', on_click=lambda: ui.notify('Settings coming soon'))
-                        ui.separator()
-                        ui.menu_item('Sign Out', on_click=lambda: ui.notify('Sign out coming soon'))
-    
-    # Left drawer (Projects panel)
-    with ui.left_drawer(value=True).props('width=300 breakpoint=768').classes('bg-gray-50') as left_drawer:
-        left_drawer_toggle.on('click', left_drawer.toggle)
+            # Add user message to UI
+            with chat_area:
+                ui.chat_message(text=user_msg, name='You', sent=True)
+            
+            # Add agent response bubble that we'll update as tokens stream in
+            with chat_area:
+                agent_msg = ui.chat_message(name='Agent', sent=False).props('bg-color=light-blue-2')
+                with agent_msg:
+                    response_label = ui.markdown('⏳ *thinking...*').classes('chat-markdown')
+            
+            try:
+                # Call agent with streaming and update UI in real-time
+                response_text = ''
+                chunk_count = 0
+                async for chunk in agent_service.send_message_stream(message=user_msg):
+                    response_text += chunk
+                    chunk_count += 1
+                    # Update UI every few chunks to balance responsiveness and performance
+                    if chunk_count % 3 == 0:
+                        response_label.set_content(response_text + '▌')
+                        await ui.run_javascript('void(0)')  # Force UI refresh
+                
+                # Final update (remove cursor)
+                if response_text:
+                    response_label.set_content(response_text)
+                else:
+                    response_label.set_content('*(no response)*')
+                    
+            except Exception as e:
+                response_label.set_content(f'**Error:** {e}')
+            finally:
+                send_button.enable()
         
-        def handle_project_select(project_id: str):
-            state.select_project(project_id)
-            # Refresh the UI
-            chat_container.clear()
-            plan_container.clear()
-            with chat_container:
-                chat_panel(
-                    project=state.get_selected_project(),
-                    messages=state.messages,
-                    on_send=lambda msg: ui.notify(f'Mock: "{msg}"'),
-                )
-            with plan_container:
-                plan_widget(state.get_selected_project())
-            # Re-render projects to update selection
-            projects_container.clear()
-            with projects_container:
-                projects_panel(
-                    projects=state.projects,
-                    selected_project_id=state.selected_project_id,
-                    on_select=handle_project_select,
-                    on_new_project=lambda: ui.notify('New project coming soon'),
-                )
-        
-        with ui.element('div').classes('w-full h-full') as projects_container:
-            projects_panel(
-                projects=state.projects,
-                selected_project_id=state.selected_project_id,
-                on_select=handle_project_select,
-                on_new_project=lambda: ui.notify('New project coming soon'),
-            )
-    
-    # Right drawer (Plan widget)
-    with ui.right_drawer(value=True).props('width=400 breakpoint=1024').classes('bg-white') as right_drawer:
-        right_drawer_toggle.on('click', right_drawer.toggle)
-        
-        with ui.element('div').classes('w-full h-full') as plan_container:
-            plan_widget(state.get_selected_project())
-    
-    # Main content (Chat panel)
-    with ui.element('div').classes('w-full h-full') as chat_container:
-        chat_panel(
-            project=state.get_selected_project(),
-            messages=state.messages,
-            on_send=lambda msg: ui.notify(f'Mock: "{msg}"'),
-        )
+        send_button.on('click', send_message)
+        message_input.on('keydown.enter', send_message)
 
 
 def main():
@@ -137,7 +122,7 @@ def main():
         host=settings.NICEGUI_HOST,
         port=settings.NICEGUI_PORT,
         title='Citizen Services Portal',
-        reload=settings.DEBUG,  # Hot-reload in dev mode
+        reload=settings.DEBUG,
     )
 
 
