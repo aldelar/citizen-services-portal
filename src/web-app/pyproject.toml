@@ -1,0 +1,19 @@
+[project]
+name = "csp-webapp"
+version = "0.1.0"
+description = "Citizen Services Portal Web Application"
+requires-python = ">=3.12"
+dependencies = [
+    "nicegui>=2.0.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+csp-webapp = "main:main"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
