@@ -50,6 +50,7 @@ async def main_page():
     message_input = None
     send_button = None
     chat_header = None
+    chat_input_container = None
     
     # Header
     with ui.header().classes('items-center justify-between px-4 bg-blue-800'):
@@ -85,6 +86,8 @@ async def main_page():
         nonlocal projects
         project_data_list = await project_service.get_user_projects(user_id)
         projects = [convert_to_ui_project(p) for p in project_data_list]
+        # Sort by updated_at DESC (newest first)
+        projects.sort(key=lambda p: p.updated_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         return projects
     
     async def load_messages(project_id: str):
@@ -118,7 +121,10 @@ async def main_page():
         project_data = await project_service.create_project(user_id)
         if project_data:
             new_project = convert_to_ui_project(project_data)
-            projects.insert(0, new_project)  # Add to beginning of list
+            # Add to beginning of list (will be at top due to recent updated_at)
+            projects.insert(0, new_project)
+            # Resort to ensure proper ordering
+            projects.sort(key=lambda p: p.updated_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
             selected_project_id = new_project.id
             selected_project = new_project
             messages = []  # New project has no messages
@@ -142,25 +148,111 @@ async def main_page():
         chat_header.clear()
         with chat_header:
             render_chat_header()
+        
+        # Update chat input area
+        chat_input_container.clear()
+        with chat_input_container:
+            render_chat_input()
+    
+    async def cancel_project_with_confirmation(project_id: str):
+        """Cancel a project after user confirmation."""
+        nonlocal projects, selected_project
+        
+        # Update project status to cancelled
+        updated_project_data = await project_service.update_project(project_id, user_id, {'status': 'cancelled'})
+        
+        if updated_project_data:
+            # Reload projects to get updated data
+            await load_projects()
+            
+            # Update selected project if it's the one being cancelled
+            if selected_project_id == project_id:
+                for p in projects:
+                    if p.id == project_id:
+                        selected_project = p
+                        break
+            
+            # Refresh the UI
+            await refresh_ui()
+            ui.notify('Project cancelled', type='info')
+    
+    async def complete_project_with_confirmation(project_id: str):
+        """Mark a project as complete after user confirmation."""
+        nonlocal projects, selected_project
+        
+        # Update project status to completed
+        updated_project_data = await project_service.update_project(project_id, user_id, {'status': 'completed'})
+        
+        if updated_project_data:
+            # Reload projects to get updated data
+            await load_projects()
+            
+            # Update selected project if it's the one being completed
+            if selected_project_id == project_id:
+                for p in projects:
+                    if p.id == project_id:
+                        selected_project = p
+                        break
+            
+            # Refresh the UI
+            await refresh_ui()
+            ui.notify('Project marked as complete', type='positive')
     
     def render_projects_list():
         """Render the list of projects."""
         if projects:
             for project in projects:
                 is_selected = project.id == selected_project_id
+                
+                # Determine status icon and color
+                status_icons = {
+                    ProjectStatus.ACTIVE: 'sync',
+                    ProjectStatus.COMPLETED: 'check_circle',
+                    ProjectStatus.CANCELLED: 'cancel',
+                }
+                status_colors = {
+                    ProjectStatus.ACTIVE: 'primary',
+                    ProjectStatus.COMPLETED: 'positive',
+                    ProjectStatus.CANCELLED: 'grey',
+                }
+                icon = status_icons.get(project.status, 'folder')
+                color = status_colors.get(project.status, 'grey')
+                
+                # Card styling based on selection and status
                 card_classes = 'w-full cursor-pointer transition-all mb-2 p-3'
                 if is_selected:
                     card_classes += ' border-2 border-blue-500 bg-blue-50'
                 else:
                     card_classes += ' hover:shadow-md hover:bg-gray-50'
                 
+                # Reduced opacity for cancelled projects
+                if project.status == ProjectStatus.CANCELLED:
+                    card_classes += ' opacity-60'
+                
                 with ui.card().classes(card_classes) as card:
                     card.on('click', lambda p=project: select_project(p.id))
                     
+                    # Add context menu for active projects only
+                    if project.status == ProjectStatus.ACTIVE:
+                        with card:
+                            with ui.menu().props('context-menu'):
+                                ui.menu_item(
+                                    'Mark as Complete',
+                                    on_click=lambda p=project: confirm_complete_dialog(p.id)
+                                )
+                                ui.menu_item(
+                                    'Cancel Project',
+                                    on_click=lambda p=project: confirm_cancel_dialog(p.id)
+                                )
+                    
                     with ui.row().classes('items-center gap-2 w-full'):
-                        ui.icon('folder', color='primary' if is_selected else 'grey')
+                        ui.icon(icon, color=color)
                         with ui.column().classes('flex-grow gap-0'):
-                            ui.label(project.title).classes('font-semibold truncate')
+                            # Strikethrough for cancelled projects
+                            title_classes = 'font-semibold truncate'
+                            if project.status == ProjectStatus.CANCELLED:
+                                title_classes += ' line-through'
+                            ui.label(project.title).classes(title_classes)
                             if project.created_at:
                                 ui.label(project.created_at.strftime('%b %d, %Y')).classes('text-xs text-gray-400')
         else:
@@ -169,14 +261,121 @@ async def main_page():
                 ui.label('No projects yet').classes('text-gray-500 mt-2')
                 ui.label('Click + to start a new conversation').classes('text-xs text-gray-400')
     
+    def confirm_cancel_dialog(project_id: str):
+        """Show confirmation dialog for cancelling a project."""
+        with ui.dialog() as dialog, ui.card():
+            ui.label('Cancel Project?').classes('text-lg font-bold')
+            ui.label('Are you sure you want to cancel this project? You will no longer be able to send messages.')
+            ui.label('This action cannot be undone.').classes('text-orange-600 font-semibold mt-2')
+            with ui.row().classes('w-full justify-end gap-2 mt-4'):
+                ui.button('Cancel', on_click=dialog.close).props('flat')
+                ui.button('Confirm Cancel', on_click=lambda: (dialog.close(), cancel_project_with_confirmation(project_id))).props('color=negative')
+        dialog.open()
+    
+    def confirm_complete_dialog(project_id: str):
+        """Show confirmation dialog for marking a project as complete."""
+        with ui.dialog() as dialog, ui.card():
+            ui.label('Mark as Complete?').classes('text-lg font-bold')
+            ui.label('Mark this project as complete? You will no longer be able to send messages.')
+            ui.label('This action cannot be undone.').classes('text-orange-600 font-semibold mt-2')
+            with ui.row().classes('w-full justify-end gap-2 mt-4'):
+                ui.button('Cancel', on_click=dialog.close).props('flat')
+                ui.button('Mark Complete', on_click=lambda: (dialog.close(), complete_project_with_confirmation(project_id))).props('color=positive')
+        dialog.open()
+    
+    async def save_title_edit(project_id: str, new_title: str):
+        """Save edited project title."""
+        nonlocal projects, selected_project
+        
+        # Validate title
+        if not new_title or not new_title.strip():
+            ui.notify('Title cannot be empty', type='warning')
+            return False
+        
+        new_title = new_title.strip()[:100]  # Limit to 100 characters
+        
+        # Update project title
+        updated_project_data = await project_service.update_project(project_id, user_id, {'title': new_title})
+        
+        if updated_project_data:
+            # Reload projects to get updated data and sorting
+            await load_projects()
+            
+            # Update selected project
+            if selected_project_id == project_id:
+                for p in projects:
+                    if p.id == project_id:
+                        selected_project = p
+                        break
+            
+            # Refresh the UI
+            await refresh_ui()
+            ui.notify('Title updated', type='positive')
+            return True
+        
+        return False
+    
     def render_chat_header():
         """Render the chat header."""
         if selected_project:
             ui.icon('chat').classes('text-xl text-primary')
             with ui.column().classes('flex-grow gap-0'):
-                ui.label(selected_project.title).classes('font-semibold')
+                # Editable title for active projects, locked for others
+                if selected_project.status == ProjectStatus.ACTIVE:
+                    # Create an editable label with inline editing
+                    title_label = ui.label(selected_project.title).classes('font-semibold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded')
+                    title_input = ui.input(value=selected_project.title).props('maxlength=100 dense outlined').classes('hidden')
+                    
+                    def start_edit():
+                        title_label.set_visibility(False)
+                        title_input.set_visibility(True)
+                        title_input.props('autofocus')
+                        # Force focus on the input
+                        ui.run_javascript(f'document.querySelector("input[value=\\"{selected_project.title}\\"]").focus()')
+                    
+                    async def finish_edit():
+                        new_title = title_input.value
+                        if new_title and new_title.strip() and new_title != selected_project.title:
+                            success = await save_title_edit(selected_project.id, new_title)
+                            if not success:
+                                title_input.set_value(selected_project.title)
+                        title_input.set_visibility(False)
+                        title_label.set_visibility(True)
+                    
+                    def cancel_edit():
+                        title_input.set_value(selected_project.title)
+                        title_input.set_visibility(False)
+                        title_label.set_visibility(True)
+                    
+                    title_label.on('click', start_edit)
+                    title_input.on('keydown.enter.prevent', finish_edit)
+                    title_input.on('keydown.escape.prevent', cancel_edit)
+                    title_input.on('blur', finish_edit)
+                else:
+                    with ui.row().classes('items-center gap-2'):
+                        ui.label(selected_project.title).classes('font-semibold text-gray-500')
+                        ui.icon('lock', size='xs').classes('text-gray-400')
         else:
             ui.label('Select a project or start a new one').classes('text-gray-500')
+    
+    def render_chat_input():
+        """Render the chat input area."""
+        nonlocal message_input, send_button
+        
+        if selected_project and selected_project.status != ProjectStatus.ACTIVE:
+            # Show disabled message for non-active projects
+            if selected_project.status == ProjectStatus.CANCELLED:
+                ui.label('This project has been cancelled. You can no longer send messages.').classes('text-gray-500 italic')
+            elif selected_project.status == ProjectStatus.COMPLETED:
+                ui.label('This project has been completed. You can no longer send messages.').classes('text-gray-500 italic')
+        else:
+            # Normal input for active projects or no selection
+            message_input = ui.textarea(placeholder='Type your message...').classes('flex-grow')
+            message_input.props('autogrow rows=1 outlined')
+            send_button = ui.button(icon='send', on_click=send_message).props('round color=primary')
+            
+            # Handle Enter key
+            message_input.on('keydown.enter.prevent', handle_keydown, ['shiftKey'])
     
     def render_messages():
         """Render messages in the chat area."""
@@ -219,6 +418,22 @@ async def main_page():
         
         # Save user message to CosmosDB
         await project_service.save_message(selected_project_id, "user", user_msg)
+        # Update project timestamp
+        await project_service.touch_project(selected_project_id, user_id)
+        
+        # Reload projects to get updated sorting
+        await load_projects()
+        
+        # Find updated selected project
+        for p in projects:
+            if p.id == selected_project_id:
+                selected_project = p
+                break
+        
+        # Refresh projects panel to show new order
+        projects_container.clear()
+        with projects_container:
+            render_projects_list()
         
         # Add user message to UI
         with chat_area:
@@ -250,6 +465,22 @@ async def main_page():
                 response_label.set_content(response_text)
                 # Save agent response to CosmosDB
                 await project_service.save_message(selected_project_id, "assistant", response_text)
+                # Update project timestamp
+                await project_service.touch_project(selected_project_id, user_id)
+                
+                # Reload projects again to reflect the assistant message timestamp
+                await load_projects()
+                
+                # Find updated selected project
+                for p in projects:
+                    if p.id == selected_project_id:
+                        selected_project = p
+                        break
+                
+                # Refresh projects panel to show new order
+                projects_container.clear()
+                with projects_container:
+                    render_projects_list()
             else:
                 response_label.set_content('*(no response)*')
                 
@@ -307,13 +538,9 @@ async def main_page():
                             ).classes('text-center text-gray-600 mt-2 max-w-md')
             
             # Input area (fixed at bottom)
-            with ui.row().classes('w-full p-4 border-t items-end gap-2 chat-input-area bg-white'):
-                message_input = ui.textarea(placeholder='Type your message...').classes('flex-grow')
-                message_input.props('autogrow rows=1 outlined')
-                send_button = ui.button(icon='send', on_click=send_message).props('round color=primary')
-            
-            # Handle Enter key
-            message_input.on('keydown.enter.prevent', handle_keydown, ['shiftKey'])
+            chat_input_container = ui.row().classes('w-full p-4 border-t items-end gap-2 chat-input-area bg-white')
+            with chat_input_container:
+                render_chat_input()
 
 
 def main():

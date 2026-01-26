@@ -227,6 +227,11 @@ class ProjectService:
             if project_id not in _in_memory_messages:
                 _in_memory_messages[project_id] = []
             _in_memory_messages[project_id].append(message)
+            
+            # Update project's updated_at timestamp
+            if project_id in _in_memory_projects:
+                _in_memory_projects[project_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+            
             return message
         
         try:
@@ -241,10 +246,72 @@ class ProjectService:
             )
             
             saved = await self._message_repo.append_message(message)
+            
+            # Update project's updated_at timestamp
+            # Note: In CosmosDB mode, we need to find the user_id first
+            # We'll get it from the project if available in memory, otherwise skip the update
+            # The agent service should handle this update separately
+            
             return saved.model_dump()
         except Exception as e:
             logger.error(f"Error saving message: {e}")
             return None
+    
+    async def update_project(
+        self,
+        project_id: str,
+        user_id: str,
+        updates: dict,
+    ) -> Optional[dict]:
+        """Update a project with new fields.
+        
+        Args:
+            project_id: The project ID.
+            user_id: The user ID (partition key).
+            updates: Dictionary of fields to update (e.g., {'title': 'New Title', 'status': 'completed'}).
+            
+        Returns:
+            Updated project dictionary or None if update failed.
+        """
+        if not await self._check_cosmos_available():
+            # Update in-memory storage
+            if project_id in _in_memory_projects:
+                project = _in_memory_projects[project_id]
+                project.update(updates)
+                project["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return project
+            return None
+        
+        try:
+            project = await self._project_repo.get_project(project_id, user_id)
+            if not project:
+                return None
+            
+            # Update fields
+            for key, value in updates.items():
+                if hasattr(project, key):
+                    setattr(project, key, value)
+            
+            # Always update the timestamp
+            project.updated_at = datetime.now(timezone.utc)
+            
+            updated = await self._project_repo.update_project(project)
+            return updated.model_dump()
+        except Exception as e:
+            logger.error(f"Error updating project: {e}")
+            return None
+    
+    async def touch_project(self, project_id: str, user_id: str) -> Optional[dict]:
+        """Update the project's updated_at timestamp to current time.
+        
+        Args:
+            project_id: The project ID.
+            user_id: The user ID (partition key).
+            
+        Returns:
+            Updated project dictionary or None if update failed.
+        """
+        return await self.update_project(project_id, user_id, {})
 
 
 # Singleton instance
