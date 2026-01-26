@@ -94,8 +94,75 @@ async def run_client():
             except Exception as e:
                 print(f"  Prompts not supported or error: {e}")
 
+            # Test tool calls
             print("\n" + "=" * 60)
-            print("MCP Server Discovery Complete!")
+            print("Testing Tool Calls:")
+            print("=" * 60)
+
+            # Test 1: Query Knowledge Base (AI Search)
+            print("\n1. Testing queryKB (Knowledge Base Search)...")
+            try:
+                kb_result = await session.call_tool(
+                    "queryKB",
+                    {"query": "How do I apply for an electrical permit?", "top": 3}
+                )
+                print("   ✅ queryKB succeeded!")
+                if kb_result.content:
+                    for item in kb_result.content:
+                        if hasattr(item, 'text'):
+                            # Show first 500 chars of response
+                            text = item.text[:500] + "..." if len(item.text) > 500 else item.text
+                            print(f"   Response: {text}")
+            except Exception as e:
+                print(f"   ❌ queryKB failed: {e}")
+
+            # Test 2: Search Permits
+            print("\n2. Testing permits_search...")
+            try:
+                search_result = await session.call_tool(
+                    "permits_search",
+                    {"address": "123 Test St"}
+                )
+                print("   ✅ permits_search succeeded!")
+                if search_result.content:
+                    for item in search_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ permits_search failed: {e}")
+
+            # Test 3: Get Permit Status
+            print("\n3. Testing permits_getStatus...")
+            try:
+                status_result = await session.call_tool(
+                    "permits_getStatus",
+                    {"permit_number": "TEST-123"}
+                )
+                print("   ✅ permits_getStatus succeeded!")
+                if status_result.content:
+                    for item in status_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ permits_getStatus failed: {e}")
+
+            # Test 4: List Scheduled Inspections
+            print("\n4. Testing inspections_scheduled...")
+            try:
+                insp_result = await session.call_tool(
+                    "inspections_scheduled",
+                    {"address": "123 Test St"}
+                )
+                print("   ✅ inspections_scheduled succeeded!")
+                if insp_result.content:
+                    for item in insp_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ inspections_scheduled failed: {e}")
+
+            print("\n" + "=" * 60)
+            print("MCP Server Testing Complete!")
             print("=" * 60)
 
 

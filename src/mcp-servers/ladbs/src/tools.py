@@ -42,7 +42,7 @@ class LADBSTools:
             KnowledgeResult with matching document chunks
         """
         result = await self.service.query_knowledge_base(query, top)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def permits_search(
         self,
@@ -64,7 +64,7 @@ class LADBSTools:
         result = await self.service.search_permits(
             user_id=user_id, address=address, permit_number=permit_number
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def permits_submit(
         self,
@@ -112,7 +112,7 @@ class LADBSTools:
             estimated_cost=estimated_cost,
             documents=documents,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def permits_getStatus(
         self,
@@ -130,7 +130,7 @@ class LADBSTools:
             Permit with current status and next steps
         """
         result = await self.service.get_permit_status(permit_number, user_id=user_id)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def inspections_scheduled(
         self,
@@ -154,7 +154,7 @@ class LADBSTools:
             permit_number=permit_number,
             address=address,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def inspections_schedule(
         self,
@@ -184,4 +184,4 @@ class LADBSTools:
             contact_name=contact_name,
             contact_phone=contact_phone,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")

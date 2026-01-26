@@ -2,11 +2,16 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+# Copy and install shared library first
+COPY src/shared/ ./shared/
+RUN pip install --no-cache-dir ./shared
+
+# Copy and install LADBS MCP server
+COPY src/mcp-servers/ladbs/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY mcp_server_ladbs.py .
-COPY src/ ./src/
+COPY src/mcp-servers/ladbs/mcp_server_ladbs.py .
+COPY src/mcp-servers/ladbs/src/ ./src/
 
 EXPOSE 8000
 CMD ["python", "mcp_server_ladbs.py"]

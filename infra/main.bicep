@@ -410,6 +410,7 @@ module mcpLadbs './app/mcp-ladbs.bicep' = {
     containerRegistryName: containerRegistry.outputs.name
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
+    identityClientId: managedIdentity.outputs.clientId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     cosmosDbAccountName: cosmosDb.outputs.name
     cosmosEndpoint: cosmosDb.outputs.endpoint
@@ -444,6 +445,7 @@ module mcpLadwp './app/mcp-ladwp.bicep' = {
     containerRegistryName: containerRegistry.outputs.name
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
+    identityClientId: managedIdentity.outputs.clientId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     cosmosDbAccountName: cosmosDb.outputs.name
     cosmosEndpoint: cosmosDb.outputs.endpoint
@@ -477,6 +479,7 @@ module mcpLasan './app/mcp-lasan.bicep' = {
     containerRegistryName: containerRegistry.outputs.name
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
+    identityClientId: managedIdentity.outputs.clientId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     cosmosDbAccountName: cosmosDb.outputs.name
     cosmosEndpoint: cosmosDb.outputs.endpoint
@@ -510,6 +513,7 @@ module mcpReporting './app/mcp-reporting.bicep' = {
     containerRegistryName: containerRegistry.outputs.name
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
+    identityClientId: managedIdentity.outputs.clientId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     cosmosEndpoint: cosmosDb.outputs.endpoint
     enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details

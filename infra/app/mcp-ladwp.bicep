@@ -43,6 +43,9 @@ param external bool = true
 @description('Managed identity resource ID')
 param identityId string = ''
 
+@description('Managed identity client ID for DefaultAzureCredential')
+param identityClientId string = ''
+
 @description('Application Insights connection string')
 @secure()
 param applicationInsightsConnectionString string = ''
@@ -184,6 +187,12 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               {
                 name: 'COSMOS_DATABASE'
                 value: 'ladwp'
+              }
+            ] : [],
+            !empty(identityClientId) ? [
+              {
+                name: 'AZURE_CLIENT_ID'
+                value: identityClientId
               }
             ] : []
           )
