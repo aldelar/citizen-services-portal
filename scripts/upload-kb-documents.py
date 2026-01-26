@@ -31,20 +31,28 @@ def upload_documents():
             continue
         
         container_client = blob_service.get_container_client(container_name)
+        uploaded_count = 0
         
         for file_path in agency_path.iterdir():
             if file_path.suffix.lower() in [".html", ".pdf"]:
                 blob_name = file_path.name
-                print(f"Uploading {agency}/{blob_name}...")
-                
-                with open(file_path, "rb") as f:
-                    container_client.upload_blob(
-                        name=blob_name,
-                        data=f,
-                        overwrite=True
-                    )
+                try:
+                    print(f"Uploading {agency}/{blob_name}...")
+                    with open(file_path, "rb") as f:
+                        container_client.upload_blob(
+                            name=blob_name,
+                            data=f,
+                            overwrite=True
+                        )
+                    uploaded_count += 1
+                except PermissionError as e:
+                    print(f"✗ Permission denied for {file_path}: {e}")
+                except OSError as e:
+                    print(f"✗ Error reading {file_path}: {e}")
+                except Exception as e:
+                    print(f"✗ Failed to upload {blob_name}: {e}")
         
-        print(f"✓ Uploaded {agency} documents to {container_name}")
+        print(f"✓ Uploaded {uploaded_count} {agency} documents to {container_name}")
 
 
 if __name__ == "__main__":
