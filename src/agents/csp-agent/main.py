@@ -59,8 +59,8 @@ def create_agent():
             url=mcp_reporting_url,
         ))
     
-    # Get Azure OpenAI configuration
-    model_url = os.environ.get("AZURE_OPENAI_ENDPOINT")
+    # Model URL
+    model_url = "https://aldelar-csp-foundry.cognitiveservices.azure.com/openai/deployments/gpt-4.1"
     
     # Load system prompt
     instructions = load_system_prompt()
@@ -70,7 +70,7 @@ def create_agent():
         name="csp-agent",
         instructions=instructions,
         model_url=model_url,
-        tools=tools,
+        #tools=tools,
     )
     
     return agent
@@ -78,7 +78,8 @@ def create_agent():
 
 def main():
     """Run the CSP Agent as a hosted agent."""
-    from_agent_framework(lambda _: create_agent()).run()
+    agent = create_agent()
+    from_agent_framework(agent).run()
 
 
 if __name__ == "__main__":

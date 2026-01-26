@@ -87,9 +87,9 @@ hooks:
                 export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
                 export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
 
-                # Deploy CSP Agent using azd ai agent extension
-                azd ai agent build
-                azd ai agent deploy
+                # Agent is now deployed via 'host: azure.ai.agent' in azure.yaml
+                # No additional deployment commands needed
+                echo "CSP Agent deployment handled by azd deploy"
     postprovision:
         posix:
             shell: sh
