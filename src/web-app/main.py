@@ -154,6 +154,25 @@ async def main_page():
         with chat_input_container:
             render_chat_input()
     
+    async def reload_and_update_selected_project():
+        """Reload projects from database and update the selected project reference."""
+        nonlocal selected_project, projects
+        
+        # Reload projects to get updated data and sorting
+        await load_projects()
+        
+        # Update selected project reference
+        if selected_project_id:
+            for p in projects:
+                if p.id == selected_project_id:
+                    selected_project = p
+                    break
+        
+        # Refresh projects panel to show new data/order
+        projects_container.clear()
+        with projects_container:
+            render_projects_list()
+    
     async def cancel_project_with_confirmation(project_id: str):
         """Cancel a project after user confirmation."""
         nonlocal projects, selected_project
@@ -329,9 +348,8 @@ async def main_page():
                     def start_edit():
                         title_label.set_visibility(False)
                         title_input.set_visibility(True)
+                        # Use props to autofocus instead of JavaScript injection
                         title_input.props('autofocus')
-                        # Force focus on the input
-                        ui.run_javascript(f'document.querySelector("input[value=\\"{selected_project.title}\\"]").focus()')
                     
                     async def finish_edit():
                         new_title = title_input.value
@@ -418,22 +436,11 @@ async def main_page():
         
         # Save user message to CosmosDB
         await project_service.save_message(selected_project_id, "user", user_msg)
-        # Update project timestamp
+        # Update project timestamp (needed for CosmosDB, redundant for in-memory but harmless)
         await project_service.touch_project(selected_project_id, user_id)
         
-        # Reload projects to get updated sorting
-        await load_projects()
-        
-        # Find updated selected project
-        for p in projects:
-            if p.id == selected_project_id:
-                selected_project = p
-                break
-        
-        # Refresh projects panel to show new order
-        projects_container.clear()
-        with projects_container:
-            render_projects_list()
+        # Reload projects and update UI to reflect new timestamp/order
+        await reload_and_update_selected_project()
         
         # Add user message to UI
         with chat_area:
@@ -465,22 +472,11 @@ async def main_page():
                 response_label.set_content(response_text)
                 # Save agent response to CosmosDB
                 await project_service.save_message(selected_project_id, "assistant", response_text)
-                # Update project timestamp
+                # Update project timestamp (needed for CosmosDB, redundant for in-memory but harmless)
                 await project_service.touch_project(selected_project_id, user_id)
                 
-                # Reload projects again to reflect the assistant message timestamp
-                await load_projects()
-                
-                # Find updated selected project
-                for p in projects:
-                    if p.id == selected_project_id:
-                        selected_project = p
-                        break
-                
-                # Refresh projects panel to show new order
-                projects_container.clear()
-                with projects_container:
-                    render_projects_list()
+                # Reload projects and update UI to reflect new timestamp/order
+                await reload_and_update_selected_project()
             else:
                 response_label.set_content('*(no response)*')
                 
