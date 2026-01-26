@@ -297,6 +297,8 @@ class TestInspectionRepository:
             address=unique_address,
             contact_name="Address Test Contact",
             contact_phone="555-0888",
+            scheduled_date="2026-04-01",
+            scheduled_time_window="8am-12pm"
         )
 
         # Search by address

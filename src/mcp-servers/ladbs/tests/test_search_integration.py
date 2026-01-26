@@ -92,8 +92,8 @@ class TestKnowledgeBaseSearch:
         for chunk in result.results:
             assert chunk.source is not None
             assert len(chunk.source) > 0
-            # Source should be a file name
-            assert "." in chunk.source or ".html" in chunk.source or ".pdf" in chunk.source
+            # Source should look like a filename (contains a dot and file extension)
+            assert "." in chunk.source and len(chunk.source.split(".")[-1]) in range(2, 6)
 
     @pytest.mark.asyncio
     async def test_search_with_varying_top_parameter(self, ladbs_service):

@@ -39,6 +39,7 @@ _search_enabled = bool(os.environ.get("AZURE_SEARCH_ENDPOINT"))
 _SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "ladbs-kb")
 _SEARCH_SEMANTIC_CONFIG = os.environ.get("AZURE_SEARCH_SEMANTIC_CONFIG", "ladbs-semantic-config")
 _SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2"]
+_MAX_RERANKER_SCORE = 4.0  # Azure AI Search semantic reranker score typically ranges 0-4
 
 
 def _get_repositories():
@@ -117,8 +118,8 @@ class LADBSService:
                 
                 chunks = []
                 for result in results:
-                    # Normalize reranker score to 0-1 range (typically 0-4)
-                    relevance_score = result.get("@search.reranker_score", 0) / 4.0
+                    # Normalize reranker score to 0-1 range
+                    relevance_score = result.get("@search.reranker_score", 0) / _MAX_RERANKER_SCORE
                     relevance_score = max(0.0, min(1.0, relevance_score))
                     
                     chunks.append(DocumentChunk(
