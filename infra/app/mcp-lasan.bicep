@@ -63,6 +63,15 @@ param cosmosDbAccountName string = ''
 @description('CosmosDB endpoint URL')
 param cosmosEndpoint string = ''
 
+@description('Azure AI Search endpoint URL')
+param searchEndpoint string = ''
+
+@description('Azure AI Search index name')
+param searchIndexName string = 'lasan-kb'
+
+@description('Azure AI Search semantic configuration name')
+param searchSemanticConfig string = 'lasan-semantic-config'
+
 @description('Microsoft Entra tenant ID for authentication')
 param tenantId string = tenant().tenantId
 
@@ -187,6 +196,20 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               {
                 name: 'COSMOS_DATABASE'
                 value: 'lasan'
+              }
+            ] : [],
+            !empty(searchEndpoint) ? [
+              {
+                name: 'AZURE_SEARCH_ENDPOINT'
+                value: searchEndpoint
+              }
+              {
+                name: 'AZURE_SEARCH_INDEX_NAME'
+                value: searchIndexName
+              }
+              {
+                name: 'AZURE_SEARCH_SEMANTIC_CONFIG'
+                value: searchSemanticConfig
               }
             ] : [],
             !empty(identityClientId) ? [

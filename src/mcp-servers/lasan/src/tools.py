@@ -36,7 +36,7 @@ class LASANTools:
             KnowledgeResult with matching document chunks
         """
         result = await self.service.query_knowledge_base(query, top)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def pickup_scheduled(
         self,
@@ -52,7 +52,7 @@ class LASANTools:
             PickupScheduledResult with scheduled pickups
         """
         result = await self.service.get_scheduled_pickups(address)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def pickup_schedule(
         self,
@@ -82,7 +82,7 @@ class LASANTools:
             contact_name=contact_name,
             contact_phone=contact_phone,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def pickup_getEligibility(
         self,
@@ -100,4 +100,4 @@ class LASANTools:
             EligibilityResult with eligible/ineligible items and alternatives
         """
         result = await self.service.check_pickup_eligibility(address, item_types)
-        return result.model_dump()
+        return result.model_dump(mode="json")
