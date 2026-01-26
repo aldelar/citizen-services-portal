@@ -17,6 +17,10 @@ MOCK_USER = User(
     phone="555-0123",
 )
 
+# Mock project constants
+MOCK_ADDRESS = "123 Main St, Los Angeles"
+MOCK_PERMIT_NUMBER = "2026-001234"
+
 
 # Mock Plan Steps for Home Renovation project
 MOCK_PLAN_STEPS = [
@@ -27,7 +31,7 @@ MOCK_PLAN_STEPS = [
         status=StepStatus.COMPLETED,
         depends_on=[],
         completed_at=datetime.now() - timedelta(days=7),
-        result={"permitNumber": "2026-001234"},
+        result={"permitNumber": MOCK_PERMIT_NUMBER},
     ),
     PlanStep(
         id="P2",
@@ -74,12 +78,12 @@ MOCK_PLAN_STEPS = [
             target="311",
             reason="LADBS inspection scheduling is only available via phone",
             phone_script=(
-                "I need to schedule a rough electrical inspection for "
-                "permit #2026-001234 at 123 Main St, Los Angeles. "
-                "My name is John Smith, phone 555-0123."
+                f"I need to schedule a rough electrical inspection for "
+                f"permit #{MOCK_PERMIT_NUMBER} at {MOCK_ADDRESS}. "
+                f"My name is {MOCK_USER.name}, phone {MOCK_USER.phone}."
             ),
             checklist=[
-                "Have permit number ready: 2026-001234",
+                f"Have permit number ready: {MOCK_PERMIT_NUMBER}",
                 "Confirm work is ready for inspection",
                 "Request morning slot if preferred",
             ],
@@ -105,7 +109,7 @@ MOCK_PROJECTS = [
         id="proj-001",
         user_id="user-001",
         title="Home Renovation",
-        description="Solar panel installation at 123 Main St",
+        description=f"Solar panel installation at {MOCK_ADDRESS}",
         status=ProjectStatus.ACTIVE,
         progress=0.8,
         created_at=datetime.now() - timedelta(days=14),
@@ -143,9 +147,9 @@ MOCK_MESSAGES = [
         project_id="proj-001",
         message_type=MessageType.AGENT,
         content=(
-            "Hi! I'm here to help you with your home renovation project. "
-            "I see you want to install solar panels at 123 Main St. "
-            "Let me help you navigate the permit process."
+            f"Hi! I'm here to help you with your home renovation project. "
+            f"I see you want to install solar panels at {MOCK_ADDRESS}. "
+            f"Let me help you navigate the permit process."
         ),
         timestamp=datetime.now() - timedelta(days=14),
         sender_name="Agent",
@@ -156,7 +160,7 @@ MOCK_MESSAGES = [
         message_type=MessageType.USER,
         content="Yes, I want to install solar panels and battery storage on my house.",
         timestamp=datetime.now() - timedelta(days=14) + timedelta(minutes=5),
-        sender_name="John Smith",
+        sender_name=MOCK_USER.name,
     ),
     Message(
         id="msg-003",
