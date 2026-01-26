@@ -47,7 +47,7 @@ class ReportingTools:
             started_at=started_dt,
             completed_at=completed_dt,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def steps_getAverageDuration(
         self,
@@ -68,4 +68,4 @@ class ReportingTools:
             tool_name=tool_name,
             city=city,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
