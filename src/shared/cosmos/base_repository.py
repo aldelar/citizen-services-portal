@@ -206,8 +206,8 @@ class BaseRepository(Generic[T]):
         
         if partition_key:
             query_kwargs["partition_key"] = partition_key
-        else:
-            query_kwargs["enable_cross_partition_query"] = True
+        # Note: enable_cross_partition_query is deprecated in azure-cosmos v4.14+
+        # Cross-partition queries are now handled automatically
         
         items = []
         async for item in container.query_items(**query_kwargs):

@@ -29,13 +29,13 @@ pytestmark = [
 ]
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 async def permit_repository():
     """Create a PermitRepository instance for testing."""
     return PermitRepository()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 async def inspection_repository():
     """Create an InspectionRepository instance for testing."""
     return InspectionRepository()

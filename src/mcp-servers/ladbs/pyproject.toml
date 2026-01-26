@@ -5,7 +5,10 @@ description = "LADBS (Los Angeles Department of Building and Safety) MCP Server"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiohttp>=3.9.0",
+    "azure-cosmos>=4.5.1",
     "azure-identity>=1.19.0",
+    "azure-search-documents>=11.4.0",
     "fastmcp>=0.3.0",
     "mcp>=1.1.2",
     "pydantic>=2.10.6",
@@ -36,6 +39,8 @@ ignore = []
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 markers = [
     "integration: marks tests as integration tests (require live Azure services)",
