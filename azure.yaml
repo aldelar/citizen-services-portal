@@ -50,7 +50,7 @@ services:
         language: python
         docker:
             path: ./Dockerfile
-            context: .
+            context: ../../..
     mcp-reporting:
         project: ./src/mcp-servers/reporting
         host: containerapp

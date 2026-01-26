@@ -484,6 +484,7 @@ module mcpLasan './app/mcp-lasan.bicep' = {
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     cosmosDbAccountName: cosmosDb.outputs.name
     cosmosEndpoint: cosmosDb.outputs.endpoint
+    searchEndpoint: aiSearch.outputs.endpoint
     enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
     appClientId: ''
   }

@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 # Check if CosmosDB is configured
 _cosmos_enabled = bool(os.environ.get("COSMOS_ENDPOINT"))
 
+# Check if Azure AI Search is configured
+_search_enabled = bool(os.environ.get("AZURE_SEARCH_ENDPOINT"))
+
+# Search configuration
+_SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "lasan-kb")
+_SEARCH_SEMANTIC_CONFIG = os.environ.get("AZURE_SEARCH_SEMANTIC_CONFIG", "lasan-semantic-config")
+_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2"]
+_MAX_RERANKER_SCORE = 4.0  # Azure AI Search semantic reranker score typically ranges 0-4
+
 
 def _get_repositories():
     """Get repository instances if CosmosDB is enabled."""
@@ -50,11 +59,35 @@ class LASANService:
         self.api_endpoint = settings.lasan_api_endpoint
         self.api_key = settings.lasan_api_key
         self._pickup_repo = _get_repositories()
+        self._search_client = self._init_search_client()
+
+    def _init_search_client(self):
+        """Initialize Azure AI Search client if configured."""
+        if not _search_enabled:
+            return None
+        
+        try:
+            from azure.identity import DefaultAzureCredential
+            from azure.search.documents import SearchClient
+            
+            return SearchClient(
+                endpoint=os.environ["AZURE_SEARCH_ENDPOINT"],
+                index_name=_SEARCH_INDEX_NAME,
+                credential=DefaultAzureCredential()
+            )
+        except Exception as e:
+            logger.warning(f"Failed to initialize Azure AI Search client: {e}")
+            return None
 
     @property
     def cosmos_enabled(self) -> bool:
         """Check if CosmosDB is enabled."""
         return self._pickup_repo is not None
+
+    @property
+    def search_enabled(self) -> bool:
+        """Check if Azure AI Search is enabled."""
+        return self._search_client is not None
 
     def _generate_id(self, prefix: str = "ID") -> str:
         """Generate a random ID."""
@@ -63,11 +96,42 @@ class LASANService:
 
     async def query_knowledge_base(self, query: str, top: int = 5) -> KnowledgeResult:
         """
-        Query the LASAN knowledge base (AI Search).
+        Query the LASAN knowledge base using Azure AI Search.
 
-        This is a mock implementation.
+        Uses semantic search with the lasan-kb index when configured,
+        otherwise returns mock data.
         """
-        # TODO: Replace with actual Azure AI Search call
+        # Use Azure AI Search if available
+        if self._search_client:
+            try:
+                results = self._search_client.search(
+                    search_text=query,
+                    query_type="semantic",
+                    semantic_configuration_name=_SEARCH_SEMANTIC_CONFIG,
+                    top=top,
+                    select=_SEARCH_SELECT_FIELDS
+                )
+                
+                chunks = []
+                for result in results:
+                    # Normalize reranker score to 0-1 range
+                    relevance_score = result.get("@search.reranker_score", 0) / _MAX_RERANKER_SCORE
+                    relevance_score = max(0.0, min(1.0, relevance_score))
+                    
+                    chunks.append(DocumentChunk(
+                        content=result["chunk"],
+                        source=result["source_file"],
+                        relevance_score=relevance_score
+                    ))
+                
+                return KnowledgeResult(
+                    query=query,
+                    results=chunks,
+                    total_results=len(chunks)
+                )
+            except Exception as e:
+                logger.error(f"Error querying Azure AI Search: {e}")
+                # Fall through to mock data
 
         mock_chunks = [
             DocumentChunk(

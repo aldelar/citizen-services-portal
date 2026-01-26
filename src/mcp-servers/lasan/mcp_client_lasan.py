@@ -95,8 +95,84 @@ async def run_client():
             except Exception as e:
                 print(f"  Prompts not supported or error: {e}")
 
+            # Test tool calls
             print("\n" + "=" * 60)
-            print("MCP Server Discovery Complete!")
+            print("Testing Tool Calls:")
+            print("=" * 60)
+
+            # Test 1: Query Knowledge Base (AI Search)
+            print("\n1. Testing queryKB (Knowledge Base Search)...")
+            try:
+                kb_result = await session.call_tool(
+                    "queryKB",
+                    {"query": "How do I schedule a bulky item pickup?", "top": 3}
+                )
+                print("   ✅ queryKB succeeded!")
+                if kb_result.content:
+                    for item in kb_result.content:
+                        if hasattr(item, 'text'):
+                            # Show first 500 chars of response
+                            text = item.text[:500] + "..." if len(item.text) > 500 else item.text
+                            print(f"   Response: {text}")
+            except Exception as e:
+                print(f"   ❌ queryKB failed: {e}")
+
+            # Test 2: Get Scheduled Pickups
+            print("\n2. Testing pickup_scheduled...")
+            try:
+                scheduled_result = await session.call_tool(
+                    "pickup_scheduled",
+                    {"address": "123 Test St, Los Angeles, CA 90012"}
+                )
+                print("   ✅ pickup_scheduled succeeded!")
+                if scheduled_result.content:
+                    for item in scheduled_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ pickup_scheduled failed: {e}")
+
+            # Test 3: Check Pickup Eligibility
+            print("\n3. Testing pickup_getEligibility...")
+            try:
+                eligibility_result = await session.call_tool(
+                    "pickup_getEligibility",
+                    {
+                        "address": "123 Test St, Los Angeles, CA 90012",
+                        "item_types": ["old sofa", "concrete", "old TV"]
+                    }
+                )
+                print("   ✅ pickup_getEligibility succeeded!")
+                if eligibility_result.content:
+                    for item in eligibility_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ pickup_getEligibility failed: {e}")
+
+            # Test 4: Prepare Pickup Scheduling
+            print("\n4. Testing pickup_schedule...")
+            try:
+                schedule_result = await session.call_tool(
+                    "pickup_schedule",
+                    {
+                        "address": "123 Test St, Los Angeles, CA 90012",
+                        "pickup_type": "bulky_item",
+                        "items": ["old sofa", "mattress"],
+                        "contact_name": "Test User",
+                        "contact_phone": "555-1234"
+                    }
+                )
+                print("   ✅ pickup_schedule succeeded!")
+                if schedule_result.content:
+                    for item in schedule_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ pickup_schedule failed: {e}")
+
+            print("\n" + "=" * 60)
+            print("MCP Server Testing Complete!")
             print("=" * 60)
 
 
