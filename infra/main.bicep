@@ -184,6 +184,29 @@ module foundryRbac './core/security/foundry-rbac.bicep' = if (principalId != '')
   }
 }
 
+// Foundry RBAC - Grant AI Search service access to Foundry (for AI enrichment)
+module foundrySearchRbac './core/security/foundry-rbac.bicep' = {
+  name: 'foundry-search-rbac-deployment'
+  scope: rg
+  params: {
+    foundryId: foundry.outputs.id
+    principalId: aiSearch.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Storage RBAC - Grant access to blob storage for user, search, and managed identity
+module storageRbac './core/security/storage-rbac.bicep' = {
+  name: 'storage-rbac-deployment'
+  scope: rg
+  params: {
+    storageAccountName: storageAccount.outputs.name
+    userPrincipalId: principalId
+    searchPrincipalId: aiSearch.outputs.principalId
+    identityPrincipalId: managedIdentity.outputs.principalId
+  }
+}
+
 // AI Foundry Project
 module foundryProject './core/ai/foundry-project.bicep' = {
   name: 'foundry-project-deployment'
@@ -302,6 +325,18 @@ module cuTextEmbedding3Large './core/ai/openai-deployment.bicep' = {
   dependsOn: [
     cuGpt41
   ]
+}
+
+// Content Understanding RBAC - Grant access to CU for user, search, and managed identity
+module contentUnderstandingRbac './core/security/content-understanding-rbac.bicep' = {
+  name: 'content-understanding-rbac-deployment'
+  scope: rg
+  params: {
+    contentUnderstandingId: contentUnderstanding.outputs.id
+    userPrincipalId: principalId
+    searchPrincipalId: aiSearch.outputs.principalId
+    identityPrincipalId: managedIdentity.outputs.principalId
+  }
 }
 
 // Knowledge Base Storage Containers

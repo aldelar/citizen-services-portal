@@ -1,6 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/ContainerAgent.yaml
 
-kind: hosted
 name: csp-agent
 description: |
     Citizen Services Portal Agent - A unified AI assistant for City of Los Angeles 
@@ -9,25 +8,33 @@ description: |
     with multi-agency coordination.
 
 metadata:
-    authors:
-        - Citizen Services Portal Team
-    tags:
-        - Azure AI AgentServer
-        - Microsoft Agent Framework
-        - Model Context Protocol
-        - MCP
-        - Citizen Services
-        - Government
+  authors:
+    - Citizen Services Portal Team
+  tags:
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+    - Model Context Protocol
+    - MCP
+    - Citizen Services
+    - Government
+  example:
+    - role: user
+      content: |-
+        I want to install solar panels on my house. What permits do I need?
 
-protocols:
+template:
+  name: CSPAgent
+  kind: hosted
+  protocols:
     - protocol: responses
-      version: ""
-
-environment_variables:
+      version: v1
+  environment_variables:
+    - name: AZURE_AI_PROJECT_ENDPOINT
+      value: ${AZURE_AI_PROJECT_ENDPOINT}
     - name: AZURE_OPENAI_ENDPOINT
       value: ${AZURE_OPENAI_ENDPOINT}
     - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
-      value: ${AZURE_OPENAI_CHAT_DEPLOYMENT_NAME}
+      value: "{{chat}}"
     - name: MCP_LADBS_URL
       value: ${MCP_LADBS_URL}
     - name: MCP_LADWP_URL
@@ -36,3 +43,9 @@ environment_variables:
       value: ${MCP_LASAN_URL}
     - name: MCP_REPORTING_URL
       value: ${MCP_REPORTING_URL}
+
+resources:
+  - kind: model
+    id: gpt-4.1
+    name: chat
+

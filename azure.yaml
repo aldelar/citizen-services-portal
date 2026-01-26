@@ -2,102 +2,107 @@
 
 name: citizen-services-portal
 metadata:
-  template: citizen-services-portal@0.0.1
-
-hooks:
-  preprovision:
-    posix:
-      shell: sh
-      run: |
-        # Automatically set the current user's principal ID for RBAC assignments
-        PRINCIPAL_ID=$(az ad signed-in-user show --query id -o tsv 2>/dev/null || echo "")
-        if [ -n "$PRINCIPAL_ID" ]; then
-          azd env set AZURE_PRINCIPAL_ID "$PRINCIPAL_ID"
-          echo "Set AZURE_PRINCIPAL_ID to $PRINCIPAL_ID"
-        else
-          echo "Warning: Could not get user principal ID. RBAC assignment will be skipped."
-        fi
-  
-  postprovision:
-    posix:
-      shell: sh
-      run: |
-        echo "Configuring AI Gateway..."
-        cd scripts && uv run python configure_ai_gateway_arm.py
-      continueOnError: false
-      interactive: false
-  
-  postdeploy:
-    posix:
-      shell: sh
-      run: |
-        echo "Deploying CSP Agent to Microsoft Foundry..."
-        cd src/agents/csp-agent
-        
-        # Export required environment variables from azd
-        export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
-        export AZURE_SUBSCRIPTION_ID=$(azd env get-value AZURE_SUBSCRIPTION_ID)
-        export resourceGroupName=$(azd env get-value resourceGroupName)
-        export foundryName=$(azd env get-value foundryName)
-        export foundryProjectName=$(azd env get-value foundryProjectName)
-        
-        # Export MCP server URLs from azd environment
-        export MCP_LADBS_URL=$(azd env get-value SERVICE_MCP_LADBS_URI)
-        export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
-        export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
-        export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
-        
-        # Deploy CSP Agent using azd ai agent extension
-        azd ai agent build
-        azd ai agent deploy
-
-infra:
-  provider: bicep
-  path: infra
-  module: main
-  parameters:
-    principalId: ${AZURE_PRINCIPAL_ID}
-
-pipeline:
-  provider: github
-
+    template: citizen-services-portal@0.0.1
 services:
-  mcp-ladbs:
-    project: ./src/mcp-servers/ladbs
-    language: py
-    host: containerapp
-    docker:
-      path: ./Dockerfile
-      context: .
-      registry: aldelarcspcr.azurecr.io
-  
-  mcp-ladwp:
-    project: ./src/mcp-servers/ladwp
-    language: py
-    host: containerapp
-    docker:
-      path: ./Dockerfile
-      context: .
-      registry: aldelarcspcr.azurecr.io
-  
-  mcp-lasan:
-    project: ./src/mcp-servers/lasan
-    language: py
-    host: containerapp
-    docker:
-      path: ./Dockerfile
-      context: .
-      registry: aldelarcspcr.azurecr.io
-  
-  mcp-reporting:
-    project: ./src/mcp-servers/reporting
-    language: py
-    host: containerapp
-    docker:
-      path: ./Dockerfile
-      context: .
-      registry: aldelarcspcr.azurecr.io
-  
-  # Note: ladbs-agent, ladwp-agent, and lasan-agent are deployed via hooks, not as hosted services
-  # The postdeploy hook runs the Python deployment scripts
+    CSPAgent:
+        project: src/csp-agent
+        host: azure.ai.agent
+        language: docker
+        docker:
+            remoteBuild: true
+        config:
+            container:
+                resources:
+                    cpu: "1"
+                    memory: 2Gi
+                scale:
+                    maxReplicas: 3
+                    minReplicas: 1
+            deployments:
+                - model:
+                    format: OpenAI
+                    name: gpt-4.1
+                    version: "2025-04-14"
+                  name: gpt-4.1
+                  sku:
+                    capacity: 1000
+                    name: GlobalStandard
+    mcp-ladbs:
+        project: ./src/mcp-servers/ladbs
+        host: containerapp
+        language: python
+        docker:
+            path: ./Dockerfile
+            context: .
+    mcp-ladwp:
+        project: ./src/mcp-servers/ladwp
+        host: containerapp
+        language: python
+        docker:
+            path: ./Dockerfile
+            context: .
+    mcp-lasan:
+        project: ./src/mcp-servers/lasan
+        host: containerapp
+        language: python
+        docker:
+            path: ./Dockerfile
+            context: .
+    mcp-reporting:
+        project: ./src/mcp-servers/reporting
+        host: containerapp
+        language: python
+        docker:
+            path: ./Dockerfile
+            context: .
+infra:
+    provider: bicep
+    path: infra
+    module: main
+pipeline:
+    provider: github
+    variables: []
+    secrets: []
+hooks:
+    postdeploy:
+        posix:
+            shell: sh
+            run: |
+                echo "Deploying CSP Agent to Microsoft Foundry..."
+                cd src/agents/csp-agent
 
+                # Export required environment variables from azd
+                export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
+                export AZURE_SUBSCRIPTION_ID=$(azd env get-value AZURE_SUBSCRIPTION_ID)
+                export resourceGroupName=$(azd env get-value resourceGroupName)
+                export foundryName=$(azd env get-value foundryName)
+                export foundryProjectName=$(azd env get-value foundryProjectName)
+
+                # Export MCP server URLs from azd environment
+                export MCP_LADBS_URL=$(azd env get-value SERVICE_MCP_LADBS_URI)
+                export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
+                export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
+                export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
+
+                # Deploy CSP Agent using azd ai agent extension
+                azd ai agent build
+                azd ai agent deploy
+    postprovision:
+        posix:
+            shell: sh
+            run: |
+                echo "Configuring AI Gateway..."
+                cd scripts/ai-gateway && uv run python configure_ai_gateway_arm.py
+    preprovision:
+        posix:
+            name: preprovision
+            shell: sh
+            run: |
+                # Automatically set the current user's principal ID for RBAC assignments
+                PRINCIPAL_ID=$(az ad signed-in-user show --query id -o tsv 2>/dev/null || echo "")
+                if [ -n "$PRINCIPAL_ID" ]; then
+                  azd env set AZURE_PRINCIPAL_ID "$PRINCIPAL_ID"
+                  echo "Set AZURE_PRINCIPAL_ID to $PRINCIPAL_ID"
+                else
+                  echo "Warning: Could not get user principal ID. RBAC assignment will be skipped."
+                fi

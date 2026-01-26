@@ -485,27 +485,17 @@ See [specs/](specs/) for in-depth technical documentation on infrastructure, MCP
 
 ---
 
-## Solution Implementation Steps
+## Solution Implementation Next Steps
 
-### Completed
+### TODO
 
-- Basic infrastructure and services.
-- Code structure for mcp servers and deployment in ACA.
-- Security for mcp servers using Entra Agent identities.
-- Foundry Declarative Agents code structure, yaml definitions, and deployment scripts.
-- LADBS MCP Server deployed and accessible in Foundry using Microsoft Entra authentication.
-- LADWP MCP Server implemented with comprehensive documentation.
-
-### Work In Progress
-- LADBS AI Agent created and published, and able to use MCP server tools using Microsoft Entra authentication.
-- Configure AI Gateway to be setup in front of MCP Servers and Models, with updates to Agent definitions to use the Gateway.
-Define Cosmos DB containers for agent memory and citizen operational data (name, address, permit history, etc.)
-
-### Next Steps
-- Develop citizen portal web application, basic to have chat and history of requests for users to be able to jump around contexts.
-- Implement additional tools for LADBS MCP server for permit application, status, retrieval to test a closed loop simple end to end scenario testing the front end and memory.
-- Implement Evaluations for this agent to monitor performance and accuracy.
+- AI Gateway Config for models
+- AI Gateway Config for MCP Servers
+- Tracing for CSP Agent -> surface in Portal for debugging?
+- Evals for CSP Agent
+- Tests for MCP Servers
+- Authentication for MCP Servers
+- MCP implementation using CosmosDB backend for automated services (permits, interconnection, etc.)
 - Enable real time monitoring for this agent using the New Foundry Control Plane features.
-- Enable tracking of basic metrics to measure usage, requests types, average time for permit approvals, etc. (for this, we'd want to setup some analytics solution like Power BI or similar on top of the data stored in Cosmos DB).
+- Develop tracking of stats and analytics (Power BI)
 - Setup Github Actions as CI/CD pipeline to automate deployments of infrastructure, MCP servers, and agents and include Evaluations as part of the pipeline whenebver agent code is updated (including mcp servers used by the agents).
-- Build additional MCP servers (utilities, etc.)
