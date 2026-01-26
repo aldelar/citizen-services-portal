@@ -12,54 +12,104 @@ def ladbs_tools():
 
 
 @pytest.mark.asyncio
-async def test_submit_permit_application(ladbs_tools):
-    """Test permit application submission."""
-    result = await ladbs_tools.submit_permit_application(
-        applicant_name="John Doe",
-        property_address="123 Main St, Los Angeles, CA 90001",
-        work_description="Kitchen remodel",
-        estimated_cost=15000.00,
+async def test_query_knowledge_base(ladbs_tools):
+    """Test knowledge base query."""
+    result = await ladbs_tools.queryKB(
+        query="What are the requirements for electrical permits?",
+        top=5
     )
 
-    assert result["success"] is True
-    assert "permit_number" in result
-    assert result["status"] == "pending"
+    assert isinstance(result, dict)
+    assert "query" in result
+    assert "results" in result
+    assert "total_results" in result
+    assert len(result["results"]) > 0
 
 
 @pytest.mark.asyncio
-async def test_check_permit_status(ladbs_tools):
-    """Test permit status check."""
-    result = await ladbs_tools.check_permit_status("PERMIT-12345678")
+async def test_permits_search_by_number(ladbs_tools):
+    """Test permit search by permit number."""
+    result = await ladbs_tools.permits_search(
+        permit_number="PERMIT-12345678"
+    )
 
+    assert isinstance(result, dict)
+    assert "permits" in result
+    assert "total_count" in result
+
+
+@pytest.mark.asyncio
+async def test_permits_search_by_address(ladbs_tools):
+    """Test permit search by address."""
+    result = await ladbs_tools.permits_search(
+        address="123 Main St, Los Angeles, CA 90012"
+    )
+
+    assert isinstance(result, dict)
+    assert "permits" in result
+    assert "total_count" in result
+
+
+@pytest.mark.asyncio
+async def test_permits_submit(ladbs_tools):
+    """Test permit submission."""
+    result = await ladbs_tools.permits_submit(
+        user_id="test-user-123",
+        permit_type="electrical",
+        address="123 Main St, Los Angeles, CA 90001",
+        applicant_name="John Doe",
+        applicant_email="john@example.com",
+        applicant_phone="555-1234",
+        work_description="Kitchen remodel",
+        estimated_cost=15000.00,
+        documents=["plan.pdf"],
+        contractor_license="C10-123456"
+    )
+
+    assert isinstance(result, dict)
+    assert result["success"] is True
+    assert "permit_number" in result
+    assert result["status"] == "submitted"
+
+
+@pytest.mark.asyncio
+async def test_permits_get_status(ladbs_tools):
+    """Test permit status check."""
+    result = await ladbs_tools.permits_getStatus(
+        permit_number="PERMIT-12345678"
+    )
+
+    assert isinstance(result, dict)
     assert "permit_number" in result
     assert "status" in result
 
 
 @pytest.mark.asyncio
-async def test_schedule_inspection(ladbs_tools):
-    """Test inspection scheduling."""
-    result = await ladbs_tools.schedule_inspection(
-        permit_number="PERMIT-12345678",
-        inspection_type="foundation",
-        requested_date="2026-02-01",
-        contact_name="Jane Smith",
-        contact_phone="555-0123",
+async def test_inspections_scheduled(ladbs_tools):
+    """Test viewing scheduled inspections."""
+    result = await ladbs_tools.inspections_scheduled(
+        permit_number="PERMIT-12345678"
     )
 
-    assert result["success"] is True
-    assert "inspection_id" in result
+    assert isinstance(result, dict)
+    assert "inspections" in result
+    assert "total_count" in result
 
 
 @pytest.mark.asyncio
-async def test_report_violation(ladbs_tools):
-    """Test violation reporting."""
-    result = await ladbs_tools.report_violation(
-        property_address="456 Oak Ave, Los Angeles, CA 90002",
-        violation_type="unpermitted_construction",
-        description="Addition built without permits",
-        reporter_name="Anonymous",
+async def test_inspections_schedule(ladbs_tools):
+    """Test preparing inspection scheduling materials."""
+    result = await ladbs_tools.inspections_schedule(
+        permit_number="PERMIT-12345678",
+        inspection_type="rough_electrical",
+        address="123 Main St, Los Angeles, CA 90012",
+        contact_name="Jane Smith",
+        contact_phone="555-0123"
     )
 
-    assert result["success"] is True
-    assert "report_id" in result
-    assert result["status"] == "submitted"
+    assert isinstance(result, dict)
+    assert result["requires_user_action"] is True
+    assert result["action_type"] == "phone_call"
+    assert "prepared_materials" in result
+    assert "on_complete" in result
+
