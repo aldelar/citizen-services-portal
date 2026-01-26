@@ -71,6 +71,53 @@ AI-driven virtual assistants handling routine inquiries and guiding citizens thr
 
 ---
 
+## Agent Architecture (MVP)
+
+The Citizen Services Portal uses a single unified **CSP Agent** deployed as a Hosted Agent in Microsoft Foundry. This agent serves as the intelligent interface for all citizen service requests, connecting to multiple MCP (Model Context Protocol) servers to provide comprehensive assistance across government departments.
+
+### Architecture Overview
+
+```
+                    ┌─────────────────────┐
+                    │    Citizen/User     │
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │     CSP Agent       │
+                    │  (Hosted Agent in   │
+                    │  Microsoft Foundry) │
+                    └──────────┬──────────┘
+                               │
+       ┌───────────────────────┼───────────────────────┐
+       │                       │                       │
+┌──────▼──────┐         ┌──────▼──────┐         ┌──────▼──────┐
+│ LADBS MCP   │         │ LADWP MCP   │         │ LASAN MCP   │
+│ (Permits)   │         │ (Utilities) │         │(Sanitation) │
+└─────────────┘         └─────────────┘         └─────────────┘
+```
+
+### Key Capabilities
+
+| Capability | Description |
+|------------|-------------|
+| **Multi-Agency Coordination** | Creates Plans spanning LADBS, LADWP, and LASAN for complex requests like solar installation |
+| **Knowledge Base Queries** | Uses `queryKB` tools to retrieve accurate, up-to-date information from each agency |
+| **Automated Actions** | Submits permits, enrolls in rate plans, applies for rebates directly |
+| **User Action Preparation** | Prepares phone scripts, email drafts, and checklists for actions requiring human intervention |
+
+### MCP Server Connections
+
+The CSP Agent connects to four MCP servers deployed in Azure Container Apps:
+
+| MCP Server | Agency | Key Tools |
+|------------|--------|-----------|
+| **LADBS** | Building & Safety | `queryKB`, `permits.submit`, `permits.getStatus`, `inspections.schedule` |
+| **LADWP** | Water & Power | `queryKB`, `tou.enroll`, `interconnection.submit`, `rebates.apply` |
+| **LASAN** | Sanitation | `queryKB`, `pickup.schedule`, `pickup.getEligibility` |
+| **Reporting** | Analytics | Cross-agency reporting and metrics |
+
+For detailed technical specifications, see [specs/4-spec-csp-agent.md](specs/4-spec-csp-agent.md).
+
 ---
 
 # Infrastructure
@@ -135,16 +182,36 @@ citizen-services-portal/
 │       ├── security/                   # Key Vault, Managed Identity
 │       └── monitor/                    # Log Analytics, App Insights
 │
-├── src/                                # Application code (future)
-│   ├── mcp-servers/                    # MCP server implementations
-│   ├── web/                            # Web application frontends
-│   └── agents/                         # AI agent workflows
+├── src/                                # Application code
+│   ├── agents/                         # AI agent implementations
+│   │   ├── csp-agent/                  # Active CSP Hosted Agent for MVP
+│   │   │   ├── Dockerfile              # Container definition
+│   │   │   ├── agent.yaml              # Agent manifest for Foundry
+│   │   │   ├── main.py                 # Agent entry point
+│   │   │   ├── requirements.txt        # Python dependencies
+│   │   │   └── prompts/                # Agent system prompts
+│   │   ├── _future_approach/           # Reserved: Multi-agent per-agency approach (not deployed)
+│   │   └── _hosted_agent_example/      # Reference implementation template
+│   ├── mcp-servers/                    # MCP server implementations (deployed to ACA)
+│   │   ├── ladbs/                      # LADBS - Building & Safety
+│   │   ├── ladwp/                      # LADWP - Water & Power
+│   │   ├── lasan/                      # LASAN - Sanitation
+│   │   └── reporting/                  # Reporting - Analytics
+│   └── web/                            # Web application frontends
+│
+├── specs/                              # Technical specifications
+│   ├── 1-spec-mcp-servers.md           # MCP server tool definitions
+│   ├── 2-spec-cosmosdb.md              # Database schema
+│   ├── 3-spec-knowledge-base-ingestion.md
+│   └── 4-spec-csp-agent.md             # CSP Agent specification
 │
 └── docs/                               # Additional documentation
     ├── use-cases.md                    # Detailed use case specifications
     ├── story-line.md                   # Project narrative and vision
     └── presentation-approach.md        # Demo and presentation guide
 ```
+
+> **Note on `_future_approach`**: This folder contains per-agency agent implementations (LADBS, LADWP, LASAN agents) that are reserved for future expansion. The current MVP uses a single unified CSP Agent instead. This multi-agent approach may be adopted later for specialized agency expertise, independent scaling, or advanced orchestration patterns.
 
 ---
 
@@ -388,29 +455,33 @@ The **Los Angeles Department of Water and Power (LADWP)** MCP server provides to
 
 AI agents built using Azure AI Foundry Agent Service, connecting to models via APIM AI Gateway and tools via MCP servers.
 
-### LADBS Assistant
+### CSP Agent (Citizen Services Portal Agent)
 
-The **LADBS AI Agent** helps citizens with building permits, inspections, and code violations using conversational AI.
+The **CSP Agent** is the unified AI assistant for the City of Los Angeles government services. It serves as a single point of contact for citizens navigating complex processes across multiple departments.
 
 **Capabilities:**
+- Answer questions about permits, utilities, and sanitation services
 - Submit permit applications with guided data collection
 - Check permit status and review timeline
-- Schedule inspections with preferred dates
-- Report code violations (anonymously or with contact info)
+- Enroll in utility rate plans and apply for rebates
+- Schedule inspections and pickups (prepares materials for user actions)
+- Create multi-step Plans for complex requests spanning multiple agencies
 
 **Configuration:**
 - **Model:** gpt-4.1 (accessed via APIM AI Gateway)
-- **Tools:** mcp-ladbs (LADBS MCP server via APIM)
-- **Deployment:** Automated via `azd provision` (postprovision hook)
+- **Tools:** LADBS MCP, LADWP MCP, LASAN MCP, Reporting MCP
+- **Deployment:** Automated via `azd deploy` (postdeploy hook)
 
-**Location:** `src/agents/ladbs/`  
+**Location:** `src/agents/csp-agent/`  
 **Test Agent:** [Azure AI Foundry Portal](https://ai.azure.com/build/projects/citizen-services-portal/agents)
 
-For agent details and manual deployment, see [src/agents/ladbs/README.md](src/agents/ladbs/README.md).
+For agent details and manual deployment, see [src/agents/csp-agent/README.md](src/agents/csp-agent/README.md).
+
+> **Note:** Previous per-agency agents (LADBS, LADWP, LASAN) are preserved in `src/agents/_future_approach/` for potential future use with multi-agent orchestration patterns.
 
 ## Technical Specifications
 
-See [technical-specs/](technical-specs/) for in-depth technical documentation on infrastructure, MCP servers, AI agents, and security configurations.
+See [specs/](specs/) for in-depth technical documentation on infrastructure, MCP servers, AI agents, and security configurations.
 
 ---
 
