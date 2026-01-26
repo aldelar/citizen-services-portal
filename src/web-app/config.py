@@ -1,0 +1,24 @@
+"""Configuration management for the Citizen Services Portal web application."""
+
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+
+class Settings:
+    """Application settings from environment variables."""
+    
+    # Auth settings
+    USE_MOCK_AUTH: bool = os.getenv('USE_MOCK_AUTH', 'true').lower() == 'true'
+    MOCK_USER_ID: str = os.getenv('MOCK_USER_ID', 'local-dev-user')
+    MOCK_USER_EMAIL: str = os.getenv('MOCK_USER_EMAIL', 'dev@example.com')
+    MOCK_USER_NAME: str = os.getenv('MOCK_USER_NAME', 'John Smith')
+    
+    # Server settings
+    NICEGUI_PORT: int = int(os.getenv('NICEGUI_PORT', '8080'))
+    NICEGUI_HOST: str = os.getenv('NICEGUI_HOST', '0.0.0.0')
+
+
+settings = Settings()
