@@ -35,6 +35,11 @@ _cosmos_enabled = bool(os.environ.get("COSMOS_ENDPOINT"))
 # Check if Azure AI Search is configured
 _search_enabled = bool(os.environ.get("AZURE_SEARCH_ENDPOINT"))
 
+# Search configuration
+_SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "ladbs-kb")
+_SEARCH_SEMANTIC_CONFIG = os.environ.get("AZURE_SEARCH_SEMANTIC_CONFIG", "ladbs-semantic-config")
+_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2"]
+
 
 def _get_repositories():
     """Get repository instances if CosmosDB is enabled."""
@@ -70,7 +75,7 @@ class LADBSService:
             
             return SearchClient(
                 endpoint=os.environ["AZURE_SEARCH_ENDPOINT"],
-                index_name="ladbs-kb",
+                index_name=_SEARCH_INDEX_NAME,
                 credential=DefaultAzureCredential()
             )
         except Exception as e:
@@ -105,9 +110,9 @@ class LADBSService:
                 results = self._search_client.search(
                     search_text=query,
                     query_type="semantic",
-                    semantic_configuration_name="ladbs-semantic-config",
+                    semantic_configuration_name=_SEARCH_SEMANTIC_CONFIG,
                     top=top,
-                    select=["chunk", "source_file", "title", "header_1", "header_2"]
+                    select=_SEARCH_SELECT_FIELDS
                 )
                 
                 chunks = []
