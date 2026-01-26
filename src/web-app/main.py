@@ -137,7 +137,7 @@ def main():
         host=settings.NICEGUI_HOST,
         port=settings.NICEGUI_PORT,
         title='Citizen Services Portal',
-        reload=False,
+        reload=settings.DEBUG,  # Hot-reload in dev mode
     )
 
 

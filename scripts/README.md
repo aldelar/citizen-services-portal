@@ -60,27 +60,49 @@ Scripts for configuring the Azure API Management AI Gateway.
 | `configure_ai_gateway.py` | Python script for AI Gateway configuration |
 | `configure_ai_gateway_arm.py` | ARM-based AI Gateway configuration |
 
-## Python Environment
+## Local Development Orchestrator
 
-The scripts use a shared Python virtual environment. To set up:
+The `dev-local.py` script starts all services locally for rapid development:
 
 ```bash
+# Install dependencies and run
 cd scripts
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+uv sync
+uv run python dev-local.py
+
+# Or use Make from project root
+make dev
 ```
 
-Or using `uv`:
+**Options:**
+| Flag | Description |
+|------|-------------|
+| `--mcp-only` | Start only MCP servers |
+| `--web-only` | Start only web application |
+| `--no-logs` | Run services in background without log streaming |
+
+**Prerequisites:**
+- Azure CLI logged in: `az login`
+- azd environment: `azd env select <env-name>`
+
+The script automatically loads `AZURE_OPENAI_ENDPOINT` from `azd env get-values` for the CSP Agent.
+
+See [dev-local.py](dev-local.py) for full documentation.
+
+## Python Environment
+
+Scripts use UV for Python package management:
+
 ```bash
 cd scripts
 uv sync
-source .venv/bin/activate
+uv run python <script.py>
 ```
 
 ## Prerequisites
 
 - Azure CLI (`az`) installed and logged in
-- Python 3.11+ with virtual environment
+- Python 3.12+ 
+- UV package manager (`pip install uv` or https://docs.astral.sh/uv/)
 - Azure Developer CLI (`azd`) for infrastructure deployment
 - Infrastructure deployed via `azd up`

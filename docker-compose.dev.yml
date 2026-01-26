@@ -1,0 +1,169 @@
+# Citizen Services Portal - Local Development with Docker Compose
+#
+# This file provides containerized local development for integration testing.
+# All services run in Docker containers with proper networking.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up        # Start all services
+#   docker compose -f docker-compose.dev.yml up -d     # Start in background
+#   docker compose -f docker-compose.dev.yml down      # Stop all services
+#   docker compose -f docker-compose.dev.yml logs -f   # Follow logs
+#
+# Individual services:
+#   docker compose -f docker-compose.dev.yml up mcp-ladbs mcp-ladwp  # Specific services
+#   docker compose -f docker-compose.dev.yml up --build web-app      # Rebuild and start
+
+services:
+  # ============================================================================
+  # MCP Servers
+  # ============================================================================
+  
+  mcp-ladbs:
+    build:
+      context: ./src/mcp-servers/ladbs
+      dockerfile: Dockerfile
+    container_name: csp-mcp-ladbs
+    ports:
+      - "8001:8000"
+    environment:
+      - PORT=8000
+      - AZURE_AI_SEARCH_ENDPOINT=${AZURE_AI_SEARCH_ENDPOINT:-}
+      - AZURE_AI_SEARCH_INDEX_NAME=${AZURE_AI_SEARCH_INDEX_NAME_LADBS:-ladbs-index}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - csp-network
+
+  mcp-ladwp:
+    build:
+      context: ./src/mcp-servers/ladwp
+      dockerfile: Dockerfile
+    container_name: csp-mcp-ladwp
+    ports:
+      - "8002:8000"
+    environment:
+      - PORT=8000
+      - AZURE_AI_SEARCH_ENDPOINT=${AZURE_AI_SEARCH_ENDPOINT:-}
+      - AZURE_AI_SEARCH_INDEX_NAME=${AZURE_AI_SEARCH_INDEX_NAME_LADWP:-ladwp-index}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - csp-network
+
+  mcp-lasan:
+    build:
+      context: ./src/mcp-servers/lasan
+      dockerfile: Dockerfile
+    container_name: csp-mcp-lasan
+    ports:
+      - "8003:8000"
+    environment:
+      - PORT=8000
+      - AZURE_AI_SEARCH_ENDPOINT=${AZURE_AI_SEARCH_ENDPOINT:-}
+      - AZURE_AI_SEARCH_INDEX_NAME=${AZURE_AI_SEARCH_INDEX_NAME_LASAN:-lasan-index}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - csp-network
+
+  mcp-reporting:
+    build:
+      context: ./src/mcp-servers/reporting
+      dockerfile: Dockerfile
+    container_name: csp-mcp-reporting
+    ports:
+      - "8004:8000"
+    environment:
+      - PORT=8000
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-}
+      - COSMOS_DB_DATABASE=${COSMOS_DB_DATABASE:-csp-database}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - csp-network
+
+  # ============================================================================
+  # CSP Agent
+  # ============================================================================
+
+  csp-agent:
+    build:
+      context: ./src/agents/csp-agent
+      dockerfile: Dockerfile
+    container_name: csp-agent
+    ports:
+      - "8010:8088"
+    environment:
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=${AZURE_OPENAI_CHAT_DEPLOYMENT_NAME:-gpt-4.1}
+      - MCP_LADBS_URL=http://mcp-ladbs:8000
+      - MCP_LADWP_URL=http://mcp-ladwp:8000
+      - MCP_LASAN_URL=http://mcp-lasan:8000
+      - MCP_REPORTING_URL=http://mcp-reporting:8000
+    depends_on:
+      mcp-ladbs:
+        condition: service_healthy
+      mcp-ladwp:
+        condition: service_healthy
+      mcp-lasan:
+        condition: service_healthy
+      mcp-reporting:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - csp-network
+
+  # ============================================================================
+  # Web Application
+  # ============================================================================
+
+  web-app:
+    build:
+      context: ./src/web-app
+      dockerfile: Dockerfile
+    container_name: csp-web-app
+    ports:
+      - "8080:8080"
+    environment:
+      - DEBUG=false
+      - USE_MOCK_AUTH=true
+      - MOCK_USER_ID=local-dev-user
+      - MOCK_USER_EMAIL=dev@example.com
+      - MOCK_USER_NAME=John Smith
+      - CSP_AGENT_URL=http://csp-agent:8088
+      - NICEGUI_PORT=8080
+      - NICEGUI_HOST=0.0.0.0
+    depends_on:
+      csp-agent:
+        condition: service_healthy
+    networks:
+      - csp-network
+    # For development with live reload, mount the source code:
+    # volumes:
+    #   - ./src/web-app:/app:ro
+
+networks:
+  csp-network:
+    driver: bridge
+    name: csp-network

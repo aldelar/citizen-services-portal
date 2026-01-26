@@ -10,6 +10,9 @@ load_dotenv()
 class Settings:
     """Application settings from environment variables."""
     
+    # Debug/Development mode
+    DEBUG: bool = os.getenv('DEBUG', 'true').lower() == 'true'
+    
     # Auth settings
     USE_MOCK_AUTH: bool = os.getenv('USE_MOCK_AUTH', 'true').lower() == 'true'
     MOCK_USER_ID: str = os.getenv('MOCK_USER_ID', 'local-dev-user')
@@ -19,6 +22,9 @@ class Settings:
     # Server settings
     NICEGUI_PORT: int = int(os.getenv('NICEGUI_PORT', '8080'))
     NICEGUI_HOST: str = os.getenv('NICEGUI_HOST', '0.0.0.0')
+    
+    # Backend services
+    CSP_AGENT_URL: str = os.getenv('CSP_AGENT_URL', 'http://localhost:8010')
 
 
 settings = Settings()

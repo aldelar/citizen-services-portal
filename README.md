@@ -401,6 +401,74 @@ az cosmosdb show --name $COSMOS_NAME --resource-group csp
 
 For detailed troubleshooting, see [infra/README.md](infra/README.md).
 
+---
+
+## Local Development
+
+This project supports two approaches for local development:
+
+### Option 1: Native Development (Fastest Iteration)
+
+Run all services natively using UV package manager. Best for rapid development with hot-reload.
+
+```bash
+# Install script dependencies first
+cd scripts && uv sync && cd ..
+
+# Start all services: MCP servers + CSP Agent + Web App
+uv run python scripts/dev-local.py
+
+# Or use Make
+make dev              # All services (MCP + Agent + Web)
+make dev-mcp          # MCP servers only
+make dev-web          # Web app only
+```
+
+**Prerequisites:**
+- Azure CLI logged in: `az login`
+- azd environment selected: `azd env select <env-name>`
+
+**Service Ports:**
+| Service | URL |
+|---------|-----|
+| Web App | http://localhost:8080 |
+| CSP Agent | http://localhost:8010 |
+| LADBS MCP | http://localhost:8001 |
+| LADWP MCP | http://localhost:8002 |
+| LASAN MCP | http://localhost:8003 |
+| Reporting MCP | http://localhost:8004 |
+
+**Hot-Reload:** The web app automatically reloads when files change (`DEBUG=true`).
+
+### Option 2: Docker Compose (Production-Like)
+
+Run all services in containers. Best for integration testing.
+
+```bash
+# Start all services
+docker compose -f docker-compose.dev.yml up
+
+# Or use Make shortcuts
+make docker-up        # Start all
+make docker-down      # Stop all
+make docker-logs      # Follow logs
+make docker-build     # Rebuild images
+```
+
+**Required Environment Variables for Docker:**
+```bash
+export AZURE_OPENAI_ENDPOINT="https://your-openai.openai.azure.com/"
+export AZURE_OPENAI_CHAT_DEPLOYMENT_NAME="gpt-4.1"
+```
+
+### All Make Commands
+
+```bash
+make help    # Show all available commands
+```
+
+---
+
 ### Clean Up
 
 To remove all deployed resources:

@@ -164,4 +164,6 @@ async def inspections_schedule(
 
 
 if __name__ == "__main__":
-    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=8000))
+    import os
+    port = int(os.environ.get("PORT", "8000"))
+    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port))
