@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from ..models import StepLog
@@ -119,7 +119,7 @@ class StepLogRepository(BaseRepository):
         tool_name: str,
         city: Optional[str] = None,
         months: int = 6,
-    ) -> tuple[float, int]:
+    ) -> Tuple[float, int]:
         """
         Calculate average duration and sample count for a tool.
 
@@ -129,7 +129,7 @@ class StepLogRepository(BaseRepository):
             months: Number of months to look back (default: 6)
 
         Returns:
-            tuple[float, int]: Average duration in days and sample count.
+            Tuple[float, int]: Average duration in days and sample count.
         """
         since = datetime.now(timezone.utc) - timedelta(days=months * 30)
         logs = await self.get_logs_by_tool(tool_name, city=city, since=since)
@@ -144,8 +144,10 @@ class StepLogRepository(BaseRepository):
 
     def _to_step_log(self, item: Dict[str, Any]) -> StepLog:
         """Convert a CosmosDB document to a StepLog model."""
+        # Use the logId field as the primary identifier for the StepLog model
+        # The 'id' field in Cosmos is a UUID for document identity
         return StepLog(
-            id=item.get("logId", item.get("id", "")),
+            id=item.get("logId", ""),
             tool_name=item.get("toolName", ""),
             city=item.get("city", ""),
             started_at=self.parse_datetime(item.get("startedAt")) or datetime.now(timezone.utc),
