@@ -27,9 +27,16 @@ help:
 	@echo "  make docker-build - Rebuild all Docker images"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test         - Run all tests"
-	@echo "  make test-mcp     - Run MCP server tests"
-	@echo "  make test-web     - Run web app tests"
+	@echo "  make test              - Run all tests"
+	@echo "  make test-mcp          - Run MCP server unit tests"
+	@echo "  make test-mcp-integration - Run MCP integration tests (AI Search + CosmosDB)"
+	@echo "  make test-mcp-deployed - Run MCP deployed server tests"
+	@echo "  make test-mcp-full     - Run full MCP test suite (unit + integration + deployed)"
+	@echo "  make test-ladbs        - Run full LADBS test suite"
+	@echo "  make test-ladwp        - Run full LADWP test suite"
+	@echo "  make test-lasan        - Run full LASAN test suite"
+	@echo "  make test-reporting    - Run full Reporting test suite"
+	@echo "  make test-web          - Run web app tests"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make clean        - Clean up virtual environments and caches"
@@ -88,10 +95,40 @@ test:
 	cd src/web-app && uv run pytest
 
 test-mcp:
-	@echo "🧪 Running MCP server tests..."
-	cd src/mcp-servers/ladbs && uv run pytest
-	cd src/mcp-servers/ladwp && uv run pytest
-	cd src/mcp-servers/lasan && uv run pytest
+	@echo "🧪 Running MCP server unit tests..."
+	cd src/mcp-servers/ladbs && uv run pytest tests/test_tools.py -v
+	cd src/mcp-servers/ladwp && uv run pytest tests/test_tools.py -v
+	cd src/mcp-servers/lasan && uv run pytest tests/test_tools.py -v
+
+test-mcp-integration:
+	@echo "🧪 Running MCP server integration tests..."
+	./scripts/test-mcp-server.sh ladbs --integration
+	./scripts/test-mcp-server.sh ladwp --integration
+	./scripts/test-mcp-server.sh lasan --integration
+
+test-mcp-deployed:
+	@echo "🧪 Running MCP server deployed tests..."
+	./scripts/test-mcp-server.sh ladbs --deployed
+	./scripts/test-mcp-server.sh ladwp --deployed
+	./scripts/test-mcp-server.sh lasan --deployed
+
+test-mcp-full:
+	@echo "🧪 Running full MCP server test suite..."
+	./scripts/test-mcp-server.sh ladbs --all
+	./scripts/test-mcp-server.sh ladwp --all
+	./scripts/test-mcp-server.sh lasan --all
+
+test-ladbs:
+	@./scripts/test-mcp-server.sh ladbs --all
+
+test-ladwp:
+	@./scripts/test-mcp-server.sh ladwp --all
+
+test-lasan:
+	@./scripts/test-mcp-server.sh lasan --all
+
+test-reporting:
+	@./scripts/test-mcp-server.sh reporting --all
 
 test-web:
 	@echo "🧪 Running web app tests..."
