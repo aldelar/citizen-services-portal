@@ -218,6 +218,17 @@ module searchRbac './core/security/search-rbac.bicep' = {
   }
 }
 
+// Cosmos DB RBAC - Grant data plane access to user and managed identity
+module cosmosRbac './core/security/cosmos-rbac.bicep' = {
+  name: 'cosmos-rbac-deployment'
+  scope: rg
+  params: {
+    cosmosDbAccountName: cosmosDb.outputs.name
+    userPrincipalId: principalId
+    identityPrincipalId: managedIdentity.outputs.principalId
+  }
+}
+
 // AI Foundry Project
 module foundryProject './core/ai/foundry-project.bicep' = {
   name: 'foundry-project-deployment'

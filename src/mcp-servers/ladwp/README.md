@@ -108,7 +108,7 @@ ladwp/
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all unit tests
 uv run pytest
 
 # Run with coverage
@@ -117,6 +117,28 @@ uv run pytest --cov=src --cov-report=html
 # Run specific test file
 uv run pytest tests/test_tools.py
 ```
+
+### Running Integration Tests
+
+Integration tests require Azure resources (AI Search and CosmosDB) to be available.
+
+```bash
+# Set required environment variables
+export AZURE_SEARCH_ENDPOINT="https://aldelar-csp-search.search.windows.net"
+export COSMOS_ENDPOINT="https://aldelar-csp-cosmos.documents.azure.com:443/"
+
+# Run AI Search integration tests
+uv run pytest tests/test_search_integration.py -v -m integration
+
+# Run CosmosDB integration tests  
+uv run pytest tests/test_cosmosdb_integration.py -v -m integration
+```
+
+**Prerequisites for integration tests:**
+- Azure CLI logged in (`az login`)
+- User must have RBAC roles assigned (see [setup-dev-rbac.sh](/scripts/setup-dev-rbac.sh))
+- AI Search index `ladwp-kb` must exist with semantic config `ladwp-semantic-config`
+- CosmosDB database `ladwp` must exist with containers: `interconnections`, `rebates`, `tou_enrollments`
 
 ### Code Quality
 
@@ -235,6 +257,31 @@ docker run -p 8000:8000 --env-file .env mcp-ladwp:latest
 | `MCP_SERVER_PORT` | Server port | 8000 |
 | `LADWP_API_ENDPOINT` | LADWP API endpoint | - |
 | `LADWP_API_KEY` | LADWP API key | - |
+| `AZURE_SEARCH_ENDPOINT` | AI Search endpoint | - |
+| `AZURE_SEARCH_INDEX` | AI Search index name | ladwp-kb |
+| `AZURE_SEARCH_SEMANTIC_CONFIG` | Semantic config name | ladwp-semantic-config |
+| `COSMOS_ENDPOINT` | CosmosDB endpoint | - |
+| `AZURE_CLIENT_ID` | Managed Identity client ID (for Azure deployment) | - |
+
+## Azure RBAC Requirements
+
+The LADWP MCP server uses Azure Managed Identity for authentication. The following RBAC roles are required:
+
+### AI Search (for knowledge base queries)
+| Role | Scope | Purpose |
+|------|-------|---------|
+| `Search Index Data Reader` | Search Service | Read access to `ladwp-kb` index |
+
+### CosmosDB (for data persistence)
+| Role | Scope | Purpose |
+|------|-------|---------|
+| `Cosmos DB Built-in Data Contributor` | Database Account | Read/write access to `ladwp` database |
+
+These roles are automatically assigned by the Bicep infrastructure:
+- [infra/core/security/search-rbac.bicep](/infra/core/security/search-rbac.bicep) - AI Search RBAC
+- [infra/core/security/cosmos-rbac.bicep](/infra/core/security/cosmos-rbac.bicep) - CosmosDB RBAC
+
+For local development, run `scripts/setup-dev-rbac.sh` to grant your user the required roles.
 
 ## API Endpoints
 
