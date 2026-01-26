@@ -96,6 +96,10 @@ hooks:
             run: |
                 echo "Configuring AI Gateway..."
                 cd scripts/ai-gateway && uv run python configure_ai_gateway_arm.py
+                
+                echo ""
+                echo "Setting up CosmosDB RBAC for local development..."
+                cd ../.. && ./scripts/setup-dev-rbac.sh || echo "Note: RBAC setup skipped (may already be configured)"
     preprovision:
         posix:
             name: preprovision

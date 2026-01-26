@@ -6,11 +6,38 @@ This directory contains automation scripts for the Citizen Services Portal proje
 
 ```
 scripts/
+├── agents/             # Agent-related scripts
+├── ai-gateway/         # AI Gateway configuration
 ├── knowledge-base/     # Knowledge base ingestion and testing
 ├── mcp/                # MCP server authentication and setup
-├── ai-gateway/         # AI Gateway configuration
+├── dev-local.py        # Local development orchestrator
+├── setup-dev-rbac.sh   # CosmosDB RBAC setup for developers
 └── README.md           # This file
 ```
+
+## Development Setup
+
+### `setup-dev-rbac.sh`
+
+Sets up CosmosDB data plane RBAC roles for local development. This grants the current user (or specified principal) the necessary permissions to read/write data in CosmosDB.
+
+**Usage:**
+```bash
+# Using Makefile (recommended)
+make dev-setup    # Full dev environment setup
+make rbac         # Just RBAC setup
+
+# Direct execution
+./scripts/setup-dev-rbac.sh                    # Uses current signed-in user
+./scripts/setup-dev-rbac.sh <principal-id>     # Uses specified principal ID
+```
+
+**Note:** This script is automatically run during `azd provision` via the `postprovision` hook. You only need to run it manually if:
+- You're a new team member joining an existing environment
+- You need to grant access to a different user
+- The RBAC roles were removed
+
+**Important:** RBAC role propagation can take up to 10 minutes. If you get "Forbidden" errors, wait and try again.
 
 ## Knowledge Base Scripts (`knowledge-base/`)
 

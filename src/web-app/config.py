@@ -25,6 +25,15 @@ class Settings:
     
     # Backend services
     CSP_AGENT_URL: str = os.getenv('CSP_AGENT_URL', 'http://localhost:8010')
+    
+    # CosmosDB settings
+    COSMOS_ENDPOINT: str = os.getenv('COSMOS_ENDPOINT', '')
+    COSMOS_DATABASE: str = os.getenv('COSMOS_DATABASE', 'citizen-services')
+    
+    @property
+    def cosmos_enabled(self) -> bool:
+        """Check if CosmosDB is configured."""
+        return bool(self.COSMOS_ENDPOINT)
 
 
 settings = Settings()

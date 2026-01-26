@@ -3,13 +3,17 @@
 # Common commands for local development and testing.
 # Run `make help` to see all available commands.
 
-.PHONY: help dev dev-web dev-mcp docker-up docker-down clean
+.PHONY: help dev dev-web dev-mcp dev-setup rbac docker-up docker-down clean
 
 # Default target
 help:
 	@echo ""
 	@echo "🏛️  Citizen Services Portal - Development Commands"
 	@echo "=================================================="
+	@echo ""
+	@echo "Setup:"
+	@echo "  make dev-setup    - Set up dev environment (RBAC, etc.)"
+	@echo "  make rbac         - Set up CosmosDB RBAC for current user"
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev          - Start all services (MCP + Agent + Web)"
@@ -92,6 +96,20 @@ test-mcp:
 test-web:
 	@echo "🧪 Running web app tests..."
 	cd src/web-app && uv run pytest
+
+# ============================================================================
+# Setup
+# ============================================================================
+
+dev-setup:
+	@echo "🔧 Setting up development environment..."
+	@./scripts/setup-dev-rbac.sh
+	@echo ""
+	@echo "✅ Development setup complete!"
+
+rbac:
+	@echo "🔐 Setting up CosmosDB RBAC roles..."
+	@./scripts/setup-dev-rbac.sh
 
 # ============================================================================
 # Utilities
