@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/ContainerAgent.yaml
+
+kind: hosted
+name: csp-agent
+description: |
+    Citizen Services Portal Agent - A unified AI assistant for City of Los Angeles 
+    government services. Connects to LADBS (Building & Safety), LADWP (Water & Power), 
+    LASAN (Sanitation), and Reporting MCP servers to provide intelligent citizen services 
+    with multi-agency coordination.
+
+metadata:
+    authors:
+        - Citizen Services Portal Team
+    tags:
+        - Azure AI AgentServer
+        - Microsoft Agent Framework
+        - Model Context Protocol
+        - MCP
+        - Citizen Services
+        - Government
+
+protocols:
+    - protocol: responses
+      version: ""
+
+environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ${AZURE_OPENAI_ENDPOINT}
+    - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
+      value: ${AZURE_OPENAI_CHAT_DEPLOYMENT_NAME}
+    - name: MCP_LADBS_URL
+      value: ${MCP_LADBS_URL}
+    - name: MCP_LADWP_URL
+      value: ${MCP_LADWP_URL}
+    - name: MCP_LASAN_URL
+      value: ${MCP_LASAN_URL}
+    - name: MCP_REPORTING_URL
+      value: ${MCP_REPORTING_URL}

@@ -31,9 +31,8 @@ hooks:
     posix:
       shell: sh
       run: |
-        # Deploy agents after infrastructure is provisioned
-        echo "Deploying LADBS agent..."
-        cd src/agents
+        echo "Deploying CSP Agent to Microsoft Foundry..."
+        cd src/agents/csp-agent
         
         # Export required environment variables from azd
         export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
@@ -42,17 +41,15 @@ hooks:
         export foundryName=$(azd env get-value foundryName)
         export foundryProjectName=$(azd env get-value foundryProjectName)
         
-        # Programmatically export all service URIs from azure.yaml services
-        eval "$(uv run export_service_urls.py 2>&1 | grep '^export')"
+        # Export MCP server URLs from azd environment
+        export MCP_LADBS_URL=$(azd env get-value SERVICE_MCP_LADBS_URI)
+        export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
+        export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
+        export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
         
-        uv sync --quiet --prerelease=allow
-        uv run deploy.py ladbs
-        
-        echo "Deploying LADWP agent..."
-        uv run deploy.py ladwp
-        
-        echo "Deploying LASAN agent..."
-        uv run deploy.py lasan
+        # Deploy CSP Agent using azd ai agent extension
+        azd ai agent build
+        azd ai agent deploy
 
 infra:
   provider: bicep
