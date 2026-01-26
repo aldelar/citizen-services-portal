@@ -384,9 +384,11 @@ def main():
     print("Setup complete!")
     print("\nTo run indexers manually:")
     for agency in AGENCIES:
-        print(f"  python scripts/setup-knowledge-base.py --run {agency}")
+        print(f"  python scripts/knowledge-base/setup-knowledge-base.py --run {agency}")
     print("\nOr run all indexers:")
-    print("  ./scripts/run-kb-indexers.sh")
+    print("  ./scripts/knowledge-base/run-kb-indexers.sh")
+    print("\nTo test the indexes:")
+    print("  ./scripts/knowledge-base/run-all-tests.sh")
 
 
 if __name__ == "__main__":

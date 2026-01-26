@@ -62,7 +62,7 @@ chmod +x run-kb-indexers.sh
 ## Complete Setup Workflow
 
 ```bash
-cd scripts
+cd scripts/knowledge-base
 
 # 1. Setup permissions (one-time, or after infra redeployment)
 ./setup-kb-permissions.sh
@@ -75,6 +75,34 @@ python setup-knowledge-base.py
 
 # 4. Run indexers to populate indexes
 ./run-kb-indexers.sh
+
+# 5. Run tests to verify everything works
+./run-all-tests.sh
+```
+
+## Test Scripts
+
+After setup, you can run these test scripts to verify the knowledge base is working:
+
+### `run-all-tests.sh`
+Runs all tests in sequence:
+```bash
+./run-all-tests.sh
+```
+
+### Individual Tests
+
+| Script | Purpose |
+|--------|---------|
+| `test-document-counts.py` | Verifies each index has the expected number of document chunks |
+| `test-regular-search.py` | Tests keyword/full-text search functionality |
+| `test-semantic-search.py` | Tests semantic/natural language search functionality |
+
+```bash
+# Run individual tests
+python test-document-counts.py
+python test-regular-search.py
+python test-semantic-search.py
 ```
 
 ## Troubleshooting

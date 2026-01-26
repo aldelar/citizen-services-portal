@@ -1,0 +1,13 @@
+[project]
+name = "csp-ai-gateway-scripts"
+version = "0.1.0"
+description = "Scripts for configuring Azure AI Gateway (API Management)"
+requires-python = ">=3.10"
+dependencies = [
+    "azure-identity>=1.15.0",
+    "requests>=2.31.0",
+    "pyyaml>=6.0.1",
+]
+
+[tool.uv]
+package = false

@@ -874,7 +874,7 @@ module kbContainers './app/knowledge-base/kb-storage-containers.bicep' = {
 
 // Knowledge Base Search Resources (indexes, skillset, datasources, indexers)
 // NOTE: These require REST API calls post-deployment
-// See scripts/setup-knowledge-base.py
+// See scripts/knowledge-base/setup-knowledge-base.py
 ```
 
 ### 10.3 Content Understanding Module
@@ -976,7 +976,7 @@ output containerNames array = [
 
 ### 11.1 Document Upload Script
 
-Create `scripts/upload-kb-documents.py`:
+Create `scripts/knowledge-base/upload-kb-documents.py`:
 
 ```python
 #!/usr/bin/env python3
@@ -1034,7 +1034,7 @@ if __name__ == "__main__":
 
 ### 11.2 Search Resources Setup Script
 
-Create `scripts/setup-knowledge-base.py`:
+Create `scripts/knowledge-base/setup-knowledge-base.py`:
 
 ```python
 #!/usr/bin/env python3
@@ -1291,7 +1291,7 @@ def main():
     print("Setup complete!")
     print("\nTo run indexers manually:")
     for agency in AGENCIES:
-        print(f"  python scripts/setup-knowledge-base.py --run {agency}")
+        print(f"  python scripts/knowledge-base/setup-knowledge-base.py --run {agency}")
 
 
 if __name__ == "__main__":
@@ -1307,7 +1307,7 @@ if __name__ == "__main__":
 
 ### 11.3 Run Indexers Script
 
-Create `scripts/run-kb-indexers.sh`:
+Create `scripts/knowledge-base/run-kb-indexers.sh`:
 
 ```bash
 #!/bin/bash
@@ -1349,19 +1349,20 @@ echo "  az search indexer status --name <indexer-name> --service-name $SEARCH_SE
 cd /home/aldelar/Code/citizen-services-portal
 azd up
 
-# Step 2: Upload documents to storage containers
-python scripts/upload-kb-documents.py
+# Step 2: Setup RBAC permissions
+./scripts/knowledge-base/setup-kb-permissions.sh
 
-# Step 3: Create search resources (indexes, skillset, datasources, indexers)
-python scripts/setup-knowledge-base.py
+# Step 3: Upload documents to storage containers
+python scripts/knowledge-base/upload-kb-documents.py
 
-# Step 4: Run indexers to process documents
-./scripts/run-kb-indexers.sh
+# Step 4: Create search resources (indexes, skillset, datasources, indexers)
+python scripts/knowledge-base/setup-knowledge-base.py
 
-# Step 5: Verify indexing status
-az search indexer status --name ladbs-indexer --service-name aldelar-csp-search --resource-group csp
-az search indexer status --name ladwp-indexer --service-name aldelar-csp-search --resource-group csp
-az search indexer status --name lasan-indexer --service-name aldelar-csp-search --resource-group csp
+# Step 5: Run indexers to process documents
+./scripts/knowledge-base/run-kb-indexers.sh
+
+# Step 6: Run tests to verify
+./scripts/knowledge-base/run-all-tests.sh
 ```
 
 ### 12.3 Verification
