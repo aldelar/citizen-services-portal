@@ -244,6 +244,26 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
   ]
 }
 
+// Content Understanding for document processing
+module contentUnderstanding './core/ai/content-understanding.bicep' = {
+  name: 'content-understanding-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    name: 'aldelar-csp-cu'
+  }
+}
+
+// Knowledge Base Storage Containers
+module kbContainers './app/knowledge-base/kb-storage-containers.bicep' = {
+  name: 'kb-containers-deployment'
+  scope: rg
+  params: {
+    storageAccountName: storageAccount.outputs.name
+  }
+}
+
 // =================================
 // API Management - API Configuration
 // =================================
@@ -469,6 +489,12 @@ output contentSafetyName string = contentSafety.outputs.name
 
 @description('Content Safety endpoint')
 output contentSafetyEndpoint string = contentSafety.outputs.endpoint
+
+@description('Content Understanding service name')
+output contentUnderstandingName string = contentUnderstanding.outputs.name
+
+@description('Content Understanding endpoint')
+output contentUnderstandingEndpoint string = contentUnderstanding.outputs.endpoint
 
 // Data
 @description('Cosmos DB account name')

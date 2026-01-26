@@ -5,6 +5,8 @@ description = "Scripts for configuring Azure AI Foundry resources"
 requires-python = ">=3.10"
 dependencies = [
     "azure-identity>=1.15.0",
+    "azure-storage-blob>=12.19.0",
+    "azure-search-documents>=11.5.0",
     "requests>=2.31.0",
     "pyyaml>=6.0.1",
 ]
