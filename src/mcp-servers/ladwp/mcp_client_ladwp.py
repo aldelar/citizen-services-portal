@@ -95,8 +95,90 @@ async def run_client():
             except Exception as e:
                 print(f"  Prompts not supported or error: {e}")
 
+            # Test tool calls
             print("\n" + "=" * 60)
-            print("MCP Server Discovery Complete!")
+            print("Testing Tool Calls:")
+            print("=" * 60)
+
+            # Test 1: Query Knowledge Base (AI Search)
+            print("\n1. Testing queryKB (Knowledge Base Search)...")
+            try:
+                kb_result = await session.call_tool(
+                    "queryKB",
+                    {"query": "What are the LADWP time-of-use rate plans?", "top": 3}
+                )
+                print("   ✅ queryKB succeeded!")
+                if kb_result.content:
+                    for item in kb_result.content:
+                        if hasattr(item, 'text'):
+                            # Show first 500 chars of response
+                            text = item.text[:500] + "..." if len(item.text) > 500 else item.text
+                            print(f"   Response: {text}")
+            except Exception as e:
+                print(f"   ❌ queryKB failed: {e}")
+
+            # Test 2: Get Account Information
+            print("\n2. Testing account_show...")
+            try:
+                account_result = await session.call_tool(
+                    "account_show",
+                    {"account_number": "123456789"}
+                )
+                print("   ✅ account_show succeeded!")
+                if account_result.content:
+                    for item in account_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ account_show failed: {e}")
+
+            # Test 3: List Rate Plans
+            print("\n3. Testing plans_list...")
+            try:
+                plans_result = await session.call_tool(
+                    "plans_list",
+                    {"account_number": "123456789"}
+                )
+                print("   ✅ plans_list succeeded!")
+                if plans_result.content:
+                    for item in plans_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ plans_list failed: {e}")
+
+            # Test 4: Get Filed Rebates
+            print("\n4. Testing rebates_filed...")
+            try:
+                rebates_result = await session.call_tool(
+                    "rebates_filed",
+                    {"account_number": "123456789"}
+                )
+                print("   ✅ rebates_filed succeeded!")
+                if rebates_result.content:
+                    for item in rebates_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ rebates_filed failed: {e}")
+
+            # Test 5: Get Interconnection Status
+            print("\n5. Testing interconnection_getStatus...")
+            try:
+                status_result = await session.call_tool(
+                    "interconnection_getStatus",
+                    {"application_id": "IA-2026-12345"}
+                )
+                print("   ✅ interconnection_getStatus succeeded!")
+                if status_result.content:
+                    for item in status_result.content:
+                        if hasattr(item, 'text'):
+                            print(f"   Response: {item.text[:300]}...")
+            except Exception as e:
+                print(f"   ❌ interconnection_getStatus failed: {e}")
+
+            print("\n" + "=" * 60)
+            print("MCP Server Testing Complete!")
             print("=" * 60)
 
 

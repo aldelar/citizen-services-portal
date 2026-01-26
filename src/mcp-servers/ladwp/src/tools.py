@@ -43,7 +43,7 @@ class LADWPTools:
             KnowledgeResult with matching document chunks
         """
         result = await self.service.query_knowledge_base(query, top)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def account_show(
         self,
@@ -59,7 +59,7 @@ class LADWPTools:
             Account information with rate plan, meter type, and pending requests
         """
         result = await self.service.get_account(account_number)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def plans_list(
         self,
@@ -75,7 +75,7 @@ class LADWPTools:
             PlansListResult with available plans and recommendation
         """
         result = await self.service.list_rate_plans(account_number)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def tou_enroll(
         self,
@@ -93,7 +93,7 @@ class LADWPTools:
             TOUEnrollmentResult with confirmation and effective date
         """
         result = await self.service.enroll_tou(account_number, RatePlan(rate_plan))
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def interconnection_submit(
         self,
@@ -138,7 +138,7 @@ class LADWPTools:
             applicant_name=applicant_name,
             applicant_email=applicant_email,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def interconnection_getStatus(
         self,
@@ -159,7 +159,7 @@ class LADWPTools:
             application_id=application_id,
             address=address,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def rebates_filed(
         self,
@@ -175,7 +175,7 @@ class LADWPTools:
             RebatesFiledResult with all applications and their status
         """
         result = await self.service.get_filed_rebates(account_number)
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def rebates_apply(
         self,
@@ -211,7 +211,7 @@ class LADWPTools:
             ahri_certificate=ahri_certificate,
             ladbs_permit_number=ladbs_permit_number,
         )
-        return result.model_dump()
+        return result.model_dump(mode="json")
 
     async def rebates_getStatus(
         self,
@@ -227,4 +227,4 @@ class LADWPTools:
             RebateApplication with detailed status
         """
         result = await self.service.get_rebate_status(application_id)
-        return result.model_dump()
+        return result.model_dump(mode="json")

@@ -72,6 +72,15 @@ param enableAuthentication bool = true
 @description('App Registration Client ID for authentication')
 param appClientId string = ''
 
+@description('Azure AI Search endpoint URL')
+param searchEndpoint string = ''
+
+@description('Azure AI Search index name')
+param searchIndexName string = 'ladwp-kb'
+
+@description('Azure AI Search semantic configuration name')
+param searchSemanticConfig string = 'ladwp-semantic-config'
+
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
   name: containerAppsEnvironmentName
 }
@@ -193,6 +202,20 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               {
                 name: 'AZURE_CLIENT_ID'
                 value: identityClientId
+              }
+            ] : [],
+            !empty(searchEndpoint) ? [
+              {
+                name: 'AZURE_SEARCH_ENDPOINT'
+                value: searchEndpoint
+              }
+              {
+                name: 'AZURE_SEARCH_INDEX_NAME'
+                value: searchIndexName
+              }
+              {
+                name: 'AZURE_SEARCH_SEMANTIC_CONFIG'
+                value: searchSemanticConfig
               }
             ] : []
           )

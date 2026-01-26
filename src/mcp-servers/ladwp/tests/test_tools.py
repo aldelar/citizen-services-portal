@@ -12,81 +12,131 @@ def ladwp_tools():
 
 
 @pytest.mark.asyncio
-async def test_get_account_balance(ladwp_tools):
-    """Test retrieving account balance."""
-    result = await ladwp_tools.get_account_balance("123456789")
+async def test_queryKB(ladwp_tools):
+    """Test knowledge base query."""
+    result = await ladwp_tools.queryKB(
+        query="What are the LADWP time-of-use rate plans?",
+        top=5
+    )
 
-    assert "balance" in result or "account_number" in result
-    assert "error" not in result
+    assert isinstance(result, dict)
+    assert "query" in result
+    assert "results" in result
+    assert "total_results" in result
+    assert len(result["results"]) > 0
 
 
 @pytest.mark.asyncio
-async def test_get_bill_history(ladwp_tools):
-    """Test retrieving billing history."""
-    result = await ladwp_tools.get_bill_history("123456789", months=6)
+async def test_account_show(ladwp_tools):
+    """Test account information retrieval."""
+    result = await ladwp_tools.account_show(
+        account_number="123456789"
+    )
 
     assert isinstance(result, dict)
     assert "account_number" in result
-    assert "bills" in result
+    assert "current_rate_plan" in result
+    assert "service_address" in result
 
 
 @pytest.mark.asyncio
-async def test_make_payment(ladwp_tools):
-    """Test submitting a payment."""
-    result = await ladwp_tools.make_payment("123456789", 150.00, "credit_card")
-
-    assert "confirmation" in result or "payment_id" in result
-    assert result.get("success") is True
-
-
-@pytest.mark.asyncio
-async def test_report_outage(ladwp_tools):
-    """Test reporting an outage."""
-    result = await ladwp_tools.report_outage(
-        address="123 Main St, Los Angeles, CA",
-        outage_type="power",
-        description="No power since 3pm"
+async def test_plans_list(ladwp_tools):
+    """Test rate plan listing."""
+    result = await ladwp_tools.plans_list(
+        account_number="123456789"
     )
-
-    assert "report_id" in result
-    assert result.get("success") is True
-
-
-@pytest.mark.asyncio
-async def test_check_outage_status(ladwp_tools):
-    """Test checking outage status."""
-    result = await ladwp_tools.check_outage_status("OUT-12345")
-
-    assert "status" in result or "outage_id" in result
-
-
-@pytest.mark.asyncio
-async def test_request_service_start(ladwp_tools):
-    """Test starting new service."""
-    result = await ladwp_tools.request_service_start(
-        address="456 Oak Ave, Los Angeles, CA",
-        service_date="2026-02-01",
-        service_types=["electricity", "water"]
-    )
-
-    assert "request_id" in result
-    assert result.get("success") is True
-
-
-@pytest.mark.asyncio
-async def test_request_service_stop(ladwp_tools):
-    """Test stopping service."""
-    result = await ladwp_tools.request_service_stop("123456789", "2026-02-15")
-
-    assert "request_id" in result
-    assert result.get("success") is True
-
-
-@pytest.mark.asyncio
-async def test_get_usage_history(ladwp_tools):
-    """Test retrieving usage history."""
-    result = await ladwp_tools.get_usage_history("123456789", "electricity", months=12)
 
     assert isinstance(result, dict)
-    assert "account_number" in result
-    assert "usage_records" in result
+    assert "current_plan" in result
+    assert "available_plans" in result
+    assert len(result["available_plans"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_tou_enroll(ladwp_tools):
+    """Test TOU enrollment."""
+    result = await ladwp_tools.tou_enroll(
+        account_number="123456789",
+        rate_plan="TOU-D-PRIME"
+    )
+
+    assert isinstance(result, dict)
+    assert result["success"] is True
+    assert "confirmation_number" in result
+    assert "effective_date" in result
+
+
+@pytest.mark.asyncio
+async def test_interconnection_submit(ladwp_tools):
+    """Test interconnection submission."""
+    result = await ladwp_tools.interconnection_submit(
+        address="123 Solar St, Los Angeles, CA 90012",
+        system_size_kw=8.5,
+        applicant_name="John Doe",
+        applicant_email="john@example.com",
+        battery_size_kwh=13.5,
+        inverter="SolarEdge SE7600H",
+        panels="LG NeON 2 400W x 20",
+        battery="Tesla Powerwall 2"
+    )
+
+    assert isinstance(result, dict)
+    assert result["requires_user_action"] is True
+    assert result["action_type"] == "email"
+    assert "prepared_materials" in result
+    assert "on_complete" in result
+
+
+@pytest.mark.asyncio
+async def test_interconnection_getStatus(ladwp_tools):
+    """Test interconnection status check."""
+    result = await ladwp_tools.interconnection_getStatus(
+        application_id="IA-2026-12345"
+    )
+
+    assert isinstance(result, dict)
+    assert "status" in result
+    assert "address" in result
+
+
+@pytest.mark.asyncio
+async def test_rebates_filed(ladwp_tools):
+    """Test rebates filed listing."""
+    result = await ladwp_tools.rebates_filed(
+        account_number="123456789"
+    )
+
+    assert isinstance(result, dict)
+    assert "applications" in result
+    assert "total_count" in result
+
+
+@pytest.mark.asyncio
+async def test_rebates_apply(ladwp_tools):
+    """Test rebate application submission."""
+    result = await ladwp_tools.rebates_apply(
+        account_number="123456789",
+        equipment_type="heat_pump_hvac",
+        equipment_details="Mitsubishi 3-zone ductless, 3 tons",
+        purchase_date="2026-01-15",
+        invoice_total=12500.00,
+        ahri_certificate="AHRI-12345678",
+        ladbs_permit_number="PERMIT-2026-001234"
+    )
+
+    assert isinstance(result, dict)
+    assert result["success"] is True
+    assert "application_id" in result
+    assert "estimated_rebate" in result
+
+
+@pytest.mark.asyncio
+async def test_rebates_getStatus(ladwp_tools):
+    """Test rebate status check."""
+    result = await ladwp_tools.rebates_getStatus(
+        application_id="CRP-2026-1234"
+    )
+
+    assert isinstance(result, dict)
+    assert "status" in result
+    assert "application_id" in result
