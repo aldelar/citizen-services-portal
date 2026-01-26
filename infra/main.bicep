@@ -257,6 +257,53 @@ module contentUnderstanding './core/ai/content-understanding.bicep' = {
   }
 }
 
+// Content Understanding Model Deployments - Required for ContentUnderstandingSkill
+// Content Understanding requires GPT-4.1, GPT-4.1-mini, and text-embedding-3-large
+module cuGpt41Mini './core/ai/openai-deployment.bicep' = {
+  name: 'cu-gpt41-mini-deployment'
+  scope: rg
+  params: {
+    foundryName: contentUnderstanding.outputs.name
+    deploymentName: 'gpt-4.1-mini'
+    modelName: 'gpt-4.1-mini'
+    modelVersion: '2025-04-14'
+    sku: 'GlobalStandard'
+    capacity: 1000
+  }
+}
+
+module cuGpt41 './core/ai/openai-deployment.bicep' = {
+  name: 'cu-gpt41-deployment'
+  scope: rg
+  params: {
+    foundryName: contentUnderstanding.outputs.name
+    deploymentName: 'gpt-4.1'
+    modelName: 'gpt-4.1'
+    modelVersion: '2025-04-14'
+    sku: 'GlobalStandard'
+    capacity: 1000
+  }
+  dependsOn: [
+    cuGpt41Mini
+  ]
+}
+
+module cuTextEmbedding3Large './core/ai/openai-deployment.bicep' = {
+  name: 'cu-text-embedding-3-large-deployment'
+  scope: rg
+  params: {
+    foundryName: contentUnderstanding.outputs.name
+    deploymentName: 'text-embedding-3-large'
+    modelName: 'text-embedding-3-large'
+    modelVersion: '1'
+    sku: 'GlobalStandard'
+    capacity: 1000
+  }
+  dependsOn: [
+    cuGpt41
+  ]
+}
+
 // Knowledge Base Storage Containers
 module kbContainers './app/knowledge-base/kb-storage-containers.bicep' = {
   name: 'kb-containers-deployment'

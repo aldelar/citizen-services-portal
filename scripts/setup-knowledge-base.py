@@ -44,7 +44,9 @@ SEARCH_ENDPOINT = "https://aldelar-csp-search.search.windows.net"
 STORAGE_ACCOUNT = "aldelarcspstorage"
 FOUNDRY_ENDPOINT = "https://aldelar-csp-foundry.openai.azure.com"
 EMBEDDING_DEPLOYMENT = "text-embedding-3-small"
-CONTENT_UNDERSTANDING_ENDPOINT = "https://aldelar-csp-cu.cognitiveservices.azure.com"
+# Note: Content Understanding API is only available in specific regions (westus, swedencentral, australiaeast)
+# We use a separate resource in West US for Content Understanding
+CONTENT_UNDERSTANDING_ENDPOINT = "https://aldelar-csp-cu-westus.cognitiveservices.azure.com"
 
 AGENCIES = ["ladbs", "ladwp", "lasan"]
 

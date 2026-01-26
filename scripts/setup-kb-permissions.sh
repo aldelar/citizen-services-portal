@@ -6,6 +6,11 @@
 # - Use AI Foundry for embeddings via managed identity  
 # - Use Content Understanding for document processing via managed identity
 #
+# IMPORTANT: Resource Region Configuration
+# - Most resources (Search, Storage, Foundry) are in North Central US
+# - Content Understanding (aldelar-csp-cu-westus) is in West US because the
+#   Content Understanding API is only available in westus, swedencentral, australiaeast
+#
 # Prerequisites:
 # - Azure CLI installed and logged in
 # - azd environment variables available (run from project root after azd up)
@@ -17,8 +22,22 @@ echo "Knowledge Base Permissions Setup"
 echo "=========================================="
 
 # Load environment variables from azd
+# Only load simple key=value pairs without spaces or special characters
 if [ -f ".azure/dev/.env" ]; then
-    export $(grep -v '^#' .azure/dev/.env | xargs)
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        [[ "$key" =~ ^#.*$ ]] && continue
+        [[ -z "$key" ]] && continue
+        # Skip lines with spaces in value (complex values)
+        [[ "$value" =~ [[:space:]] ]] && continue
+        # Remove quotes from value
+        value="${value%\"}"
+        value="${value#\"}"
+        # Export if key is valid
+        if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+            export "$key=$value"
+        fi
+    done < ".azure/dev/.env"
 fi
 
 # Configuration - these should match your deployment
@@ -26,7 +45,9 @@ RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-csp}"
 SEARCH_SERVICE_NAME="${AZURE_SEARCH_SERVICE:-aldelar-csp-search}"
 STORAGE_ACCOUNT_NAME="${AZURE_STORAGE_ACCOUNT:-aldelarcspstorage}"
 FOUNDRY_ACCOUNT_NAME="${AZURE_AI_FOUNDRY:-aldelar-csp-foundry}"
-CONTENT_UNDERSTANDING_NAME="${AZURE_CONTENT_UNDERSTANDING:-aldelar-csp-cu}"
+# Note: Content Understanding is deployed in West US (separate from other resources in North Central US)
+# because the Content Understanding API is only available in specific regions (westus, swedencentral, australiaeast)
+CONTENT_UNDERSTANDING_NAME="${AZURE_CONTENT_UNDERSTANDING:-aldelar-csp-cu-westus}"
 USER_ASSIGNED_IDENTITY_NAME="${AZURE_IDENTITY_NAME:-aldelar-csp-identity}"
 
 echo ""

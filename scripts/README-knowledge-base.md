@@ -24,8 +24,10 @@ chmod +x setup-kb-permissions.sh
 This script:
 - Associates the user-assigned managed identity with the Search service
 - Assigns `Storage Blob Data Reader` role on storage account
-- Assigns `Cognitive Services User` role on AI Foundry
-- Assigns `Cognitive Services User` role on Content Understanding
+- Assigns `Cognitive Services User` role on AI Foundry (North Central US)
+- Assigns `Cognitive Services User` role on Content Understanding (West US)
+
+**Note:** Content Understanding is deployed in **West US** (`aldelar-csp-cu-westus`) because the Content Understanding API is only available in specific regions (westus, swedencentral, australiaeast). All other resources remain in North Central US.
 
 ### 2. `upload-kb-documents.py`
 
@@ -102,10 +104,13 @@ If you see errors about paths being used in multiple projections, ensure you're 
 
 The pipeline uses **managed identity authentication** throughout:
 
-| Component | Identity Used | Target Resource |
-|-----------|---------------|-----------------|
-| Data Source | Search service system-assigned identity | Storage Account (via ResourceId) |
-| Skillset | Search service system-assigned identity | AI Foundry, Content Understanding |
-| Indexer | Search service system-assigned identity | Inherits from data source |
+| Component | Identity Used | Target Resource | Region |
+|-----------|---------------|-----------------|--------|
+| Data Source | Search service system-assigned identity | Storage Account (via ResourceId) | North Central US |
+| Skillset | Search service system-assigned identity | AI Foundry | North Central US |
+| Skillset | Search service system-assigned identity | Content Understanding | **West US** |
+| Indexer | Search service system-assigned identity | Inherits from data source | N/A |
+
+**Region Note:** Content Understanding (`aldelar-csp-cu-westus`) is deployed in West US because the Content Understanding API (2025-05-01-preview) is only available in: West US, Sweden Central, and Australia East.
 
 The storage account has shared key access disabled (`allowSharedKeyAccess: false`), forcing all access through managed identity.

@@ -116,7 +116,7 @@ This specification defines the architecture and implementation for ingesting age
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    EXISTING INFRASTRUCTURE                       │
+│         EXISTING INFRASTRUCTURE (North Central US)              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Azure AI Search           Azure AI Foundry                     │
@@ -138,9 +138,9 @@ This specification defines the architecture and implementation for ingesting age
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Storage Containers (3)    Content Understanding Resource       │
-│  ├─ ladbs-docs             (aldelar-csp-cu)                    │
+│  ├─ ladbs-docs             (aldelar-csp-cu-westus)             │
 │  ├─ ladwp-docs             └─ For document processing          │
-│  └─ lasan-docs                                                  │
+│  └─ lasan-docs             └─ Region: WEST US (required)       │
 │                                                                 │
 │  Data Sources (3)          Skillsets (3, one per agency)       │
 │  ├─ ladbs-datasource       ├─ ladbs-kb-skillset                │
@@ -245,24 +245,26 @@ containers = [
 
 ### 4.2 Content Understanding Resource
 
-A new Azure AI Services resource for Content Understanding:
+A new Azure AI Services resource for Content Understanding deployed in **West US** (required region for Content Understanding API):
 
 ```bicep
 resource contentUnderstanding 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
-  name: 'aldelar-csp-content-understanding'
-  location: location
+  name: 'aldelar-csp-cu-westus'
+  location: 'westus'  // Content Understanding API only available in westus, swedencentral, australiaeast
   kind: 'AIServices'  // Multi-service account includes Content Understanding
   sku: {
     name: 'S0'
   }
   properties: {
     publicNetworkAccess: 'Enabled'
-    customSubDomainName: 'aldelar-csp-cu'
+    customSubDomainName: 'aldelar-csp-cu-westus'
   }
 }
 ```
 
-**Region Requirement**: Content Understanding preview API (2025-05-01-preview) requires specific regions. Use the same region as your AI Search service (northcentralus, eastus, or westus2).
+**Note:** Content Understanding also requires model deployments (gpt-4.1, gpt-4.1-mini, text-embedding-3-large) on the same resource for document processing.
+
+**Region Requirement**: Content Understanding API is only available in specific regions: **West US**, **Sweden Central**, and **Australia East**. The Content Understanding resource (`aldelar-csp-cu-westus`) is deployed to West US, while other resources (AI Search, AI Foundry, Storage) remain in North Central US. Cross-region calls between Search (northcentralus) and Content Understanding (westus) work correctly.
 
 ### 4.3 Security & Identity Configuration
 
@@ -845,15 +847,21 @@ Add to `main.bicep`:
 
 ```bicep
 // Content Understanding for document processing
+// NOTE: Content Understanding API is only available in specific regions (westus, swedencentral, australiaeast)
+// We deploy to westus regardless of the main location to ensure API availability
 module contentUnderstanding './core/ai/content-understanding.bicep' = {
   name: 'content-understanding-deployment'
   scope: rg
   params: {
-    location: location
+    location: 'westus'  // Content Understanding requires specific regions
     tags: tags
-    name: 'aldelar-csp-cu'
+    name: 'aldelar-csp-cu-westus'
   }
 }
+
+// Content Understanding also requires model deployments for document processing:
+// - gpt-4.1 or gpt-4.1-mini (for analysis)
+// - text-embedding-3-large (for vectorization)
 
 // Knowledge Base Storage Containers
 module kbContainers './app/knowledge-base/kb-storage-containers.bicep' = {
@@ -1075,7 +1083,8 @@ SEARCH_ENDPOINT = "https://aldelar-csp-search.search.windows.net"
 STORAGE_ACCOUNT = "aldelarcspstorage"
 FOUNDRY_ENDPOINT = "https://aldelar-csp-foundry.openai.azure.com"
 EMBEDDING_DEPLOYMENT = "text-embedding-3-small"
-CONTENT_UNDERSTANDING_ENDPOINT = "https://aldelar-csp-cu.cognitiveservices.azure.com"
+# Note: Content Understanding is in West US (required region for the API)
+CONTENT_UNDERSTANDING_ENDPOINT = "https://aldelar-csp-cu-westus.cognitiveservices.azure.com"
 
 AGENCIES = ["ladbs", "ladwp", "lasan"]
 
@@ -1453,12 +1462,18 @@ For larger document sets:
 
 ## Appendix B: API Versions
 
-| Service | API Version |
-|---------|-------------|
-| Azure AI Search | 2025-09-01 |
-| Content Understanding | 2025-05-01-preview |
-| Azure Storage | 2023-01-01 |
-| Azure OpenAI | 2024-10-21 |
+| Service | API Version | Notes |
+|---------|-------------|-------|
+| Azure AI Search | 2025-11-01-Preview | Required for ContentUnderstandingSkill |
+| Content Understanding | 2025-11-01 | GA version (also supports 2025-05-01-preview) |
+| Azure Storage | 2023-01-01 | |
+| Azure OpenAI | 2024-10-21 | |
+
+**Region Availability for Content Understanding:**
+- West US ✓
+- Sweden Central ✓  
+- Australia East ✓
+- North Central US ✗ (not available)
 
 ## Appendix C: Dependencies
 

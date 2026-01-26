@@ -84,21 +84,24 @@ This step will be automated when ARM/Bicep support is available.
 
 ## Deployed Resources
 
-| Resource | Purpose | SKU/Tier |
-|----------|---------|----------|
-| Resource Group | `csp` | N/A |
-| AI Foundry | AI development workspace | Basic |
-| AI Foundry Project | Agent/workflow environment | Basic |
-| AI Search | Vector/semantic search | Standard S1 |
-| API Management | AI Gateway for models | Standard |
-| Container Apps | MCP servers, web apps | Consumption |
-| Content Safety | Content moderation | S0 |
-| Cosmos DB | Agent memory + data | Serverless |
-| Key Vault | Secrets management | Standard |
-| Log Analytics | Centralized logging | PerGB2018 |
-| Application Insights | APM & tracing | Web |
-| Container Registry | Container images | Basic |
-| Storage Account | Foundry dependency | Standard LRS |
+| Resource | Purpose | SKU/Tier | Region |
+|----------|---------|----------|--------|
+| Resource Group | `csp` | N/A | North Central US |
+| AI Foundry | AI development workspace | Basic | North Central US |
+| AI Foundry Project | Agent/workflow environment | Basic | North Central US |
+| AI Search | Vector/semantic search | Standard S1 | North Central US |
+| API Management | AI Gateway for models | Standard | North Central US |
+| Container Apps | MCP servers, web apps | Consumption | North Central US |
+| Content Safety | Content moderation | S0 | North Central US |
+| **Content Understanding** | **Document processing for KB** | **S0** | **West US** |
+| Cosmos DB | Agent memory + data | Serverless | North Central US |
+| Key Vault | Secrets management | Standard | North Central US |
+| Log Analytics | Centralized logging | PerGB2018 | North Central US |
+| Application Insights | APM & tracing | Web | North Central US |
+| Container Registry | Container images | Basic | North Central US | North Central US |
+| Storage Account | Foundry dependency | Standard LRS | North Central US |
+
+**Region Note:** Content Understanding (`aldelar-csp-cu-westus`) is deployed in West US because the Content Understanding API is only available in specific regions (westus, swedencentral, australiaeast). All other resources are deployed in North Central US.
 
 ## Configuration
 

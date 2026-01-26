@@ -8,7 +8,8 @@ This document defines the Azure infrastructure foundation for the Citizen Servic
 **Infrastructure as Code:** Bicep  
 **Scope:** Subscription-level deployment with dedicated resource group  
 **Environment:** Development (single environment)  
-**Region:** North Central US  
+**Primary Region:** North Central US  
+**Content Understanding Region:** West US (API only available in westus, swedencentral, australiaeast)  
 **Network Architecture:** Public endpoints with security controls (VNet integration planned for future phase)
 
 ---
@@ -61,7 +62,19 @@ This document defines the Azure infrastructure foundation for the Citizen Servic
 - **Compliance:** GDPR, accessibility, ethical AI guardrails
 - **Network:** Public endpoint
 
-### 7. Azure Cosmos DB
+### 7. Azure Content Understanding
+- **Resource Name:** `aldelar-csp-cu-westus`
+- **Region:** **West US** (required - API only available in westus, swedencentral, australiaeast)
+- **Purpose:** Document processing for knowledge base ingestion
+- **Capabilities:** 
+  - HTML/PDF parsing and structure extraction
+  - Semantic chunking with section boundaries
+  - Markdown output with preserved formatting
+- **Model Deployments:** gpt-4.1, gpt-4.1-mini, text-embedding-3-large (required for document processing)
+- **Integration:** Used by Azure AI Search skillsets via ContentUnderstandingSkill
+- **Note:** Deployed in West US while other resources are in North Central US; cross-region calls work correctly
+
+### 8. Azure Cosmos DB
 - **Purpose:** 
   - Agent memory store (conversation history, context)
   - Citizen operational data (requests, status tracking)
@@ -151,7 +164,8 @@ infra/
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| **Region** | North Central US | Supports AI Foundry Hosted Agents capability |
+| **Primary Region** | North Central US | Supports AI Foundry Hosted Agents capability |
+| **Content Understanding Region** | West US | API only available in westus, swedencentral, australiaeast |
 | **Environment Strategy** | Single Dev environment | Simplify initial deployment, expand to staging/prod later |
 | **Resource Group** | `csp` | Single logical container for all resources |
 | **AI Search Tier** | Standard S1 | Right-sized for MVP with moderate query load |
