@@ -348,8 +348,8 @@ async def main_page():
                     def start_edit():
                         title_label.set_visibility(False)
                         title_input.set_visibility(True)
-                        # Use props to autofocus instead of JavaScript injection
-                        title_input.props('autofocus')
+                        # Focus the input after it becomes visible
+                        ui.timer(0.1, lambda: title_input.run_method('focus'), once=True)
                     
                     async def finish_edit():
                         new_title = title_input.value
@@ -436,7 +436,8 @@ async def main_page():
         
         # Save user message to CosmosDB
         await project_service.save_message(selected_project_id, "user", user_msg)
-        # Update project timestamp (needed for CosmosDB, redundant for in-memory but harmless)
+        # Touch project to update timestamp - this is necessary for CosmosDB mode
+        # (save_message only updates timestamp in in-memory mode, see project_service.py)
         await project_service.touch_project(selected_project_id, user_id)
         
         # Reload projects and update UI to reflect new timestamp/order
@@ -472,7 +473,8 @@ async def main_page():
                 response_label.set_content(response_text)
                 # Save agent response to CosmosDB
                 await project_service.save_message(selected_project_id, "assistant", response_text)
-                # Update project timestamp (needed for CosmosDB, redundant for in-memory but harmless)
+                # Touch project to update timestamp - this is necessary for CosmosDB mode
+                # (save_message only updates timestamp in in-memory mode, see project_service.py)
                 await project_service.touch_project(selected_project_id, user_id)
                 
                 # Reload projects and update UI to reflect new timestamp/order

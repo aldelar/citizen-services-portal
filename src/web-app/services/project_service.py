@@ -247,10 +247,9 @@ class ProjectService:
             
             saved = await self._message_repo.append_message(message)
             
-            # Update project's updated_at timestamp
-            # Note: In CosmosDB mode, we need to find the user_id first
-            # We'll get it from the project if available in memory, otherwise skip the update
-            # The agent service should handle this update separately
+            # Note: For CosmosDB mode, project timestamp updates are handled by explicit
+            # touch_project() calls in the calling code (main.py). This separation allows
+            # better control over when timestamp updates occur.
             
             return saved.model_dump()
         except Exception as e:
