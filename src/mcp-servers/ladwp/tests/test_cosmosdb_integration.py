@@ -6,7 +6,6 @@ Run with: pytest -m integration
 
 import os
 import pytest
-from datetime import datetime, timezone
 from uuid import uuid4
 
 from src.models import (
