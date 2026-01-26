@@ -4,9 +4,15 @@ Create Azure AI Search resources for knowledge base ingestion.
 
 This script creates:
 - 3 indexes (ladbs-kb, ladwp-kb, lasan-kb)
-- 1 shared skillset (kb-ingestion-skillset)
-- 3 data sources
+- 3 skillsets (ladbs-kb-skillset, ladwp-kb-skillset, lasan-kb-skillset)
+- 3 data sources (using managed identity with ResourceId connection string)
 - 3 indexers
+
+Prerequisites:
+- Run setup-kb-permissions.sh first to configure RBAC roles
+- The Search service must have both system-assigned and user-assigned managed identities
+- Storage Blob Data Reader role on storage account for Search service identity
+- Cognitive Services User role on AI Foundry and Content Understanding for Search service identity
 """
 
 import os
@@ -140,8 +146,8 @@ def create_index(client: SearchIndexClient, agency: str) -> None:
     print(f"✓ Created index: {agency}-kb")
 
 
-def create_skillset_via_rest(credential: DefaultAzureCredential, subscription_id: str) -> None:
-    """Create the shared skillset for document processing using REST API."""
+def create_skillset_via_rest(credential: DefaultAzureCredential, subscription_id: str, agency: str) -> None:
+    """Create a skillset for document processing using REST API."""
     
     # Get access token for Azure Search
     token = credential.get_token("https://search.azure.com/.default")
@@ -154,9 +160,11 @@ def create_skillset_via_rest(credential: DefaultAzureCredential, subscription_id
     # Identity for skillset to access Azure OpenAI
     identity_resource_id = f"/subscriptions/{subscription_id}/resourcegroups/csp/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aldelar-csp-identity"
     
+    skillset_name = f"{agency}-kb-skillset"
+    
     skillset_definition = {
-        "name": "kb-ingestion-skillset",
-        "description": "Skillset for processing agency knowledge base documents using Content Understanding",
+        "name": skillset_name,
+        "description": f"Skillset for processing {agency.upper()} knowledge base documents using Content Understanding",
         "skills": [
             {
                 "@odata.type": "#Microsoft.Skills.Util.ContentUnderstandingSkill",
@@ -204,34 +212,14 @@ def create_skillset_via_rest(credential: DefaultAzureCredential, subscription_id
                 ]
             }
         ],
+        "cognitiveServices": {
+            "@odata.type": "#Microsoft.Azure.Search.AIServicesByIdentity",
+            "subdomainUrl": CONTENT_UNDERSTANDING_ENDPOINT
+        },
         "indexProjections": {
             "selectors": [
                 {
-                    "targetIndexName": "ladbs-kb",
-                    "parentKeyFieldName": "parent_id",
-                    "sourceContext": "/document/chunks/*",
-                    "mappings": [
-                        {"name": "chunk", "source": "/document/chunks/*/content"},
-                        {"name": "text_vector", "source": "/document/chunks/*/text_vector"},
-                        {"name": "title", "source": "/document/metadata_storage_name"},
-                        {"name": "source_file", "source": "/document/metadata_storage_name"},
-                        {"name": "page_number", "source": "/document/chunks/*/locationMetadata/pageNumberFrom"}
-                    ]
-                },
-                {
-                    "targetIndexName": "ladwp-kb",
-                    "parentKeyFieldName": "parent_id",
-                    "sourceContext": "/document/chunks/*",
-                    "mappings": [
-                        {"name": "chunk", "source": "/document/chunks/*/content"},
-                        {"name": "text_vector", "source": "/document/chunks/*/text_vector"},
-                        {"name": "title", "source": "/document/metadata_storage_name"},
-                        {"name": "source_file", "source": "/document/metadata_storage_name"},
-                        {"name": "page_number", "source": "/document/chunks/*/locationMetadata/pageNumberFrom"}
-                    ]
-                },
-                {
-                    "targetIndexName": "lasan-kb",
+                    "targetIndexName": f"{agency}-kb",
                     "parentKeyFieldName": "parent_id",
                     "sourceContext": "/document/chunks/*",
                     "mappings": [
@@ -250,46 +238,79 @@ def create_skillset_via_rest(credential: DefaultAzureCredential, subscription_id
     }
     
     response = requests.put(
-        f"{SEARCH_ENDPOINT}/skillsets/kb-ingestion-skillset?api-version=2024-07-01",
+        f"{SEARCH_ENDPOINT}/skillsets/{skillset_name}?api-version=2025-11-01-Preview",
         headers=headers,
         json=skillset_definition
     )
     
-    if response.status_code in [200, 201]:
-        print("✓ Created skillset: kb-ingestion-skillset")
+    if response.status_code in [200, 201, 204]:
+        print(f"✓ Created skillset: {skillset_name}")
     else:
-        print(f"✗ Failed to create skillset: {response.status_code}")
+        print(f"✗ Failed to create skillset {skillset_name}: {response.status_code}")
         print(f"  Response: {response.text}")
         raise Exception(f"Skillset creation failed: {response.text}")
 
 
-def create_data_source(client: SearchIndexerClient, agency: str, subscription_id: str) -> None:
-    """Create a data source for an agency."""
+def create_data_source_via_rest(credential: DefaultAzureCredential, agency: str, subscription_id: str) -> None:
+    """Create a data source for an agency using REST API."""
     
-    # Use resource ID based connection for managed identity auth
-    connection_string = f"ResourceId=/subscriptions/{subscription_id}/resourceGroups/csp/providers/Microsoft.Storage/storageAccounts/{STORAGE_ACCOUNT}"
+    # Get access token for Azure Search
+    token = credential.get_token("https://search.azure.com/.default")
     
-    data_source = SearchIndexerDataSourceConnection(
-        name=f"{agency}-datasource",
-        type="azureblob",
-        connection_string=connection_string,
-        container=SearchIndexerDataContainer(name=f"{agency}-docs")
+    headers = {
+        "Authorization": f"Bearer {token.token}",
+        "Content-Type": "application/json"
+    }
+    
+    datasource_name = f"{agency}-datasource"
+    container_name = f"{agency}-docs"
+    
+    # Use system-assigned managed identity with ResourceId connection string
+    datasource_definition = {
+        "name": datasource_name,
+        "type": "azureblob",
+        "credentials": {
+            "connectionString": f"ResourceId=/subscriptions/{subscription_id}/resourceGroups/csp/providers/Microsoft.Storage/storageAccounts/{STORAGE_ACCOUNT};"
+        },
+        "container": {
+            "name": container_name
+        }
+    }
+    
+    response = requests.put(
+        f"{SEARCH_ENDPOINT}/datasources/{datasource_name}?api-version=2025-11-01-Preview",
+        headers=headers,
+        json=datasource_definition
     )
     
-    client.create_or_update_data_source_connection(data_source)
-    print(f"✓ Created data source: {agency}-datasource")
+    if response.status_code in [200, 201, 204]:
+        print(f"✓ Created data source: {datasource_name}")
+    else:
+        print(f"✗ Failed to create data source {datasource_name}: {response.status_code}")
+        print(f"  Response: {response.text}")
+        raise Exception(f"Data source creation failed: {response.text}")
 
 
-def create_indexer(client: SearchIndexerClient, agency: str) -> None:
-    """Create an indexer for an agency."""
+def create_indexer_via_rest(credential: DefaultAzureCredential, agency: str) -> None:
+    """Create an indexer for an agency using REST API."""
     
-    indexer = SearchIndexer(
-        name=f"{agency}-indexer",
-        description=f"Indexer for {agency.upper()} knowledge base documents",
-        data_source_name=f"{agency}-datasource",
-        skillset_name="kb-ingestion-skillset",
-        target_index_name=f"{agency}-kb",
-        parameters={
+    # Get access token for Azure Search
+    token = credential.get_token("https://search.azure.com/.default")
+    
+    headers = {
+        "Authorization": f"Bearer {token.token}",
+        "Content-Type": "application/json"
+    }
+    
+    indexer_name = f"{agency}-indexer"
+    
+    indexer_definition = {
+        "name": indexer_name,
+        "description": f"Indexer for {agency.upper()} knowledge base documents",
+        "dataSourceName": f"{agency}-datasource",
+        "skillsetName": f"{agency}-kb-skillset",
+        "targetIndexName": f"{agency}-kb",
+        "parameters": {
             "batchSize": 1,
             "maxFailedItems": 0,
             "maxFailedItemsPerBatch": 0,
@@ -299,21 +320,32 @@ def create_indexer(client: SearchIndexerClient, agency: str) -> None:
                 "allowSkillsetToReadFileData": True
             }
         },
-        field_mappings=[
-            FieldMapping(
-                source_field_name="metadata_storage_path",
-                target_field_name="parent_id",
-                mapping_function={"name": "base64Encode"}
-            ),
-            FieldMapping(
-                source_field_name="metadata_storage_name",
-                target_field_name="title"
-            )
-        ]
+        "fieldMappings": [
+            {
+                "sourceFieldName": "metadata_storage_path",
+                "targetFieldName": "parent_id",
+                "mappingFunction": {"name": "base64Encode"}
+            },
+            {
+                "sourceFieldName": "metadata_storage_name",
+                "targetFieldName": "title"
+            }
+        ],
+        "schedule": None
+    }
+    
+    response = requests.put(
+        f"{SEARCH_ENDPOINT}/indexers/{indexer_name}?api-version=2025-11-01-Preview",
+        headers=headers,
+        json=indexer_definition
     )
     
-    client.create_or_update_indexer(indexer)
-    print(f"✓ Created indexer: {agency}-indexer")
+    if response.status_code in [200, 201, 204]:
+        print(f"✓ Created indexer: {indexer_name}")
+    else:
+        print(f"✗ Failed to create indexer {indexer_name}: {response.status_code}")
+        print(f"  Response: {response.text}")
+        raise Exception(f"Indexer creation failed: {response.text}")
 
 
 def run_indexer(client: SearchIndexerClient, agency: str) -> None:
@@ -334,16 +366,17 @@ def main():
     for agency in AGENCIES:
         create_index(index_client, agency)
     
-    print("\nCreating skillset...")
-    create_skillset_via_rest(credential, subscription_id)
+    print("\nCreating skillsets...")
+    for agency in AGENCIES:
+        create_skillset_via_rest(credential, subscription_id, agency)
     
     print("\nCreating data sources...")
     for agency in AGENCIES:
-        create_data_source(indexer_client, agency, subscription_id)
+        create_data_source_via_rest(credential, agency, subscription_id)
     
     print("\nCreating indexers...")
     for agency in AGENCIES:
-        create_indexer(indexer_client, agency)
+        create_indexer_via_rest(credential, agency)
     
     print("\n" + "="*50)
     print("Setup complete!")

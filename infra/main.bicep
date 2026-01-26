@@ -245,13 +245,15 @@ module textEmbedding3Small './core/ai/openai-deployment.bicep' = {
 }
 
 // Content Understanding for document processing
+// NOTE: Content Understanding API is only available in specific regions (westus, swedencentral, australiaeast for preview)
+// We deploy to westus regardless of the main location to ensure API availability
 module contentUnderstanding './core/ai/content-understanding.bicep' = {
   name: 'content-understanding-deployment'
   scope: rg
   params: {
-    location: location
+    location: 'westus'  // Content Understanding requires specific regions - see language-region-support docs
     tags: tags
-    name: 'aldelar-csp-cu'
+    name: 'aldelar-csp-cu-westus'  // New name to avoid conflict with existing northcentralus resource
   }
 }
 

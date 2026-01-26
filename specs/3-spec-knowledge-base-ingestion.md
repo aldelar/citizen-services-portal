@@ -62,8 +62,8 @@ This specification defines the architecture and implementation for ingesting age
 │            │                 │                 │                            │
 │            ▼                 ▼                 ▼                            │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                     SKILLSET (shared)                                │   │
-│  │                   kb-ingestion-skillset                              │   │
+│  │                     SKILLSETS (3 - one per agency)                   │   │
+│  │  ladbs-kb-skillset   ladwp-kb-skillset   lasan-kb-skillset          │   │
 │  │                                                                      │   │
 │  │  ┌────────────────────────────────────────────────────────────────┐ │   │
 │  │  │  1. ContentUnderstandingSkill                                  │ │   │
@@ -122,11 +122,13 @@ This specification defines the architecture and implementation for ingesting age
 │  Azure AI Search           Azure AI Foundry                     │
 │  (aldelar-csp-search)      (aldelar-csp-foundry)               │
 │  └─ Standard tier          └─ text-embedding-3-small           │
-│                               (deployed, 1000 TPM)              │
+│  └─ System + User-Assigned    (deployed, 1000 TPM)              │
+│     Managed Identities                                          │
 │                                                                 │
 │  Storage Account           Managed Identity                     │
 │  (aldelarcspstorage)       (aldelar-csp-identity)              │
-│  └─ Needs containers       └─ Needs RBAC for search/storage    │
+│  └─ Needs containers       └─ Associated with Search service   │
+│  └─ Shared key disabled    └─ RBAC on storage/AI services      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -136,22 +138,19 @@ This specification defines the architecture and implementation for ingesting age
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Storage Containers (3)    Content Understanding Resource       │
-│  ├─ ladbs-docs             (aldelar-csp-content-understanding) │
+│  ├─ ladbs-docs             (aldelar-csp-cu)                    │
 │  ├─ ladwp-docs             └─ For document processing          │
 │  └─ lasan-docs                                                  │
 │                                                                 │
-│  Data Sources (3)          Skillset (1, shared)                │
-│  ├─ ladbs-datasource       └─ kb-ingestion-skillset            │
-│  ├─ ladwp-datasource                                           │
-│  └─ lasan-datasource       Indexes (3)                         │
-│                            ├─ ladbs-kb                         │
-│  Indexers (3)              ├─ ladwp-kb                         │
-│  ├─ ladbs-indexer          └─ lasan-kb                         │
-│  ├─ ladwp-indexer                                              │
-│  └─ lasan-indexer          Semantic Configurations (3)         │
-│                            ├─ ladbs-semantic-config            │
-│                            ├─ ladwp-semantic-config            │
-│                            └─ lasan-semantic-config            │
+│  Data Sources (3)          Skillsets (3, one per agency)       │
+│  ├─ ladbs-datasource       ├─ ladbs-kb-skillset                │
+│  ├─ ladwp-datasource       ├─ ladwp-kb-skillset                │
+│  └─ lasan-datasource       └─ lasan-kb-skillset                │
+│                                                                 │
+│  Indexers (3)              Indexes (3)                         │
+│  ├─ ladbs-indexer          ├─ ladbs-kb                         │
+│  ├─ ladwp-indexer          ├─ ladwp-kb                         │
+│  └─ lasan-indexer          └─ lasan-kb                         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -265,17 +264,59 @@ resource contentUnderstanding 'Microsoft.CognitiveServices/accounts@2024-10-01' 
 
 **Region Requirement**: Content Understanding preview API (2025-05-01-preview) requires specific regions. Use the same region as your AI Search service (northcentralus, eastus, or westus2).
 
-### 4.3 RBAC Assignments
+### 4.3 Security & Identity Configuration
 
-Required role assignments for the managed identity:
+#### 4.3.1 Search Service Identity Requirements
+
+The Azure AI Search service must have **both** identity types configured:
+
+1. **System-Assigned Managed Identity**: Used by indexers to access blob storage and AI services
+2. **User-Assigned Managed Identity**: Must be **associated** with the Search service (not just exist in resource group)
+
+To associate a user-assigned identity with the Search service (required for skillset managed identity access):
+
+```bash
+# Get the user-assigned identity resource ID
+IDENTITY_ID=$(az identity show --name aldelar-csp-identity --resource-group csp --query id -o tsv)
+
+# Associate with Search service using REST API (not supported via CLI)
+az rest --method patch \
+  --url "https://management.azure.com/subscriptions/{subscription-id}/resourceGroups/csp/providers/Microsoft.Search/searchServices/aldelar-csp-search?api-version=2025-05-01" \
+  --body "{\"identity\":{\"type\":\"SystemAssigned,UserAssigned\",\"userAssignedIdentities\":{\"$IDENTITY_ID\":{}}}}" \
+  --headers "Content-Type=application/json"
+```
+
+#### 4.3.2 RBAC Assignments
+
+Role assignments for the **Search service's system-assigned managed identity**:
 
 | Resource | Role | Purpose |
 |----------|------|---------|
-| Storage Account | Storage Blob Data Reader | Read documents from containers |
-| AI Search | Search Index Data Contributor | Write to search indexes |
-| AI Search | Search Service Contributor | Create/manage indexes, indexers |
-| Content Understanding | Cognitive Services User | Process documents |
-| Azure OpenAI (Foundry) | Cognitive Services OpenAI User | Generate embeddings |
+| Storage Account | Storage Blob Data Reader | Indexers read documents from blob containers |
+| AI Foundry | Cognitive Services User | Skillset generates embeddings |
+| Content Understanding | Cognitive Services User | Skillset processes document content |
+
+**Important Notes**:
+- Roles must be assigned to the Search service's **system-assigned identity principal ID**, not the user-assigned identity
+- The storage account may have shared key access disabled, making managed identity mandatory
+- RBAC role propagation can take 5-10 minutes; wait before running indexers if newly assigned
+
+#### 4.3.3 Storage Account Configuration
+
+The storage account must have:
+- `allowBlobPublicAccess: false` - Documents are not publicly accessible
+- `bypass: AzureServices` - Trusted service exception enabled (required for same-region connections)
+- `allowSharedKeyAccess: false` - Forces managed identity authentication (recommended for security)
+
+#### 4.3.4 Setup Script
+
+Run the permissions setup script to configure all required RBAC assignments:
+
+```bash
+cd scripts
+chmod +x setup-kb-permissions.sh
+./setup-kb-permissions.sh
+```
 
 ---
 
@@ -455,14 +496,18 @@ Each agency index follows the same schema:
 
 ## 6. Skillset Specification
 
-### 6.1 Skillset Definition
+### 6.1 Skillset Design
 
-A single shared skillset for all agencies:
+**Important**: Due to Azure AI Search limitations with index projections, we use **one skillset per agency** rather than a shared skillset. This is because the `sourceContext` path in index projections can only be used in one projection per skillset.
+
+Skillsets are named: `{agency}-kb-skillset` (e.g., `ladbs-kb-skillset`, `ladwp-kb-skillset`, `lasan-kb-skillset`)
+
+### 6.2 Skillset Definition Template
 
 ```json
 {
-  "name": "kb-ingestion-skillset",
-  "description": "Skillset for processing agency knowledge base documents using Content Understanding",
+  "name": "{agency}-kb-skillset",
+  "description": "Skillset for processing {AGENCY} knowledge base documents using Content Understanding",
   "skills": [
     {
       "@odata.type": "#Microsoft.Skills.Util.ContentUnderstandingSkill",
@@ -511,8 +556,8 @@ A single shared skillset for all agencies:
     }
   ],
   "cognitiveServices": {
-    "@odata.type": "#Microsoft.Azure.Search.CognitiveServicesByKey",
-    "key": "<content-understanding-key>"
+    "@odata.type": "#Microsoft.Azure.Search.AIServicesByIdentity",
+    "subdomainUrl": "https://aldelar-csp-foundry.cognitiveservices.azure.com"
   },
   "indexProjections": {
     "selectors": [
@@ -570,22 +615,19 @@ Content Understanding advantages over Document Intelligence:
 
 ### 7.1 Data Source Template
 
-One data source per agency:
+One data source per agency, using the Search service's **system-assigned managed identity** with ResourceId connection string:
 
 ```json
 {
   "name": "{agency}-datasource",
   "type": "azureblob",
   "credentials": {
-    "connectionString": null
+    "connectionString": "ResourceId=/subscriptions/{subscription-id}/resourceGroups/csp/providers/Microsoft.Storage/storageAccounts/aldelarcspstorage;"
   },
   "container": {
     "name": "{agency}-docs"
-  },
-  "identity": {
-    "@odata.type": "#Microsoft.Azure.Search.DataUserAssignedIdentity",
-    "userAssignedIdentity": "/subscriptions/{sub}/resourcegroups/csp/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aldelar-csp-identity"
   }
+}
 }
 ```
 
