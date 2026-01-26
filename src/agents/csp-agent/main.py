@@ -16,9 +16,11 @@ def load_system_prompt() -> str:
         return prompt_path.read_text()
     
     # Fallback to a basic prompt if file not found
-    return """You are the Citizen Services Portal Agent (CSP Agent), an AI assistant for 
-    City of Los Angeles government services. You help citizens navigate services across 
-    LADBS (Building & Safety), LADWP (Water & Power), LASAN (Sanitation), and other departments."""
+    return (
+        "You are the Citizen Services Portal Agent (CSP Agent), an AI assistant for "
+        "City of Los Angeles government services. You help citizens navigate services across "
+        "LADBS (Building & Safety), LADWP (Water & Power), LASAN (Sanitation), and other departments."
+    )
 
 
 def create_agent():
