@@ -67,7 +67,7 @@ def create_agent():
     
     # Create the agent using Azure OpenAI Chat Client
     agent = AzureOpenAIChatClient(credential=DefaultAzureCredential()).create_agent(
-        name="CSPAgent",
+        name="csp-agent",
         instructions=instructions,
         model_url=model_url,
         tools=tools,

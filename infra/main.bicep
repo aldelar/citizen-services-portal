@@ -221,6 +221,19 @@ module foundryProject './core/ai/foundry-project.bicep' = {
   }
 }
 
+// ACR Connection for Hosted Agents
+// Required for capability host to pull agent container images
+module acrConnection './core/ai/acr-connection.bicep' = {
+  name: 'acr-connection-deployment'
+  scope: rg
+  params: {
+    foundryName: foundry.outputs.name
+    projectName: foundryProject.outputs.name
+    containerRegistryName: containerRegistry.outputs.name
+    connectionName: 'acr-connection'
+  }
+}
+
 // OpenAI Model Deployments
 module gpt41Mini './core/ai/openai-deployment.bicep' = {
   name: 'gpt41-mini-deployment'

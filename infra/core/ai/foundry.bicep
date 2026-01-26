@@ -34,6 +34,17 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
     disableLocalAuth: false  // Enable for development
     publicNetworkAccess: 'Enabled'
   }
+
+  // Capability Host for Hosted Agents deployment
+  // Required for deploying agents via 'host: azure.ai.agent' in azure.yaml
+  resource capabilityHost 'capabilityHosts@2025-10-01-preview' = {
+    name: 'agents'
+    properties: {
+      capabilityHostKind: 'Agents'
+      // Required to enable hosted agents deployment when no BYO VNet is provided
+      enablePublicHostingEnvironment: true
+    }
+  }
 }
 
 @description('The resource ID of the Foundry account')
