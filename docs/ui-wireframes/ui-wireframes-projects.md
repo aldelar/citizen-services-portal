@@ -29,6 +29,45 @@ The Projects Panel serves as the navigation hub for all user projects. It displa
 
 ## Project List (Left Panel)
 
+### Visual Reference
+
+```
+┌──────────────────────────────┐
+│  PROJECTS                [+]  │
+├──────────────────────────────┤
+│  ┌────────────────────────┐  │
+│  │ 🔍 Search projects...  │  │
+│  └────────────────────────┘  │
+│                              │
+│  ╭────────────────────────╮  │
+│  │ 🔄 Home Renovation    │  │  ← Selected
+│  │ 123 Main St          │  │
+│  │ ████████░░ 80%       │  │
+│  │ [Action Needed]      │  │
+│  │ Updated 2 hours ago  │  │
+│  ╰────────────────────────╯  │
+│                              │
+│  ┌────────────────────────┐  │
+│  │ ✓ Bulk Pickup        │  │
+│  │ 456 Oak Ave          │  │
+│  │ ██████████ 100%     │  │
+│  │ [Completed]          │  │
+│  │ Completed yesterday  │  │
+│  └────────────────────────┘  │
+│                              │
+│  ┌────────────────────────┐  │
+│  │ ⌛ Business License   │  │
+│  │ My Coffee Shop       │  │
+│  │ ████░░░░░░ 40%        │  │
+│  │ [Waiting]            │  │
+│  │ Updated 3 days ago   │  │
+│  └────────────────────────┘  │
+│                              │
+└──────────────────────────────┘
+```
+
+### NiceGUI Implementation
+
 ```python
 # Project list panel using NiceGUI
 with ui.left_drawer(value=True).classes('bg-gray-50'):
@@ -162,6 +201,39 @@ STATUS_LABELS = {
 
 Projects have distinct visual states using NiceGUI styling:
 
+### Visual Reference
+
+```
+┌───────────────────────────────────────────────────────────────────┐
+│  ACTIVE - IN PROGRESS                                           │
+│  ┃ 🔄 Home Renovation                      [In Progress] │
+│  ┃ 123 Main St                                          │
+│  ┃ ████████░░ 80%                                        │
+├───────────────────────────────────────────────────────────────────┤
+│  NEEDS ACTION (Orange highlight)                                 │
+│  ┃ ⚡ Home Renovation                      [1 action] !  │
+│  ┃ 123 Main St           (orange bg)                    │
+│  ┃ ████████░░ 80%                                        │
+├───────────────────────────────────────────────────────────────────┤
+│  WAITING (Gray)                                                  │
+│  │ ⌛ Home Renovation                         [Waiting]  │
+│  │ Waiting for agency...                                │
+│  │ ████████░░ 80%                                        │
+├───────────────────────────────────────────────────────────────────┤
+│  COMPLETED (Green)                                               │
+│  ┃ ✓ Bulk Pickup                            [Completed] │
+│  ┃ 456 Oak Ave                                          │
+│  ┃ ██████████ 100%                                       │
+├───────────────────────────────────────────────────────────────────┤
+│  CANCELLED (Faded, strikethrough)                                │
+│    ✘ Business License                       [Cancelled] │
+│    My Coffee Shop                  (faded/strikethrough) │
+│    ░░░░░░░░░░ 40%                                        │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### NiceGUI Implementation
+
 ```python
 # Active - in progress
 with ui.card().classes('border-l-4 border-primary'):
@@ -228,6 +300,19 @@ Projects are created through **conversation**, not forms. The user starts talkin
 
 User clicks "+ New" or starts typing in an empty state.
 
+```
+┌──────────────────────────────────────────────────────┐
+│  🤖 Agent                                          │
+│                                                    │
+│  Hi! I'm here to help you with LA city services.   │
+│  What can I help you with today?                   │
+└──────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────┐
+│ I want to install solar panels on my house...      │
+└──────────────────────────────────────────────[➤ Send]┘
+```
+
 ```python
 # Welcome message using ui.chat_message
 with ui.chat_message(name='Agent'):
@@ -244,6 +329,18 @@ with ui.row().classes('w-full p-4'):
 
 The agent recognizes the intent and creates a project automatically.
 
+```
+┌──────────────────────────────────────────────────────┐
+│  🤖 Agent                                          │
+│                                                    │
+│  I'd be happy to help you with solar installation! │
+│  I've started a project to track this.             │
+│                                                    │
+│  First, I'll need some information:                │
+│  📍 What's your property address?                   │
+└──────────────────────────────────────────────────────┘
+```
+
 ```python
 # Agent responds and requests info
 with ui.chat_message(name='Agent'):
@@ -253,6 +350,23 @@ with ui.chat_message(name='Agent'):
 ```
 
 ### Step 3: Project Appears in List
+
+```
+┌──────────────────────────┐
+│  PROJECTS            [+]  │
+├──────────────────────────┤
+│                          │
+│  ╭────────────────────╮  │
+│  │ 📄 Solar         │  │  ← NEW!
+│  │ Installation    │  │
+│  │ 123 Main St     │  │
+│  │ ░░░░░░░░░░ 0%   │  │
+│  │ [NEW]           │  │
+│  │ Just now        │  │
+│  ╰────────────────────╯  │
+│                          │
+└──────────────────────────┘
+```
 
 ```python
 # New project card appears with 'new' status
@@ -366,6 +480,25 @@ with ui.card().classes('w-full') as card:
 
 Use `ui.card` with centered content for empty states:
 
+### No Projects
+
+```
+┌──────────────────────────────┐
+│  PROJECTS            [+]  │
+├──────────────────────────────┤
+│                              │
+│          📂                  │
+│                              │
+│      No projects yet         │
+│                              │
+│    Start by telling me       │
+│    what you need help with   │
+│                              │
+│      [+ Start New]           │
+│                              │
+└──────────────────────────────┘
+```
+
 ```python
 # No projects empty state
 with ui.column().classes('w-full h-full items-center justify-center p-8'):
@@ -387,6 +520,35 @@ with ui.column().classes('w-full p-4 text-center'):
 ## Mobile View
 
 On mobile, the projects panel becomes a full-screen tab accessible via bottom navigation:
+
+### Visual Reference
+
+```
+┌─────────────────────────────────────────┐
+│ 📁 Projects                          [+]  │
+├─────────────────────────────────────────┤
+│  ┌───────────────────────────────────┐  │
+│  │ 🔍 Search projects...             │  │
+│  └───────────────────────────────────┘  │
+│                                         │
+│  ┌───────────────────────────────────┐  │
+│  │ 🔄 Home Renovation    [In Progress] │  │
+│  │ 123 Main St                       │  │
+│  │ ████████░░ 80%                     │  │
+│  └───────────────────────────────────┘  │
+│                                         │
+│  ┌───────────────────────────────────┐  │
+│  │ ✓ Bulk Pickup          [Completed] │  │
+│  │ 456 Oak Ave                       │  │
+│  │ ██████████ 100%                   │  │
+│  └───────────────────────────────────┘  │
+│                                         │
+├─────────────────────────────────────────┤
+│  [📁 Projects]  [💬 Chat]  [📊 Plan]    │
+└─────────────────────────────────────────┘
+```
+
+### NiceGUI Implementation
 
 ```python
 # Mobile projects view

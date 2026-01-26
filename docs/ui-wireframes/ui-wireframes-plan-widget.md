@@ -105,6 +105,41 @@ The `depends_on` field creates the graph edges. The widget must render these rel
 
 ## Plan Widget Structure
 
+### Visual Reference
+
+```
+┌────────────────────────────────────────┐
+│ 📊 PROJECT PLAN               [⚙️]  │
+├────────────────────────────────────────┤
+│ Progress: ████████░░  8/10 steps │
+├────────────────────────────────────────┤
+│                                        │
+│     ┌─────┐    ┌─────┐    ┌─────┐  │
+│     │ P1  │    │ P2  │    │ P3  │  │
+│     │  ✓  │    │  ✓  │    │  ✓  │  │
+│     └──┬──┘    └──┬──┘    └──┬──┘  │
+│        │          │          │      │
+│        └──────────┼──────────┘      │
+│                   ▼                    │
+│            ╭───────╮                  │
+│            │  I1   │                  │
+│            │  ⚡   │  ← Action needed │
+│            ╰───────╯                  │
+│                   │                    │
+│                   ▼                    │
+│            ┌╌╌╌╌╌╌╌┐                  │
+│            ╌  F1   ╌  ← Blocked       │
+│            ╌  🔒   ╌                  │
+│            └╌╌╌╌╌╌╌┘                  │
+│                                        │
+├────────────────────────────────────────┤
+│ ⚡ 1 action needs your attention       │
+│                       [View Task]      │
+└────────────────────────────────────────┘
+```
+
+### NiceGUI Implementation
+
 ```python
 # Plan Widget using NiceGUI
 with ui.right_drawer(value=True).classes('w-96 bg-gray-50'):
@@ -401,6 +436,30 @@ graph TD
 
 ### Empty State (New Project)
 
+```
+┌────────────────────────────────────────┐
+│ 📊 PROJECT PLAN               [⚙️]  │
+├────────────────────────────────────────┤
+│                                        │
+│                                        │
+│               📋                       │
+│                                        │
+│          No plan yet                   │
+│                                        │
+│    ────────────────────────             │
+│                                        │
+│    As we discuss your project,         │
+│    I'll build a step-by-step           │
+│    plan here showing:                  │
+│                                        │
+│    • What permits you need             │
+│    • Which agencies to work with       │
+│    • Dependencies between steps        │
+│    • Your progress                      │
+│                                        │
+└────────────────────────────────────────┘
+```
+
 ```python
 # Empty state when no plan exists yet
 with ui.right_drawer(value=True).classes('w-96 bg-gray-50'):
@@ -423,6 +482,39 @@ with ui.right_drawer(value=True).classes('w-96 bg-gray-50'):
 ```
 
 ### Simple Linear Plan (3-4 Steps)
+
+```
+┌────────────────────────────────────────┐
+│ 📊 PROJECT PLAN               [⚙️]  │
+├────────────────────────────────────────┤
+│ Progress: ████░░░░░░  1/3 steps     │
+├────────────────────────────────────────┤
+│                                        │
+│           ┌──────────────────┐         │
+│           │ D1 Check         │         │
+│           │ Eligibility  ✓   │         │
+│           │ LASAN            │         │
+│           └────────┬─────────┘         │
+│                    │                   │
+│                    ▼                   │
+│           ╭──────────────────╮         │
+│           │ D2 Schedule      │         │
+│           │ Pickup       ⚡  │  ← Action│
+│           │ LASAN            │         │
+│           ╰────────┬─────────╯         │
+│                    │                   │
+│                    ▼                   │
+│           ┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐         │
+│           ╌ D3 Confirm       ╌         │
+│           ╌ Pickup       🔒  ╌← Blocked │
+│           ╌ LASAN            ╌         │
+│           └╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘         │
+│                                        │
+├────────────────────────────────────────┤
+│ ⚡ 1 action needs your attention       │
+│                       [View Task]      │
+└────────────────────────────────────────┘
+```
 
 ```python
 # Simple linear plan - e.g., Bulk pickup request
@@ -460,6 +552,41 @@ graph TD
 ```
 
 ### Medium Complexity (John's Renovation ~10 Steps)
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                    ╔═══════════ Permits ══════════╗              │
+│                    ║                                   ║              │
+│      ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│      │ P1 Elec  │  │ P2 Mech  │  │ P3 Build │              │
+│      │ ✓ LADBS  │  │ ✓ LADBS  │  │ ✓ LADBS  │              │
+│      └────┬─────┘  └────┬─────┘  └────┬─────┘              │
+│           │            │            │                    │
+│           └────────────┼────────────┘                    │
+│                        │                                  │
+│      ┌──────────┐        │        ┌──────────┐            │
+│      │ U1 TOU   │        │        │ U2 Inter │            │
+│      │ ✓ LADWP  │        │        │ ◐ LADWP  │            │
+│      └────┬─────┘        │        └────┬─────┘            │
+│           │              │              │                  │
+│           └──────────────┼──────────────┘                  │
+│                          ▼                                │
+│              ╭─────────────────╮                            │
+│              │ I1 Inspection  │  ← Action needed           │
+│              │ ⚡ LADBS        │                            │
+│              ╰────────┬────────╯                            │
+│                      │                                     │
+│           ┌──────────┴───────────┐                        │
+│           ▼                      ▼                        │
+│  ┌╌╌╌╌╌╌╌╌╌╌╌╌┐  ┌╌╌╌╌╌╌╌╌╌╌╌╌┐  ┌╌╌╌╌╌╌╌╌╌╌╌╌┐          │
+│  ╌ D1 Bulky   ╌  ╌ D2 E-waste  ╌  ╌ F1 Final   ╌          │
+│  ╌ ○ LASAN    ╌  ╌ ○ LASAN    ╌  ╌ 🔒 LADWP    ╌          │
+│  └╌╌╌╌╌╌╌╌╌╌╌╌┘  └╌╌╌╌╌╌╌╌╌╌╌╌┘  └╌╌╌╌╌╌╌╌╌╌╌╌┘          │
+│                                                           │
+└───────────────────────────────────────────────────────────────┘
+
+Legend: ✓ Completed | ◐ In Progress | ⚡ Action Needed | ○ Not Started | 🔒 Blocked
+```
 
 ```python
 # Medium complexity plan with branching
@@ -788,6 +915,43 @@ with ui.card():
 ## Mobile Plan View
 
 On mobile, the plan widget becomes a full-screen tab accessible via bottom navigation:
+
+### Visual Reference
+
+```
+┌─────────────────────────────────────────┐
+│ ← Project Plan                  [⚙️]  │
+├─────────────────────────────────────────┤
+│ Progress: ████████░░ 80%              │
+├─────────────────────────────────────────┤
+│                                         │
+│        ┌─────┐   ┌─────┐   ┌─────┐   │
+│        │ P1  │   │ P2  │   │ P3  │   │
+│        │  ✓  │   │  ✓  │   │  ✓  │   │
+│        └──┬──┘   └──┬──┘   └──┬──┘   │
+│           │         │         │       │
+│           └─────────┼─────────┘       │
+│                     ▼                   │
+│             ╭─────────╮                 │
+│             │   I1    │                 │
+│             │   ⚡    │                 │
+│             ╰─────────╯                 │
+│                     │                   │
+│                     ▼                   │
+│             ┌╌╌╌╌╌╌╌╌╌┐                 │
+│             ╌   F1    ╌                 │
+│             ╌   🔒    ╌                 │
+│             └╌╌╌╌╌╌╌╌╌┘                 │
+│                                         │
+├─────────────────────────────────────────┤
+│ ⚡ 1 action needs your attention        │
+│                        [View Task]      │
+├─────────────────────────────────────────┤
+│  [📁 Projects]  [💬 Chat]  [📊 Plan]   │
+└─────────────────────────────────────────┘
+```
+
+### NiceGUI Implementation
 
 ```python
 # Mobile plan view as a page

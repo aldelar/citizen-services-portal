@@ -67,6 +67,40 @@ with ui.row().classes('items-center gap-2'):
 
 Use `ui.chip` for status pills with color variants:
 
+### Visual Reference
+
+```
+  ┌──────────────┐
+  │ ○ Not Started │  (gray, dashed)
+  └──────────────┘
+
+  ┌──────────┐
+  │ 🔒 Blocked │  (gray, lock icon)
+  └──────────┘
+
+  ┌─────────┐
+  │ ▶ Ready  │  (blue, solid)
+  └─────────┘
+
+  ┌──────────────┐
+  │ ◐ In Progress │  (blue, pulsing)
+  └──────────────┘
+
+  ╭────────────────╮
+  │ ⚡ Action Needed │  (orange, bold border)
+  ╰────────────────╯
+
+  ┌─────────────┐
+  │ ✓ Completed  │  (green, check icon)
+  └─────────────┘
+
+  ┌──────────┐
+  │ ✘ Failed  │  (red, error icon)
+  └──────────┘
+```
+
+### NiceGUI Implementation
+
 ```python
 # Status pills using ui.chip
 def status_chip(status: str):
@@ -144,6 +178,36 @@ ui.circular_progress(value=0.75, show_value=True, size='lg')
 ## Buttons
 
 Use `ui.button` with Quasar props for different styles:
+
+### Visual Reference
+
+```
+  ┌──────────────────┐
+  │ Complete Action  │  Primary (filled blue)
+  └──────────────────┘
+
+  ┌──────────────┐
+  │ View Details │  Secondary (outline)
+  └──────────────┘
+
+   View Details →     Ghost/Flat (no border)
+
+  ┌─────────────────┐
+  │ Cancel Project │  Danger (red)
+  └─────────────────┘
+
+  ┌─────────────────┐
+  │ Not Available  │  Disabled (grayed)
+  └─────────────────┘
+
+  ┌─────────────────┐
+  │ [•••] Submit    │  Loading (spinner)
+  └─────────────────┘
+
+  (➕)  Icon only (round)
+```
+
+### NiceGUI Implementation
 
 ```python
 # Primary button
@@ -346,6 +410,39 @@ with ui.label('Step Details').classes('cursor-pointer'):
 ## Modals
 
 Use `ui.dialog` for modals:
+
+### Visual Reference
+
+```
+                  ┌────────────────────────────────────────┐
+                  │ Modal Title                      [×] │
+                  ├────────────────────────────────────────┤
+                  │                                        │
+                  │  Modal content goes here.              │
+                  │  Can include forms, information,       │
+                  │  or confirmations.                     │
+                  │                                        │
+                  ├────────────────────────────────────────┤
+                  │                    [Cancel]  [Confirm] │
+                  └────────────────────────────────────────┘
+
+
+                  Confirmation Modal:
+                  ┌────────────────────────────────────────┐
+                  │ ⚠️ Cancel Project?                      │
+                  ├────────────────────────────────────────┤
+                  │                                        │
+                  │  Are you sure you want to cancel       │
+                  │  "Home Renovation - 123 Main St"?      │
+                  │                                        │
+                  │  This cannot be undone.                │
+                  │                                        │
+                  ├────────────────────────────────────────┤
+                  │          [Keep Project]  [Yes, Cancel] │
+                  └────────────────────────────────────────┘
+```
+
+### NiceGUI Implementation
 
 ```python
 # Standard modal
@@ -608,6 +705,27 @@ with ui.row():
 ## Empty States
 
 Use `ui.card` with centered content:
+
+### Visual Reference
+
+```
+┌─────────────────────────────────────────────────┐
+│                                                 │
+│                                                 │
+│                     📥                         │
+│                                                 │
+│               No items found                    │
+│                                                 │
+│   Description text explaining the empty state   │
+│   and what to do next.                          │
+│                                                 │
+│               [+ Create New]                    │
+│                                                 │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### NiceGUI Implementation
 
 ```python
 # Generic empty state
