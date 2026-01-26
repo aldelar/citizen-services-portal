@@ -68,7 +68,7 @@ The Web Application is the citizen-facing frontend for the Citizen Services Port
 ## 2. Project Structure
 
 ```
-src/webapp/
+src/web-app/
 ├── main.py                     # NiceGUI app entry point
 ├── pyproject.toml              # UV/Python project config
 ├── requirements.txt            # Python dependencies (for Docker)
@@ -279,7 +279,7 @@ Create environment files for each service:
 #### Web App (.env)
 
 ```bash
-# src/webapp/.env
+# src/web-app/.env
 USE_MOCK_AUTH=true
 MOCK_USER_ID=local-dev-user
 MOCK_USER_EMAIL=dev@example.com
@@ -372,7 +372,7 @@ export MCP_LADBS_URL=https://<deployed-ladbs-url>
 export MCP_LADWP_URL=https://<deployed-ladwp-url>
 export MCP_LASAN_URL=https://<deployed-lasan-url>
 
-cd src/webapp
+cd src/web-app
 uv run python main.py
 ```
 
@@ -381,7 +381,7 @@ uv run python main.py
 Each service uses UV with a `pyproject.toml`:
 
 ```toml
-# src/webapp/pyproject.toml
+# src/web-app/pyproject.toml
 [project]
 name = "csp-webapp"
 version = "0.1.0"
@@ -408,7 +408,7 @@ dev-dependencies = [
 
 First-time setup:
 ```bash
-cd src/webapp
+cd src/web-app
 uv sync
 ```
 
@@ -418,7 +418,7 @@ For rapid iteration on the web app:
 
 ```bash
 # Terminal 1: Run web app with hot reload
-cd src/webapp
+cd src/web-app
 uv run python main.py --reload
 
 # Terminal 2: (Optional) Run a single MCP server if needed
@@ -435,7 +435,7 @@ NiceGUI supports hot reload for UI changes. Just save your file and the browser 
 ### 5.1 Dockerfile
 
 ```dockerfile
-# src/webapp/Dockerfile
+# src/web-app/Dockerfile
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -470,14 +470,14 @@ CMD ["python", "main.py"]
 Generate from pyproject.toml for Docker builds:
 
 ```bash
-cd src/webapp
+cd src/web-app
 uv pip compile pyproject.toml -o requirements.txt
 ```
 
 ### 5.3 Local Docker Testing
 
 ```bash
-cd src/webapp
+cd src/web-app
 
 # Build the image
 docker build -t csp-webapp .
@@ -598,7 +598,7 @@ services:
   # ... existing MCP servers ...
   
   webapp:
-    project: ./src/webapp
+    project: ./src/web-app
     language: py
     host: containerapp
     docker:
@@ -657,7 +657,7 @@ open $(azd env get-value SERVICE_WEBAPP_URI)
 ### 7.2 Config Class
 
 ```python
-# src/webapp/config.py
+# src/web-app/config.py
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

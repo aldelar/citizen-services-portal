@@ -1,6 +1,5 @@
 ## DO NOT USE THIS FOR THIS PROJECT / JUST TRACKING PURPOSES, PERSONAL NOTES
 
-
 -- sonnet 4.5 unless noted
 
 ===== USE CASE ANALYSIS / REFININEMENT Assistance =====
@@ -35,6 +34,7 @@ The full story would show that such report is invalid.
 Let's focus first on the full story, from project inception, to phasing all the steps, what docuemnts need to be filed, etc. and go thru the journey to completion and make sure we capture all the interaction points with the government entities.
 
 After that, we will model how this could be re-engineered to be super efficient, but not yet. Let's focus on the present with a very documented process and steps.
+
 
 
 ======= ARCHITECTURE Assistance =======
@@ -106,6 +106,7 @@ What would you have within the src/mcp-servers/ladbs folder to help dev/test? Sh
 I want to use uv for python env management to speed up dev/test.
 
 
+
 ===== FOUNDRY/APIM/AGENT SETUP
 
 great. now, let's work on the foundry setup.
@@ -124,12 +125,15 @@ Please let me know how you would approach all this, all this setup should use az
 Propose the cleanests approaches to do all this so we can have our first agent up and running.
 
 
+
 =======
 
 How's the MCP_LADBS_URL retrieved from config?
 We have to make sure it's done in a programmatic way, meaning if the ladbs agent were to require a tool named 'abc', we would know how to fetch the deployment configs using azd to retrieve the ACA deployed URL for that tool, assuming the tools are all deployed before we deploy the agents.
 
 Can you double check all this, make sure the deploy order is correct, and that from the tool 'name' only, we can retrieve the URL via deployed items to make this all work at scale.
+
+
 
 
 ===== ARCHITECTURE REVIEW Assistance =====
@@ -165,11 +169,15 @@ Good work, let's continue to try to simplify things:
 Let's work on that first for a new pass. Suggest other simplifications.
 
 
+
+
 ======= BUILDING KNOWLEDGE BASES Assistance =====
 
 (see Github Copilot Issue to see how knewledge bases were researched)
 
 I want you to process the /assets/agency-knowledge-base-document-inventory.md file, and download all documents listed there (PDFs, and for HTML, download them as well) and place them into the appropriate respective folders (/assets/ladbs, etc.)
+
+
 
 
 ====== UI framework Assistance ======
@@ -184,9 +192,14 @@ Can you do a research around what's used for most project, analyze their strengt
 
 Create the issue, and create a system prompt assist for the agent I'm going to delegate it to (github agent) to make sure the task stays on track and deliver maximum value so we quickly select the right framework.
 
+
+
+
 == UI wireframes Creation Assistance =====
 
-See GitHhu
+See GitHub
+
+
 
 
 ==== UI WIREFRAMES REfinement Assistance =====
@@ -196,3 +209,33 @@ We've selected NiceGUI as the UI framework for this project, do some research ar
 I'd like to make sure the wireframes are set to match the native functionality of NiceGUI as much as possible, so we do not build custom components/controls or define interactions that aren't supported by NiceGUI by default.
 
 We should stay within what comes out of the box with NiceGUI, so let's clean up the wireframes to keep the overall functionality, but leverage all the native constructs of the NiceGUI framework.
+
+
+
+
+== UI specification document Creation Assistance =====
+
+Let's create first a new spec: /spec/5-web-app.md which will outline the basics: how it's deployed, which UI framework it's using, which authentication it's using (and we will go with Azure Container Apps Easy Auth).
+
+Let's also indicate in the spec that we should be able to run the app locally, it will use UV for environment setup. Add instructions in the specs to run local for quick iterative development.
+
+NOTE: we will assume we also run the MCP servers locally when doing web app local dev. Make sure these MCP servers can run on ports that don't conflict with each other. Propose a way to quickly run the web app local with local MCP servers.
+
+These MCP servers may rely on AI Search, which will stay in Azure only even during local dev.
+
+The deployment should be documented as well (we will rely on azd, and just specify what to run to deploy and test in Azure.)
+
+Write a spec to surface that, so that the implementation GitHub Issue can be rewritten to be clearer.
+
+
+
+
+== github ISSUE for UI implementation =====
+
+ok, now based on that spec, let's write a detailed GITHUB ISSUE with all the details needed for a Github agent to implement this completely.
+
+We want to focus on quality and simplcity to get a first cut out the door and test it, so the agent should try to keep things simple and consider putting aside difficult parts or things that need to be clarified. I would prefer to see something skipped and put into a TODO item that guessing and over-engineering.
+
+Let's keep things simple, to do a first cut and test it out.
+
+Add to the comments section any additional prompt guidance for the agent.
