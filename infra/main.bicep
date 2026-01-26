@@ -207,6 +207,17 @@ module storageRbac './core/security/storage-rbac.bicep' = {
   }
 }
 
+// AI Search RBAC - Grant access to search indexes for user and managed identity
+module searchRbac './core/security/search-rbac.bicep' = {
+  name: 'search-rbac-deployment'
+  scope: rg
+  params: {
+    searchServiceName: aiSearch.outputs.name
+    userPrincipalId: principalId
+    identityPrincipalId: managedIdentity.outputs.principalId
+  }
+}
+
 // AI Foundry Project
 module foundryProject './core/ai/foundry-project.bicep' = {
   name: 'foundry-project-deployment'
