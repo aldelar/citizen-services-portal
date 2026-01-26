@@ -43,7 +43,7 @@ services:
         language: python
         docker:
             path: ./Dockerfile
-            context: .
+            context: ../../..
     mcp-lasan:
         project: ./src/mcp-servers/lasan
         host: containerapp
