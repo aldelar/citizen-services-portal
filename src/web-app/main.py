@@ -4,7 +4,7 @@ This is the main entry point for the NiceGUI web application.
 Run with: uv run python main.py
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 from nicegui import ui, app
 from config import settings
@@ -12,6 +12,35 @@ from services.auth_service import get_current_user
 from services.agent_service import get_agent_service
 from services.project_service import get_project_service, generate_project_title
 from models.project import Project, ProjectStatus
+
+
+def format_relative_time(dt: datetime | None) -> str:
+    """Format a datetime as a human-readable relative time string."""
+    if not dt:
+        return "Unknown"
+    
+    now = datetime.now(timezone.utc)
+    # Ensure dt is timezone-aware
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    
+    diff = now - dt
+    
+    if diff < timedelta(minutes=1):
+        return "Just now"
+    elif diff < timedelta(hours=1):
+        minutes = int(diff.total_seconds() / 60)
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    elif diff < timedelta(days=1):
+        hours = int(diff.total_seconds() / 3600)
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    elif diff < timedelta(days=2):
+        return "Yesterday"
+    elif diff < timedelta(days=7):
+        days = int(diff.days)
+        return f"{days} days ago"
+    else:
+        return dt.strftime("%b %d")
 
 
 def convert_to_ui_project(project_data: dict) -> Project:
@@ -193,7 +222,6 @@ async def main_page():
             
             # Refresh the UI
             await refresh_ui()
-            ui.notify('Project cancelled', type='info')
     
     async def complete_project_with_confirmation(project_id: str):
         """Mark a project as complete after user confirmation."""
@@ -215,7 +243,6 @@ async def main_page():
             
             # Refresh the UI
             await refresh_ui()
-            ui.notify('Project marked as complete', type='positive')
     
     def render_projects_list():
         """Render the list of projects."""
@@ -272,8 +299,8 @@ async def main_page():
                             if project.status == ProjectStatus.CANCELLED:
                                 title_classes += ' line-through'
                             ui.label(project.title).classes(title_classes)
-                            if project.created_at:
-                                ui.label(project.created_at.strftime('%b %d, %Y')).classes('text-xs text-gray-400')
+                            # Show relative time based on updated_at
+                            ui.label(f'Updated {format_relative_time(project.updated_at)}').classes('text-xs text-gray-400')
         else:
             with ui.column().classes('items-center justify-center p-4 text-center'):
                 ui.icon('folder_open', size='lg').classes('text-gray-400')
@@ -282,24 +309,36 @@ async def main_page():
     
     def confirm_cancel_dialog(project_id: str):
         """Show confirmation dialog for cancelling a project."""
+        async def do_cancel():
+            # Do the work first while dialog context is still valid
+            await cancel_project_with_confirmation(project_id)
+            # Then close the dialog
+            dialog.close()
+        
         with ui.dialog() as dialog, ui.card():
             ui.label('Cancel Project?').classes('text-lg font-bold')
             ui.label('Are you sure you want to cancel this project? You will no longer be able to send messages.')
             ui.label('This action cannot be undone.').classes('text-orange-600 font-semibold mt-2')
             with ui.row().classes('w-full justify-end gap-2 mt-4'):
                 ui.button('Cancel', on_click=dialog.close).props('flat')
-                ui.button('Confirm Cancel', on_click=lambda: (dialog.close(), cancel_project_with_confirmation(project_id))).props('color=negative')
+                ui.button('Confirm Cancel', on_click=do_cancel).props('color=negative')
         dialog.open()
     
     def confirm_complete_dialog(project_id: str):
         """Show confirmation dialog for marking a project as complete."""
+        async def do_complete():
+            # Do the work first while dialog context is still valid
+            await complete_project_with_confirmation(project_id)
+            # Then close the dialog
+            dialog.close()
+        
         with ui.dialog() as dialog, ui.card():
             ui.label('Mark as Complete?').classes('text-lg font-bold')
             ui.label('Mark this project as complete? You will no longer be able to send messages.')
             ui.label('This action cannot be undone.').classes('text-orange-600 font-semibold mt-2')
             with ui.row().classes('w-full justify-end gap-2 mt-4'):
                 ui.button('Cancel', on_click=dialog.close).props('flat')
-                ui.button('Mark Complete', on_click=lambda: (dialog.close(), complete_project_with_confirmation(project_id))).props('color=positive')
+                ui.button('Mark Complete', on_click=do_complete).props('color=positive')
         dialog.open()
     
     async def save_title_edit(project_id: str, new_title: str):
@@ -341,31 +380,37 @@ async def main_page():
             with ui.column().classes('flex-grow gap-0'):
                 # Editable title for active projects, locked for others
                 if selected_project.status == ProjectStatus.ACTIVE:
-                    # Create an editable label with inline editing
-                    title_label = ui.label(selected_project.title).classes('font-semibold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded')
-                    title_input = ui.input(value=selected_project.title).props('maxlength=100 dense outlined').classes('hidden')
+                    # Container for both display and edit modes
+                    with ui.row().classes('items-center gap-1') as title_display:
+                        title_label = ui.label(selected_project.title).classes('font-semibold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded')
+                        edit_icon = ui.icon('edit', size='xs').classes('text-gray-400 cursor-pointer hover:text-blue-500')
+                    
+                    # Hidden input for editing - initially hidden with display:none
+                    title_input = ui.input(value=selected_project.title).props('maxlength=100 dense outlined')
+                    title_input.style('display: none')
                     
                     def start_edit():
-                        title_label.set_visibility(False)
-                        title_input.set_visibility(True)
-                        # Focus the input after it becomes visible
-                        ui.timer(0.1, lambda: title_input.run_method('focus'), once=True)
+                        title_display.style('display: none')
+                        title_input.style('display: block')
+                        title_input.run_method('focus')
                     
                     async def finish_edit():
                         new_title = title_input.value
                         if new_title and new_title.strip() and new_title != selected_project.title:
-                            success = await save_title_edit(selected_project.id, new_title)
-                            if not success:
-                                title_input.set_value(selected_project.title)
-                        title_input.set_visibility(False)
-                        title_label.set_visibility(True)
+                            await save_title_edit(selected_project.id, new_title)
+                        else:
+                            # Revert to original and show display
+                            title_input.set_value(selected_project.title)
+                            title_input.style('display: none')
+                            title_display.style('display: flex')
                     
                     def cancel_edit():
                         title_input.set_value(selected_project.title)
-                        title_input.set_visibility(False)
-                        title_label.set_visibility(True)
+                        title_input.style('display: none')
+                        title_display.style('display: flex')
                     
                     title_label.on('click', start_edit)
+                    edit_icon.on('click', start_edit)
                     title_input.on('keydown.enter.prevent', finish_edit)
                     title_input.on('keydown.escape.prevent', cancel_edit)
                     title_input.on('blur', finish_edit)

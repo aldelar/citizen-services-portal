@@ -121,13 +121,13 @@ async def run_client():
             try:
                 search_result = await session.call_tool(
                     "permits_search",
-                    {"address": "123 Test St"}
+                    {"address": "123 Test St, Los Angeles, CA 90012"}
                 )
                 print("   ✅ permits_search succeeded!")
                 if search_result.content:
                     for item in search_result.content:
                         if hasattr(item, 'text'):
-                            print(f"   Response: {item.text[:300]}...")
+                            print(f"   Response: {item.text[:500]}...")
             except Exception as e:
                 print(f"   ❌ permits_search failed: {e}")
 
