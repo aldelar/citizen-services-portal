@@ -1,5 +1,7 @@
 """Business logic and external service integration for Reporting."""
 
+import logging
+import os
 import random
 import string
 from datetime import datetime, timedelta
@@ -13,6 +15,24 @@ from .models import (
     StepLog,
 )
 
+logger = logging.getLogger(__name__)
+
+# Check if CosmosDB is configured
+_cosmos_enabled = bool(os.environ.get("COSMOS_ENDPOINT"))
+
+
+def _get_repository():
+    """Get repository instance if CosmosDB is enabled."""
+    if not _cosmos_enabled:
+        return None
+    
+    try:
+        from .repositories import StepLogRepository
+        return StepLogRepository()
+    except Exception as e:
+        logger.warning(f"Failed to initialize CosmosDB repository: {e}")
+        return None
+
 
 class ReportingService:
     """Service layer for Reporting operations."""
@@ -22,10 +42,17 @@ class ReportingService:
         self.cosmos_endpoint = settings.cosmos_endpoint
         self.database_name = settings.cosmos_database
         self.container_name = settings.cosmos_container
+        self._step_log_repo = _get_repository()
         
-        # In-memory storage for demo (would use Cosmos DB in production)
-        self._step_logs: List[StepLog] = []
-        self._initialize_mock_data()
+        # Only use in-memory storage if CosmosDB is not available
+        if not self._step_log_repo:
+            self._step_logs: List[StepLog] = []
+            self._initialize_mock_data()
+
+    @property
+    def cosmos_enabled(self) -> bool:
+        """Check if CosmosDB is enabled."""
+        return self._step_log_repo is not None
 
     def _generate_id(self, prefix: str = "LOG") -> str:
         """Generate a random ID."""
@@ -111,6 +138,24 @@ class ReportingService:
             # Allow it but note it's non-standard
             pass
 
+        # Use CosmosDB if available
+        if self._step_log_repo:
+            try:
+                log = await self._step_log_repo.create_step_log(
+                    tool_name=tool_name,
+                    city=city,
+                    started_at=started_at,
+                    completed_at=completed_at,
+                )
+                return LogStepResult(
+                    success=True,
+                    log_id=log.id,
+                    message=f"Successfully logged {tool_name} completion ({log.duration_days:.1f} days)",
+                )
+            except Exception as e:
+                logger.error(f"Error logging step to CosmosDB: {e}")
+                # Fall through to mock
+
         # Calculate duration
         duration = completed_at - started_at
         duration_days = duration.total_seconds() / (24 * 60 * 60)
@@ -127,10 +172,7 @@ class ReportingService:
             logged_at=datetime.now(),
         )
 
-        # TODO: Replace with Cosmos DB insert
-        # In production:
-        # container = cosmos_client.get_database_client(self.database_name).get_container_client(self.container_name)
-        # container.create_item(log.model_dump())
+        # In-memory storage for mock
         
         self._step_logs.append(log)
 
@@ -155,14 +197,39 @@ class ReportingService:
         Returns:
             AverageDurationResult with average days and sample count
         """
-        # Filter logs from last 6 months
+        # Use CosmosDB if available
+        if self._step_log_repo:
+            try:
+                average_days, sample_count = await self._step_log_repo.calculate_average_duration(
+                    tool_name=tool_name,
+                    city=city,
+                    months=6,
+                )
+                
+                if sample_count == 0:
+                    return AverageDurationResult(
+                        tool_name=tool_name,
+                        city=city,
+                        average_days=0,
+                        sample_count=0,
+                        period="last 6 months",
+                        message=f"No data available for {tool_name}" + (f" in {city}" if city else ""),
+                    )
+                
+                return AverageDurationResult(
+                    tool_name=tool_name,
+                    city=city,
+                    average_days=average_days,
+                    sample_count=sample_count,
+                    period="last 6 months",
+                    message=None,
+                )
+            except Exception as e:
+                logger.error(f"Error querying CosmosDB for average duration: {e}")
+                # Fall through to mock
+
+        # Filter logs from last 6 months (mock implementation)
         six_months_ago = datetime.now() - timedelta(days=180)
-        
-        # TODO: Replace with Cosmos DB query
-        # In production:
-        # query = f"SELECT * FROM c WHERE c.tool_name = '{tool_name}' AND c.completed_at > '{six_months_ago.isoformat()}'"
-        # if city:
-        #     query += f" AND c.city = '{city}'"
         
         filtered_logs = [
             log for log in self._step_logs

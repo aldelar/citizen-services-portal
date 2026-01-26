@@ -53,6 +53,9 @@ param applicationInsightsConnectionString string = ''
 @description('Cosmos DB endpoint (optional)')
 param cosmosEndpoint string = ''
 
+@description('Name of the CosmosDB account')
+param cosmosDbAccountName string = ''
+
 @description('Microsoft Entra tenant ID for authentication')
 param tenantId string = tenant().tenantId
 
@@ -68,6 +71,15 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01'
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: containerRegistryName
+}
+
+// Deploy Reporting CosmosDB database
+module cosmosDb '../../src/mcp-servers/reporting/infra/cosmos-db.bicep' = if (!empty(cosmosDbAccountName)) {
+  name: 'reporting-cosmos-db-deployment'
+  params: {
+    cosmosDbAccountName: cosmosDbAccountName
+    tags: tags
+  }
 }
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
@@ -145,6 +157,14 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               {
                 name: 'COSMOS_ENDPOINT'
                 value: cosmosEndpoint
+              }
+              {
+                name: 'COSMOS_DATABASE'
+                value: 'reporting'
+              }
+              {
+                name: 'COSMOS_CONTAINER'
+                value: 'step_logs'
               }
             ] : [],
             !empty(identityClientId) ? [

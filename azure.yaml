@@ -57,7 +57,7 @@ services:
         language: python
         docker:
             path: ./Dockerfile
-            context: .
+            context: ../../..
 infra:
     provider: bicep
     path: infra
