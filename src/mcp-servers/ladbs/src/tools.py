@@ -46,6 +46,7 @@ class LADBSTools:
 
     async def permits_search(
         self,
+        user_id: Optional[str] = None,
         address: Optional[str] = None,
         permit_number: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -53,17 +54,21 @@ class LADBSTools:
         Find existing permits by address or permit number.
 
         Args:
+            user_id: Optional user ID for optimized partition-aware query
             address: Property address to search
             permit_number: Specific permit number to look up
 
         Returns:
             PermitSearchResult with matching permits
         """
-        result = await self.service.search_permits(address=address, permit_number=permit_number)
+        result = await self.service.search_permits(
+            user_id=user_id, address=address, permit_number=permit_number
+        )
         return result.model_dump()
 
     async def permits_submit(
         self,
+        user_id: str,
         permit_type: str,
         address: str,
         applicant_name: str,
@@ -78,6 +83,7 @@ class LADBSTools:
         Submit a new permit application.
 
         Args:
+            user_id: User ID (required for creating permit in CosmosDB)
             permit_type: Type of permit (electrical, mechanical, building, plumbing)
             address: Property address
             applicant_name: Applicant's name
@@ -98,6 +104,7 @@ class LADBSTools:
             contractor_license=contractor_license,
         )
         result = await self.service.submit_permit(
+            user_id=user_id,
             permit_type=PermitType(permit_type),
             address=address,
             applicant=applicant,
@@ -110,21 +117,24 @@ class LADBSTools:
     async def permits_getStatus(
         self,
         permit_number: str,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Check the current status of a permit.
 
         Args:
             permit_number: Permit number to check
+            user_id: Optional user ID for optimized partition-aware query
 
         Returns:
             Permit with current status and next steps
         """
-        result = await self.service.get_permit_status(permit_number)
+        result = await self.service.get_permit_status(permit_number, user_id=user_id)
         return result.model_dump()
 
     async def inspections_scheduled(
         self,
+        user_id: Optional[str] = None,
         permit_number: Optional[str] = None,
         address: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -132,6 +142,7 @@ class LADBSTools:
         View scheduled inspections for a permit or address.
 
         Args:
+            user_id: Optional user ID for optimized queries
             permit_number: Permit number to look up inspections for
             address: Address to look up inspections for
 
@@ -139,6 +150,7 @@ class LADBSTools:
             InspectionListResult with scheduled inspections
         """
         result = await self.service.get_scheduled_inspections(
+            user_id=user_id,
             permit_number=permit_number,
             address=address,
         )

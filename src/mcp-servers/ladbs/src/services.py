@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 # Check if CosmosDB is configured
 _cosmos_enabled = bool(os.environ.get("COSMOS_ENDPOINT"))
 
+# Check if Azure AI Search is configured
+_search_enabled = bool(os.environ.get("AZURE_SEARCH_ENDPOINT"))
+
 
 def _get_repositories():
     """Get repository instances if CosmosDB is enabled."""
@@ -54,11 +57,35 @@ class LADBSService:
         self.api_endpoint = settings.ladbs_api_endpoint
         self.api_key = settings.ladbs_api_key
         self._permit_repo, self._inspection_repo = _get_repositories()
+        self._search_client = self._init_search_client()
+
+    def _init_search_client(self):
+        """Initialize Azure AI Search client if configured."""
+        if not _search_enabled:
+            return None
+        
+        try:
+            from azure.identity import DefaultAzureCredential
+            from azure.search.documents import SearchClient
+            
+            return SearchClient(
+                endpoint=os.environ["AZURE_SEARCH_ENDPOINT"],
+                index_name="ladbs-kb",
+                credential=DefaultAzureCredential()
+            )
+        except Exception as e:
+            logger.warning(f"Failed to initialize Azure AI Search client: {e}")
+            return None
 
     @property
     def cosmos_enabled(self) -> bool:
         """Check if CosmosDB is enabled."""
         return self._permit_repo is not None
+    
+    @property
+    def search_enabled(self) -> bool:
+        """Check if Azure AI Search is enabled."""
+        return self._search_client is not None
 
     def _generate_id(self, prefix: str = "ID") -> str:
         """Generate a random ID."""
@@ -67,14 +94,42 @@ class LADBSService:
 
     async def query_knowledge_base(self, query: str, top: int = 5) -> KnowledgeResult:
         """
-        Query the LADBS knowledge base (AI Search).
+        Query the LADBS knowledge base using Azure AI Search.
 
-        This is a mock implementation. Replace with actual Azure AI Search integration.
+        Uses semantic search with the ladbs-kb index when configured,
+        otherwise returns mock data.
         """
-        # TODO: Replace with actual Azure AI Search call
-        # Example:
-        # search_client = SearchClient(endpoint, index_name, credential)
-        # results = search_client.search(query, top=top)
+        # Use Azure AI Search if available
+        if self._search_client:
+            try:
+                results = self._search_client.search(
+                    search_text=query,
+                    query_type="semantic",
+                    semantic_configuration_name="ladbs-semantic-config",
+                    top=top,
+                    select=["chunk", "source_file", "title", "header_1", "header_2"]
+                )
+                
+                chunks = []
+                for result in results:
+                    # Normalize reranker score to 0-1 range (typically 0-4)
+                    relevance_score = result.get("@search.reranker_score", 0) / 4.0
+                    relevance_score = max(0.0, min(1.0, relevance_score))
+                    
+                    chunks.append(DocumentChunk(
+                        content=result["chunk"],
+                        source=result["source_file"],
+                        relevance_score=relevance_score
+                    ))
+                
+                return KnowledgeResult(
+                    query=query,
+                    results=chunks,
+                    total_results=len(chunks)
+                )
+            except Exception as e:
+                logger.error(f"Error querying Azure AI Search: {e}")
+                # Fall through to mock data
 
         # Mock response with realistic LADBS content
         mock_chunks = [
@@ -103,25 +158,34 @@ class LADBSService:
 
     async def search_permits(
         self,
+        user_id: Optional[str] = None,
         address: Optional[str] = None,
         permit_number: Optional[str] = None,
-        user_id: Optional[str] = None,
     ) -> PermitSearchResult:
         """
         Search for permits by address or permit number.
 
         Uses CosmosDB if configured, otherwise returns mock data.
+        
+        Args:
+            user_id: Optional user ID for optimized partition-aware query
+            address: Optional address to search by
+            permit_number: Optional permit number to search by
         """
         # Use CosmosDB if available
         if self._permit_repo:
             try:
                 permits = []
                 if permit_number:
-                    permit = await self._permit_repo.get_by_permit_number(permit_number)
+                    permit = await self._permit_repo.get_by_permit_number(
+                        permit_number, user_id=user_id
+                    )
                     if permit:
                         permits = [permit]
                 elif address:
-                    permits = await self._permit_repo.search_by_address(address)
+                    permits = await self._permit_repo.search_by_address(
+                        address, user_id=user_id
+                    )
                 elif user_id:
                     permits = await self._permit_repo.list_by_user(user_id)
                 return PermitSearchResult(permits=permits, total_count=len(permits))
@@ -166,21 +230,30 @@ class LADBSService:
 
     async def submit_permit(
         self,
+        user_id: str,
         permit_type: PermitType,
         address: str,
         applicant: Applicant,
         work_description: str,
         estimated_cost: float,
         documents: List[str],
-        user_id: Optional[str] = None,
     ) -> PermitSubmitResult:
         """
         Submit a new permit application.
 
         Uses CosmosDB if configured, otherwise returns mock data.
+        
+        Args:
+            user_id: User ID (required for CosmosDB partition key)
+            permit_type: Type of permit
+            address: Property address
+            applicant: Applicant information
+            work_description: Description of work
+            estimated_cost: Estimated cost
+            documents: List of document names
         """
-        # Use CosmosDB if available and user_id is provided
-        if self._permit_repo and user_id:
+        # Use CosmosDB if available
+        if self._permit_repo:
             try:
                 permit = await self._permit_repo.create_permit(
                     user_id=user_id,
@@ -222,16 +295,24 @@ class LADBSService:
             next_steps="You'll receive email updates on review progress. Plan check fees are due within 30 days.",
         )
 
-    async def get_permit_status(self, permit_number: str) -> Optional[Permit]:
+    async def get_permit_status(
+        self, permit_number: str, user_id: Optional[str] = None
+    ) -> Optional[Permit]:
         """
         Get the current status of a permit.
 
         Uses CosmosDB if configured, otherwise returns mock data.
+        
+        Args:
+            permit_number: Permit number to look up
+            user_id: Optional user ID for optimized partition-aware query
         """
         # Use CosmosDB if available
         if self._permit_repo:
             try:
-                permit = await self._permit_repo.get_by_permit_number(permit_number)
+                permit = await self._permit_repo.get_by_permit_number(
+                    permit_number, user_id=user_id
+                )
                 if permit:
                     return permit
             except Exception as e:
@@ -255,14 +336,19 @@ class LADBSService:
 
     async def get_scheduled_inspections(
         self,
+        user_id: Optional[str] = None,
         permit_number: Optional[str] = None,
         address: Optional[str] = None,
-        user_id: Optional[str] = None,
     ) -> InspectionListResult:
         """
         Get scheduled inspections for a permit or address.
 
         Uses CosmosDB if configured, otherwise returns mock data.
+        
+        Args:
+            user_id: Optional user ID for optimized queries
+            permit_number: Optional permit number to filter by
+            address: Optional address to filter by
         """
         # Use CosmosDB if available
         if self._inspection_repo:

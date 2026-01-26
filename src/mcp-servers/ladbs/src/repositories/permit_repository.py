@@ -134,13 +134,17 @@ class PermitRepository(BaseRepository):
         return None
 
     async def get_by_permit_number(
-        self, permit_number: str
+        self, permit_number: str, user_id: Optional[str] = None
     ) -> Optional[Permit]:
         """
-        Get a permit by permit number (cross-partition query).
+        Get a permit by permit number.
+        
+        If user_id is provided, uses efficient partition-aware query.
+        Otherwise, falls back to cross-partition query.
 
         Args:
             permit_number: The permit number.
+            user_id: Optional user ID for partition-aware query optimization.
 
         Returns:
             Optional[Permit]: The permit if found, None otherwise.
@@ -148,7 +152,13 @@ class PermitRepository(BaseRepository):
         query = "SELECT * FROM c WHERE c.permitNumber = @permitNumber"
         parameters = [{"name": "@permitNumber", "value": permit_number}]
         
-        items = await self.query(query, parameters)
+        if user_id:
+            # Efficient: query within single partition
+            items = await self.query(query, parameters, partition_key=user_id)
+        else:
+            # Fallback: cross-partition query (slower)
+            items = await self.query(query, parameters)
+        
         if items:
             return self._to_permit(items[0])
         return None
@@ -166,12 +176,18 @@ class PermitRepository(BaseRepository):
         items = await self.list_by_partition(user_id, order_by="createdAt DESC")
         return [self._to_permit(item) for item in items]
 
-    async def search_by_address(self, address: str) -> List[Permit]:
+    async def search_by_address(
+        self, address: str, user_id: Optional[str] = None
+    ) -> List[Permit]:
         """
-        Search permits by address (cross-partition query).
+        Search permits by address.
+        
+        If user_id is provided, uses partition-aware query for better performance.
+        Otherwise, uses cross-partition query.
 
         Args:
             address: The address to search for.
+            user_id: Optional user ID for partition-aware query optimization.
 
         Returns:
             List[Permit]: List of matching permits.
@@ -179,7 +195,13 @@ class PermitRepository(BaseRepository):
         query = "SELECT * FROM c WHERE CONTAINS(LOWER(c.address), LOWER(@address))"
         parameters = [{"name": "@address", "value": address}]
         
-        items = await self.query(query, parameters)
+        if user_id:
+            # Efficient: query within single partition
+            items = await self.query(query, parameters, partition_key=user_id)
+        else:
+            # Fallback: cross-partition query (slower)
+            items = await self.query(query, parameters)
+        
         return [self._to_permit(item) for item in items]
 
     async def update_status(
