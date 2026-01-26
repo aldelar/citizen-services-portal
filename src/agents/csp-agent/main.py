@@ -59,8 +59,12 @@ def create_agent():
             url=mcp_reporting_url,
         ))
     
-    # Model URL
-    model_url = "https://aldelar-csp-foundry.cognitiveservices.azure.com/openai/deployments/gpt-4.1"
+    # Get Azure OpenAI configuration from environment
+    azure_openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
+    deployment_name = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME", "gpt-4.1")
+    
+    # Construct model URL
+    model_url = f"{azure_openai_endpoint}/openai/deployments/{deployment_name}"
     
     # Load system prompt
     instructions = load_system_prompt()
@@ -70,7 +74,7 @@ def create_agent():
         name="csp-agent",
         instructions=instructions,
         model_url=model_url,
-        #tools=tools,
+        tools=tools,
     )
     
     return agent

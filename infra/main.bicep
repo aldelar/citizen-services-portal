@@ -659,3 +659,16 @@ output mcpReportingUri string = mcpReporting.outputs.uri
 
 @description('Reporting MCP Server Scope URI for Microsoft Entra authentication')
 output mcpReportingScopeUri string = 'https://${mcpReporting.outputs.fqdn}'
+
+// MCP Server URLs with /mcp path for agent configuration
+@description('LADBS MCP Server URL for agent configuration')
+output MCP_LADBS_URL string = '${mcpLadbs.outputs.uri}/mcp'
+
+@description('LADWP MCP Server URL for agent configuration')
+output MCP_LADWP_URL string = '${mcpLadwp.outputs.uri}/mcp'
+
+@description('LASAN MCP Server URL for agent configuration')
+output MCP_LASAN_URL string = '${mcpLasan.outputs.uri}/mcp'
+
+@description('Reporting MCP Server URL for agent configuration')
+output MCP_REPORTING_URL string = '${mcpReporting.outputs.uri}/mcp'

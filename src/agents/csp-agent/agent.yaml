@@ -26,13 +26,13 @@ environment_variables:
     - name: AZURE_OPENAI_ENDPOINT
       value: ${AZURE_OPENAI_ENDPOINT}
     - name: AZURE_OPENAI_CHAT_DEPLOYMENT_NAME
-      value: gpt-4.1
+      value: gpt-4.1  # Hardcoded - deliberate model choice for this agent
     - name: MCP_LADBS_URL
-      value: ${MCP_LADBS_URL}
+      value: ${MCP_LADBS_URL}  # From Bicep output
     - name: MCP_LADWP_URL
-      value: ${MCP_LADWP_URL}
+      value: ${MCP_LADWP_URL}  # From Bicep output
     - name: MCP_LASAN_URL
-      value: ${MCP_LASAN_URL}
+      value: ${MCP_LASAN_URL}  # From Bicep output
     - name: MCP_REPORTING_URL
-      value: ${MCP_REPORTING_URL}
+      value: ${MCP_REPORTING_URL}  # From Bicep output
 
