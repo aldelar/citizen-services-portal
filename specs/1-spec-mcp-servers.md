@@ -196,8 +196,9 @@ Find existing permits by address or permit number.
 **Signature:**
 ```python
 async def permits_search(
-    address: Optional[str] = None,        # Property address
-    permit_number: Optional[str] = None   # Specific permit number
+    user_id: Optional[str] = None,           # User ID for optimized partition-aware query
+    address: Optional[str] = None,           # Property address
+    permit_number: Optional[str] = None      # Specific permit number
 ) -> PermitSearchResult
 
 class PermitSearchResult(BaseModel):
@@ -241,12 +242,13 @@ Submit a new permit application.
 **Signature:**
 ```python
 async def permits_submit(
+    user_id: str,                     # User ID (required for CosmosDB partition key)
     permit_type: PermitType,
     address: str,
     applicant: Applicant,
     work_description: str,
     estimated_cost: float,
-    documents: List[str]      # Document references/URLs
+    documents: List[str]              # Document references/URLs
 ) -> PermitSubmitResult
 
 class PermitSubmitResult(BaseModel):
@@ -263,6 +265,7 @@ class PermitSubmitResult(BaseModel):
 ```python
 # Input
 permits_submit(
+    user_id="user-uuid-12345",
     permit_type=PermitType.ELECTRICAL,
     address="123 Main St, Los Angeles, CA 90012",
     applicant=Applicant(
@@ -299,7 +302,8 @@ Check the current status of a permit.
 **Signature:**
 ```python
 async def permits_getStatus(
-    permit_number: str
+    permit_number: str,
+    user_id: Optional[str] = None     # User ID for optimized partition-aware query
 ) -> Permit
 ```
 
@@ -335,6 +339,7 @@ View scheduled inspections for a permit or address.
 **Signature:**
 ```python
 async def inspections_scheduled(
+    user_id: Optional[str] = None,           # User ID for optimized queries
     permit_number: Optional[str] = None,
     address: Optional[str] = None
 ) -> InspectionListResult
