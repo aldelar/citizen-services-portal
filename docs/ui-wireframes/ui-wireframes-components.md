@@ -1,6 +1,30 @@
 # UI Wireframes: Components Library
 
-This document defines reusable UI components used across the Citizen Services Portal.
+This document defines reusable UI components used across the Citizen Services Portal, mapped to NiceGUI native elements.
+
+---
+
+## NiceGUI Component Mapping
+
+| Wireframe Concept | NiceGUI Element |
+|-------------------|-----------------|
+| Status Badge | `ui.chip()` or `ui.badge()` |
+| Progress Bar | `ui.linear_progress()` |
+| Buttons | `ui.button()` with `.props()` |
+| Text Input | `ui.input()` |
+| Text Area | `ui.textarea()` |
+| Dropdown | `ui.select()` |
+| Checkbox | `ui.checkbox()` |
+| Date Picker | `ui.date_input()` |
+| Cards | `ui.card()` |
+| Expandable | `ui.expansion()` |
+| Modals | `ui.dialog()` |
+| Toasts | `ui.notify()` |
+| Spinner | `ui.spinner()` |
+| Skeleton | `ui.skeleton()` |
+| Tooltips | `.tooltip()` method |
+| Avatar | `ui.avatar()` |
+| Separator | `ui.separator()` |
 
 ---
 
@@ -10,632 +34,596 @@ The component library ensures consistency across the portal. All components are 
 
 - **Generic**: Work with any content, agency, or project type
 - **Accessible**: Meet WCAG 2.1 AA standards
-- **Responsive**: Adapt to different screen sizes
-- **Themeable**: Support light and dark modes
+- **Responsive**: Adapt to different screen sizes (Tailwind breakpoints)
+- **Themeable**: Support light and dark modes (Quasar themes)
 
 ---
 
 ## Source Badges
 
-Source badges identify which MCP server provided the information or is handling a step. These are simple indicators showing the data source.
+Use `ui.chip` for source badges that indicate which MCP server provided information:
 
-### Design
+```python
+# Source badge with NiceGUI
+ui.chip('via ladbs', icon='info').props('outline size=sm color=grey')
 
+# In a row with content
+with ui.row().classes('items-center gap-2'):
+    ui.label('Electrical Permit - Submit application')
+    ui.chip('via ladbs').props('outline size=sm color=grey')
 ```
-┌──────────────┐
-│  via ladbs   │  ← Muted style, small text
-└──────────────┘
-```
-
-### Specifications
-
-| Property | Value |
-|----------|-------|
-| Font | System font, 10px, lowercase |
-| Padding | 2px 6px |
-| Border Radius | 4px |
-| Background | `#F5F5F5` (light gray) |
-| Text | `#6C757D` (muted gray) |
 
 ### Usage
 
-Source badges appear in responses to indicate which MCP server tool was used:
-
-```
-┌─────────────────────────────────────────┐
-│ Electrical Permit                       │
-│ Submit application            via ladbs │
-└─────────────────────────────────────────┘
-```
-
-> **Note:** The source indicator is informational only. Users don't need to understand MCP servers—this just provides transparency about where data comes from.
+| Property | NiceGUI Implementation |
+|----------|------------------------|
+| Small size | `.props('size=sm')` |
+| Muted style | `.props('outline color=grey')` |
+| With icon | `icon='info'` parameter |
 
 ---
 
 ## Status Indicators
 
-Status indicators show the state of steps, projects, or processes.
+Use `ui.chip` for status pills with color variants:
 
-### Status Pills
+```python
+# Status pills using ui.chip
+def status_chip(status: str):
+    configs = {
+        'not_started': ('Not Started', 'grey', 'radio_button_unchecked'),
+        'blocked': ('Blocked', 'grey', 'lock'),
+        'ready': ('Ready', 'primary', 'play_arrow'),
+        'in_progress': ('In Progress', 'primary', 'pending'),
+        'action_needed': ('Action Needed', 'warning', 'bolt'),
+        'completed': ('Completed', 'positive', 'check_circle'),
+        'failed': ('Failed', 'negative', 'error'),
+        'skipped': ('Skipped', 'grey', 'block'),
+    }
+    label, color, icon = configs.get(status, ('Unknown', 'grey', 'help'))
+    return ui.chip(label, icon=icon, color=color)
 
-```
-┌────────────────┐
-│ ○ Not Started  │  Gray text, gray border
-└────────────────┘
-
-┌────────────────┐
-│ 🔒 Blocked     │  Gray text, gray background
-└────────────────┘
-
-┌────────────────┐
-│ ▶ Ready        │  Blue text, blue border
-└────────────────┘
-
-┌────────────────┐
-│ ◐ In Progress  │  Blue text, blue background
-└────────────────┘
-
-┌────────────────┐
-│ ⚡ Action Needed│  Orange text, orange background
-└────────────────┘
-
-┌────────────────┐
-│ ✓ Completed    │  Green text, green background
-└────────────────┘
-
-┌────────────────┐
-│ ✗ Failed       │  Red text, red background
-└────────────────┘
-
-┌────────────────┐
-│ ⊘ Skipped      │  Gray text, gray background
-└────────────────┘
+# Usage
+status_chip('in_progress')
+status_chip('action_needed')
+status_chip('completed')
 ```
 
-### Status Specifications
+### Status Mapping
 
-| Status | Icon | Color | Background |
-|--------|------|-------|------------|
-| Not Started | ○ | `#6C757D` | Transparent |
-| Blocked | 🔒 | `#6C757D` | `#E9ECEF` |
-| Ready | ▶ | `#0066CC` | `#E7F1FF` |
-| In Progress | ◐ | `#0066CC` | `#CCE0FF` |
-| Awaiting User | ⚡ | `#BF360C` | `#FFF3E0` |
-| Completed | ✓ | `#28A745` | `#D4EDDA` |
-| Failed | ✗ | `#DC3545` | `#F8D7DA` |
-| Skipped | ⊘ | `#6C757D` | `#E9ECEF` |
-
-> **Note:** All color combinations must be validated for WCAG 2.1 AA compliance (4.5:1 contrast ratio for normal text) during implementation.
-
-### Status Dots
-
-Compact indicators for list views:
-
-```
-●  In Progress (blue)
-⚡ Action Needed (orange)
-✓  Completed (green)
-○  Not Started (gray)
-```
+| Status | Color | Icon |
+|--------|-------|------|
+| Not Started | `grey` | `radio_button_unchecked` |
+| Blocked | `grey` | `lock` |
+| Ready | `primary` | `play_arrow` |
+| In Progress | `primary` | `pending` |
+| Action Needed | `warning` | `bolt` |
+| Completed | `positive` | `check_circle` |
+| Failed | `negative` | `error` |
+| Skipped | `grey` | `block` |
 
 ---
 
 ## Progress Indicators
 
-### Progress Bar
+Use `ui.linear_progress` for progress bars:
 
+```python
+# Standard progress bar
+ui.linear_progress(value=0.6, show_value=True).classes('w-full')
+
+# Progress with label
+with ui.column().classes('w-full gap-1'):
+    with ui.row().classes('w-full justify-between text-sm'):
+        ui.label('Progress')
+        ui.label('60%')
+    ui.linear_progress(value=0.6).classes('w-full')
+
+# Progress with steps
+with ui.column().classes('w-full gap-1'):
+    with ui.row().classes('w-full justify-between text-sm'):
+        ui.label('4 of 10 steps')
+        ui.label('40%')
+    ui.linear_progress(value=0.4).classes('w-full')
+
+# Circular progress
+ui.circular_progress(value=0.75, show_value=True, size='lg')
 ```
-┌─────────────────────────────────────────┐
-│ ████████████████░░░░░░░░░░░░ 60%        │
-└─────────────────────────────────────────┘
-```
 
-Specifications:
-- Height: 8px (standard), 4px (compact)
-- Border Radius: 4px
-- Fill Color: `#0066CC` (primary)
-- Background: `#E9ECEF`
-- Label: Percentage text (optional)
+### Progress Types
 
-### Progress with Steps
-
-```
-┌─────────────────────────────────────────┐
-│ ████████░░░░░░░░░░░░ 40% (4/10 steps)  │
-└─────────────────────────────────────────┘
-```
-
-### Circular Progress
-
-For compact spaces:
-
-```
-    ╭───╮
-    │75%│
-    ╰───╯
-```
+| Type | NiceGUI Element |
+|------|-----------------|
+| Linear bar | `ui.linear_progress(value=0.6)` |
+| With label | Add `show_value=True` |
+| Circular | `ui.circular_progress(value=0.75)` |
+| Indeterminate | `ui.linear_progress()` (no value) |
 
 ---
 
 ## Buttons
 
-### Primary Button
+Use `ui.button` with Quasar props for different styles:
 
-```
-┌─────────────────────────────┐
-│     ✅ Complete Action      │
-└─────────────────────────────┘
-```
+```python
+# Primary button
+ui.button('Complete Action', icon='check', on_click=action).props('color=primary')
 
-- Background: `#0066CC`
-- Text: `#FFFFFF`
-- Hover: `#0052A3`
-- Border Radius: 6px
-- Padding: 10px 20px
+# Secondary/outline button
+ui.button('View Details', on_click=view).props('outline color=primary')
 
-### Secondary Button
+# Ghost/flat button
+ui.button('View Details →', on_click=view).props('flat color=primary')
 
-```
-┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
-        View Details          
-└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
-```
+# Danger button
+ui.button('Cancel Project', icon='delete', on_click=cancel).props('color=negative')
 
-- Background: Transparent
-- Text: `#0066CC`
-- Border: 1px solid `#0066CC`
-- Hover: `#E7F1FF` background
+# Disabled button
+ui.button('Not Available').props('disable')
 
-### Ghost Button
-
-```
-        View Details →
+# Loading button
+loading_btn = ui.button('Submit', on_click=submit)
+# During operation:
+loading_btn.props('loading')
 ```
 
-- Background: Transparent
-- Text: `#0066CC`
-- No border
-- Underline on hover
+### Button Variants
 
-### Danger Button
-
-```
-┌─────────────────────────────┐
-│      🗑️ Cancel Project       │
-└─────────────────────────────┘
-```
-
-- Background: `#DC3545`
-- Text: `#FFFFFF`
-
-### Disabled Button
-
-```
-┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
-        Not Available         
-└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
-```
-
-- Background: `#E9ECEF`
-- Text: `#6C757D`
-- Cursor: not-allowed
+| Style | Props |
+|-------|-------|
+| Primary | `.props('color=primary')` |
+| Secondary | `.props('outline color=primary')` |
+| Ghost | `.props('flat color=primary')` |
+| Danger | `.props('color=negative')` |
+| Disabled | `.props('disable')` |
+| Loading | `.props('loading')` |
+| Icon only | `ui.button(icon='add')` |
+| Round | `.props('round')` |
 
 ### Button Sizes
 
-| Size | Padding | Font Size |
-|------|---------|-----------|
-| Small | 6px 12px | 12px |
-| Medium | 10px 20px | 14px |
-| Large | 14px 28px | 16px |
+| Size | Props |
+|------|-------|
+| Small | `.props('size=sm')` |
+| Medium | (default) |
+| Large | `.props('size=lg')` |
 
 ---
 
 ## Form Inputs
 
-### Text Input
+Use NiceGUI form components with Quasar styling:
 
-```
-┌─────────────────────────────────────────┐
-│ Label                                   │
-│ ┌─────────────────────────────────────┐ │
-│ │ Placeholder text...                 │ │
-│ └─────────────────────────────────────┘ │
-│ Helper text or validation message       │
-└─────────────────────────────────────────┘
+```python
+# Text input with label and validation
+email = ui.input(
+    label='Email Address',
+    placeholder='you@example.com',
+    validation={'Email required': lambda v: '@' in v if v else False}
+)
+
+# Textarea with auto-grow
+description = ui.textarea(
+    label='Description',
+    placeholder='Enter details...'
+).props('autogrow rows=3')
+
+# Date picker
+date = ui.date_input(label='Select Date')
+
+# Dropdown/select
+option = ui.select(
+    label='Select an option',
+    options=['Option 1', 'Option 2', 'Option 3'],
+    value='Option 1'
+)
+
+# Checkbox
+agree = ui.checkbox('I agree to the terms')
+
+# Radio buttons
+choice = ui.radio(['Option A', 'Option B', 'Option C'], value='Option A')
+
+# Toggle switch
+enabled = ui.toggle('Enable notifications')
 ```
 
 ### Input States
 
-```
-Default:
-┌─────────────────────────────────────────┐
-│ Placeholder text...                     │
-└─────────────────────────────────────────┘
-
-Focus:
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ User input|                             ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-Error:
-┌─────────────────────────────────────────┐
-│ Invalid input                           │
-└─────────────────────────────────────────┘
-⚠️ Please enter a valid email address
-```
-
-### Date Picker
-
-```
-┌─────────────────────────────────────────┐
-│ 📅 Select date...                    ▼ │
-└─────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────┐
-│      ◀   February 2026   ▶             │
-├─────────────────────────────────────────┤
-│ Su  Mo  Tu  We  Th  Fr  Sa              │
-│  1   2   3   4   5   6   7              │
-│  8   9  10  11  12  13  14              │
-│ [15] 16  17  18  19  20  21             │
-│ 22  23  24  25  26  27  28              │
-└─────────────────────────────────────────┘
-```
-
-### Dropdown/Select
-
-```
-┌─────────────────────────────────────────┐
-│ Select an option...                  ▼ │
-└─────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────┐
-│ ○ Option 1                              │
-│ ● Option 2 (selected)                   │
-│ ○ Option 3                              │
-└─────────────────────────────────────────┘
-```
-
-### Checkbox
-
-```
-☐ Unchecked
-☑ Checked
-▣ Indeterminate
-```
-
-### Radio Button
-
-```
-○ Unselected
-● Selected
-```
+| State | NiceGUI Implementation |
+|-------|------------------------|
+| Default | Standard element |
+| Focus | Automatic Quasar styling |
+| Error | `validation` parameter or `.props('error error-message=\"...\"')` |
+| Disabled | `.props('disable')` |
+| Read-only | `.props('readonly')` |
 
 ---
 
 ## Cards
 
-### Basic Card
+Use `ui.card` with nested content:
 
-```
-┌─────────────────────────────────────────┐
-│                                         │
-│  Card Title                             │
-│                                         │
-│  Card content goes here. Can include    │
-│  text, images, or other components.     │
-│                                         │
-│                          [Action]       │
-└─────────────────────────────────────────┘
-```
+```python
+# Basic card
+with ui.card().classes('p-4'):
+    ui.label('Card Title').classes('text-lg font-semibold')
+    ui.label('Card content goes here. Can include text, images, or other components.')
+    ui.button('Action', on_click=handle_action).classes('mt-4')
 
-### Card Specifications
+# Card with header and sections
+with ui.card():
+    with ui.card_section().classes('bg-gray-100'):
+        ui.label('Card Header').classes('font-bold')
+    with ui.card_section():
+        ui.label('Main content area')
+    with ui.card_actions().classes('justify-end'):
+        ui.button('Cancel').props('flat')
+        ui.button('Confirm').props('color=primary')
 
-| Property | Value |
-|----------|-------|
-| Background | `#FFFFFF` |
-| Border | 1px solid `#E0E0E0` |
-| Border Radius | 8px |
-| Shadow | 0 2px 4px rgba(0,0,0,0.1) |
-| Padding | 16px |
+# Clickable card with hover effect
+with ui.card().classes('cursor-pointer hover:shadow-lg transition-shadow') as card:
+    card.on('click', handle_card_click)
+    ui.label('Click me!')
 
-### Card Hover State
-
-```
-┌─────────────────────────────────────────┐
-│  Card content...                        │
-│                                         │  ← Darker shadow
-└─────────────────────────────────────────┘
+# Selected state
+with ui.card().classes('border-2 border-primary'):
+    ui.label('Selected card')
 ```
 
-### Card Selected State
+### Card Styling
 
-```
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  Card content...                        ┃  ← Primary color border
-┃                                         ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-```
+| State | Tailwind Classes |
+|-------|------------------|
+| Default | `ui.card()` (built-in shadow) |
+| Hover | `.classes('hover:shadow-lg')` |
+| Selected | `.classes('border-2 border-primary')` |
+| Flat | `.props('flat bordered')` |
 
 ---
 
 ## Expandable Sections
 
-### Collapsed
+Use `ui.expansion` for collapsible content:
 
-```
-┌─────────────────────────────────────────┐
-│ Section Title                       [▼] │
-└─────────────────────────────────────────┘
+```python
+# Basic expansion
+with ui.expansion('Section Title', icon='info'):
+    ui.label('Section content is now visible.')
+    ui.label('Can contain any components.')
+
+# Expansion with custom header
+with ui.expansion('Advanced Options', icon='settings').classes('w-full'):
+    ui.checkbox('Enable feature A')
+    ui.checkbox('Enable feature B')
+    ui.input(label='Custom value')
+
+# Multiple expansions (accordion-style)
+with ui.column().classes('w-full gap-2'):
+    with ui.expansion('General', icon='settings', value=True):  # Open by default
+        ui.label('General settings content')
+    
+    with ui.expansion('Privacy', icon='lock'):
+        ui.label('Privacy settings content')
+    
+    with ui.expansion('Notifications', icon='notifications'):
+        ui.label('Notification settings content')
 ```
 
-### Expanded
+### Expansion Properties
 
-```
-┌─────────────────────────────────────────┐
-│ Section Title                       [▲] │
-├─────────────────────────────────────────┤
-│                                         │
-│  Section content is now visible.        │
-│  Can contain any components.            │
-│                                         │
-└─────────────────────────────────────────┘
-```
+| Property | Usage |
+|----------|-------|
+| `value=True` | Open by default |
+| `icon='...'` | Header icon |
+| `caption='...'` | Subtitle text |
+| `.props('dense')` | Compact style |
 
 ---
 
 ## Tooltips
 
-### Standard Tooltip
+Use `.tooltip()` method on any element:
 
-```
-    ┌───────────────────────────────────┐
-    │ This is helpful information       │
-    └───────────────────────────────────┘
-                     ▼
-              [ Element ]
-```
+```python
+# Simple tooltip
+ui.button('Hover me').tooltip('This is helpful information')
 
-### Tooltip with Actions
+# Tooltip on icon
+ui.icon('help').tooltip('Click for more details')
 
-```
-    ┌───────────────────────────────────┐
-    │ Step Details                      │
-    │ ───────────────────────────────── │
-    │ Electrical Permit                 │
-    │ Status: In Review                 │
-    │                                   │
-    │ [View in Chat]                    │
-    └───────────────────────────────────┘
-                     ▼
-               [ Node ]
+# Rich tooltip with card (using menu on hover)
+with ui.label('Step Details').classes('cursor-pointer'):
+    with ui.menu().props('anchor="top middle" self="bottom middle"'):
+        with ui.card().classes('p-3'):
+            ui.label('Electrical Permit').classes('font-semibold')
+            ui.label('Status: In Review').classes('text-sm text-gray-600')
+            ui.button('View in Chat', on_click=view_chat).props('flat size=sm')
 ```
 
 ---
 
 ## Modals
 
-### Standard Modal
+Use `ui.dialog` for modals:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ Modal Title                                            [×] ││
-│  ├─────────────────────────────────────────────────────────────┤│
-│  │                                                             ││
-│  │  Modal content goes here.                                   ││
-│  │                                                             ││
-│  │  Can include forms, information, or confirmations.          ││
-│  │                                                             ││
-│  ├─────────────────────────────────────────────────────────────┤│
-│  │                       [Cancel]  [Confirm]                   ││
-│  └─────────────────────────────────────────────────────────────┘│
-│                                                                 │
-│  ░░░░░░░░░░░░░░░░░░░ (Dimmed background) ░░░░░░░░░░░░░░░░░░░░  │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```python
+# Standard modal
+with ui.dialog() as dialog, ui.card().classes('w-96'):
+    with ui.row().classes('w-full items-center'):
+        ui.label('Modal Title').classes('text-lg font-semibold flex-grow')
+        ui.button(icon='close', on_click=dialog.close).props('flat round')
+    
+    ui.separator()
+    
+    ui.label('Modal content goes here.')
+    ui.label('Can include forms, information, or confirmations.')
+    
+    ui.separator()
+    
+    with ui.row().classes('w-full justify-end gap-2'):
+        ui.button('Cancel', on_click=dialog.close).props('flat')
+        ui.button('Confirm', on_click=handle_confirm).props('color=primary')
+
+# Confirmation modal
+def confirm_cancel():
+    with ui.dialog() as dialog, ui.card():
+        with ui.row().classes('items-center gap-2'):
+            ui.icon('warning', color='warning').classes('text-2xl')
+            ui.label('Cancel Project?').classes('text-lg font-semibold')
+        
+        ui.label('Are you sure you want to cancel "Home Renovation - 123 Main St"?')
+        ui.label('This cannot be undone.').classes('text-sm text-gray-600')
+        
+        with ui.row().classes('w-full justify-end gap-2 mt-4'):
+            ui.button('Keep Project', on_click=dialog.close).props('flat')
+            ui.button('Yes, Cancel', on_click=cancel_project).props('color=negative')
+    
+    dialog.open()
 ```
 
-### Confirmation Modal
+### Dialog Props
 
-```
-  ┌─────────────────────────────────────────┐
-  │ ⚠️ Cancel Project?                  [×] │
-  ├─────────────────────────────────────────┤
-  │                                         │
-  │  Are you sure you want to cancel        │
-  │  "Home Renovation - 123 Main St"?       │
-  │                                         │
-  │  This cannot be undone.                 │
-  │                                         │
-  ├─────────────────────────────────────────┤
-  │      [Keep Project]  [Yes, Cancel]      │
-  └─────────────────────────────────────────┘
-```
+| Property | Usage |
+|----------|-------|
+| `.props('persistent')` | Prevent close on backdrop click |
+| `.props('full-width')` | Full width dialog |
+| `.props('full-height')` | Full height dialog |
+| `dialog.open()` | Open programmatically |
+| `dialog.close()` | Close programmatically |
 
 ---
 
 ## Toast Notifications
 
-### Success Toast
+Use `ui.notify` for toast messages:
 
-```
-┌───────────────────────────────────────────────┐
-│ ✅ Permit submitted successfully              │  × │
-└───────────────────────────────────────────────┘
-```
+```python
+# Success toast
+ui.notify('Permit submitted successfully', type='positive', close_button=True)
 
-### Error Toast
+# Error toast with action
+ui.notify(
+    'Failed to connect to LADWP service',
+    type='negative',
+    close_button=True,
+    actions=[{'label': 'Retry', 'handler': retry_connection}]
+)
 
-```
-┌───────────────────────────────────────────────┐
-│ ❌ Failed to connect to LADWP service         │  × │
-│    [Retry]                                    │
-└───────────────────────────────────────────────┘
-```
+# Info toast
+ui.notify('Your plan has been updated', type='info')
 
-### Info Toast
-
-```
-┌───────────────────────────────────────────────┐
-│ ℹ️ Your plan has been updated                 │  × │
-└───────────────────────────────────────────────┘
+# Warning toast
+ui.notify('Some steps may take longer than expected', type='warning')
 ```
 
-### Toast Specifications
+### Notification Types
 
-- Position: Top-right or top-center
-- Duration: 5 seconds (auto-dismiss), or manual dismiss
-- Stack: Multiple toasts stack vertically
+| Type | Parameter |
+|------|-----------|
+| Success | `type='positive'` |
+| Error | `type='negative'` |
+| Info | `type='info'` |
+| Warning | `type='warning'` |
+
+### Notification Options
+
+| Option | Usage |
+|--------|-------|
+| `position` | `'top'`, `'bottom'`, `'top-right'`, etc. |
+| `timeout` | Duration in ms (0 = no auto-close) |
+| `close_button` | Show close button |
+| `actions` | List of action buttons |
+| `spinner` | Show spinner |
 
 ---
 
 ## Loading States
 
-### Spinner
+Use `ui.spinner` and `ui.skeleton`:
 
+```python
+# Spinner variants
+ui.spinner('default', size='lg')
+ui.spinner('dots')
+ui.spinner('audio')
+ui.spinner('ball')
+ui.spinner('bars')
+ui.spinner('box')
+
+# Loading overlay
+with ui.card().classes('relative'):
+    ui.label('Content here')
+    # Overlay when loading
+    with ui.element().classes('absolute inset-0 bg-white/80 flex items-center justify-center'):
+        ui.spinner(size='lg')
+
+# Skeleton loading placeholders
+with ui.column().classes('w-full gap-2'):
+    ui.skeleton('text').classes('w-3/4')
+    ui.skeleton('text').classes('w-full')
+    ui.skeleton('text').classes('w-1/2')
+    ui.skeleton('rect').classes('h-32 w-full')
+
+# Loading button
+submit_btn = ui.button('Submit', on_click=handle_submit)
+# During submission:
+submit_btn.props('loading')
 ```
-    ⟳
-```
 
-Animated rotating circle.
+### Spinner Sizes
 
-### Skeleton Loading
-
-```
-┌─────────────────────────────────────────┐
-│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░           │
-│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░         │
-│ ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░         │
-└─────────────────────────────────────────┘
-```
-
-Shimmer animation indicates loading content.
-
-### Loading Button
-
-```
-┌─────────────────────────────┐
-│      ⟳ Submitting...        │
-└─────────────────────────────┘
-```
+| Size | Parameter |
+|------|-----------|
+| Extra small | `size='xs'` |
+| Small | `size='sm'` |
+| Medium | `size='md'` (default) |
+| Large | `size='lg'` |
+| Extra large | `size='xl'` |
 
 ---
 
 ## Graph Components
 
-### Graph Node
+For plan/workflow visualization, use `ui.mermaid` or `ui.timeline`:
 
+```python
+# Mermaid diagram for workflow graphs
+ui.mermaid('''
+graph TD
+    A[Submit Application] --> B{Review}
+    B -->|Approved| C[Issue Permit]
+    B -->|Rejected| D[Revise & Resubmit]
+    D --> A
+    
+    style A fill:#e7f1ff
+    style C fill:#d4edda
+''')
+
+# Timeline for linear progress
+with ui.timeline(side='right'):
+    ui.timeline_entry(
+        'Application Submitted',
+        subtitle='Jan 15, 2026',
+        icon='check_circle',
+        color='positive'
+    )
+    ui.timeline_entry(
+        'Under Review',
+        subtitle='In Progress',
+        icon='pending',
+        color='primary'
+    )
+    ui.timeline_entry(
+        'Permit Issued',
+        subtitle='Pending',
+        icon='radio_button_unchecked',
+        color='grey'
+    )
 ```
-┌─────────────────────────────────┐
-│ ┌─────┐               ┌─────┐  │
-│ │Badge│               │State│  │
-│ └─────┘               └─────┘  │
-│ ─────────────────────────────  │
-│ Step Title                     │
-│ Reference ID (optional)        │
-│ ─────────────────────────────  │
-│ Automation Indicator           │
-└─────────────────────────────────┘
+
+### Mermaid Styling
+
+Use Mermaid's built-in styling for node states:
+
+```python
+# Dynamic graph with status colors
+def render_plan_graph(steps: list):
+    mermaid_code = 'graph TD\n'
+    for step in steps:
+        style = {
+            'completed': 'fill:#d4edda,stroke:#28a745',
+            'in_progress': 'fill:#cce0ff,stroke:#0066cc',
+            'action_needed': 'fill:#fff3e0,stroke:#bf360c',
+            'pending': 'fill:#f5f5f5,stroke:#6c757d'
+        }.get(step.status, '')
+        
+        mermaid_code += f'    {step.id}[{step.title}]\n'
+        if style:
+            mermaid_code += f'    style {step.id} {style}\n'
+    
+    ui.mermaid(mermaid_code)
 ```
-
-### Graph Edge (Arrow)
-
-```
-Source ──────────────────────────► Target
-```
-
-Edge styles by state:
-- Completed: Solid line, green
-- In Progress: Dashed line, blue
-- Pending: Dotted line, gray
-
-### Node Sizes
-
-| Size | Width | Height | Use Case |
-|------|-------|--------|----------|
-| Compact | 80px | 60px | Complex graphs |
-| Standard | 140px | 80px | Default |
-| Large | 200px | 100px | Simple graphs |
 
 ---
 
 ## Avatars
 
-### User Avatar
+Use `ui.avatar`:
 
-```
-┌─────┐
-│ JS  │  ← Initials
-└─────┘
+```python
+# Avatar with initials
+ui.avatar('JS', color='primary')
 
-┌─────┐
-│ 👤 │  ← Default icon
-└─────┘
+# Avatar with icon
+ui.avatar(icon='person')
 
-┌─────┐
-│ 📷 │  ← Photo
-└─────┘
-```
+# Avatar with image
+ui.avatar().props(f'img="{user.photo_url}"')
 
-### Agent Avatar
+# Sizes
+ui.avatar('JS', size='sm')  # 24px
+ui.avatar('JS', size='md')  # 40px (default)
+ui.avatar('JS', size='lg')  # 64px
+ui.avatar('JS', size='xl')  # 96px
 
-```
-┌─────┐
-│ 🤖 │  ← Robot icon
-└─────┘
+# Agent avatar
+ui.avatar(icon='smart_toy', color='secondary')
 ```
 
 ### Avatar Sizes
 
 | Size | Dimension | Use Case |
 |------|-----------|----------|
-| XS | 24px | Inline mentions |
-| SM | 32px | List items |
-| MD | 40px | Chat messages |
-| LG | 64px | Profile header |
+| sm | 24px | Inline mentions |
+| md | 40px | Chat messages (default) |
+| lg | 64px | Profile headers |
+| xl | 96px | Account pages |
 
 ---
 
 ## Dividers
 
-### Horizontal Divider
+Use `ui.separator`:
 
-```
-───────────────────────────────────────────
-```
+```python
+# Simple horizontal separator
+ui.separator()
 
-### Divider with Text
+# Separator with label
+with ui.row().classes('w-full items-center gap-4'):
+    ui.separator().classes('flex-grow')
+    ui.label('Today').classes('text-gray-500 text-sm')
+    ui.separator().classes('flex-grow')
 
-```
-─────────────── Today ─────────────────
+# Vertical separator
+with ui.row():
+    ui.label('Left')
+    ui.separator().props('vertical')
+    ui.label('Right')
 ```
 
 ---
 
 ## Empty States
 
-### Generic Empty State
+Use `ui.card` with centered content:
 
-```
-┌─────────────────────────────────────────┐
-│                                         │
-│              [  📋  ]                   │
-│                                         │
-│          No items found                 │
-│                                         │
-│    Description text explaining the      │
-│    empty state and what to do next.     │
-│                                         │
-│           [Primary Action]              │
-│                                         │
-└─────────────────────────────────────────┘
-```
+```python
+# Generic empty state
+with ui.card().classes('w-full p-8 text-center'):
+    ui.icon('inbox', size='xl').classes('text-gray-400')
+    ui.label('No items found').classes('text-lg font-semibold mt-4')
+    ui.label('Description text explaining the empty state and what to do next.').classes('text-gray-600 mt-2')
+    ui.button('Create New', icon='add', on_click=create_new).classes('mt-4')
 
-### Empty State Specifications
+# Empty project list
+with ui.card().classes('w-full p-8 text-center'):
+    ui.icon('folder_open', size='xl').classes('text-gray-400')
+    ui.label('No projects yet').classes('text-lg font-semibold mt-4')
+    ui.label('Start by describing your home improvement goal.').classes('text-gray-600 mt-2')
+    ui.button('Start a Project', icon='add', on_click=new_project).props('color=primary').classes('mt-4')
+```
 
 - Icon: Relevant to context (📋 for lists, 💬 for chat, etc.)
 - Title: Brief, clear statement
@@ -646,73 +634,104 @@ Edge styles by state:
 
 ## Responsive Breakpoints
 
-| Breakpoint | Name | Min Width | Columns |
-|------------|------|-----------|---------|
-| xs | Mobile | 0px | 1 |
-| sm | Mobile Large | 576px | 1 |
-| md | Tablet | 768px | 2 |
-| lg | Desktop | 1024px | 3 |
-| xl | Desktop Large | 1440px | 3+ |
+NiceGUI uses Tailwind CSS breakpoints:
+
+| Breakpoint | Tailwind Prefix | Min Width | Usage |
+|------------|-----------------|-----------|-------|
+| Default | (none) | 0px | Mobile first |
+| sm | `sm:` | 640px | Large mobile |
+| md | `md:` | 768px | Tablet |
+| lg | `lg:` | 1024px | Desktop |
+| xl | `xl:` | 1280px | Large desktop |
+| 2xl | `2xl:` | 1536px | Extra large |
+
+```python
+# Responsive classes example
+ui.card().classes('w-full md:w-1/2 lg:w-1/3')
+ui.column().classes('hidden lg:flex')  # Hidden on mobile, visible on desktop
+```
 
 ---
 
 ## Spacing Scale
 
-| Token | Size | Usage |
-|-------|------|-------|
-| space-1 | 4px | Tight spacing |
-| space-2 | 8px | Default small |
-| space-3 | 12px | Default medium |
-| space-4 | 16px | Default large |
-| space-5 | 24px | Section spacing |
-| space-6 | 32px | Large section |
-| space-8 | 48px | Major sections |
+Use Tailwind spacing utilities via `.classes()`:
+
+| Tailwind | Size | Example |
+|----------|------|---------|
+| `p-1`, `m-1` | 4px | Tight spacing |
+| `p-2`, `m-2` | 8px | Default small |
+| `p-3`, `m-3` | 12px | Default medium |
+| `p-4`, `m-4` | 16px | Default large |
+| `p-6`, `m-6` | 24px | Section spacing |
+| `p-8`, `m-8` | 32px | Large section |
+| `gap-2`, `gap-4` | Variable | Flex/grid gaps |
+
+```python
+# Spacing examples
+ui.card().classes('p-4 m-2')
+ui.row().classes('gap-4')
+ui.column().classes('space-y-2')
+```
 
 ---
 
 ## Typography
 
-| Element | Size | Weight | Line Height |
-|---------|------|--------|-------------|
-| H1 | 28px | Bold | 1.2 |
-| H2 | 24px | Bold | 1.2 |
-| H3 | 20px | SemiBold | 1.3 |
-| H4 | 16px | SemiBold | 1.4 |
-| Body | 14px | Regular | 1.5 |
-| Small | 12px | Regular | 1.5 |
-| Caption | 11px | Regular | 1.4 |
+Use Tailwind typography classes:
+
+| Element | Tailwind Classes |
+|---------|------------------|
+| H1 | `.classes('text-2xl font-bold')` |
+| H2 | `.classes('text-xl font-bold')` |
+| H3 | `.classes('text-lg font-semibold')` |
+| H4 | `.classes('text-base font-semibold')` |
+| Body | `.classes('text-sm')` (default) |
+| Small | `.classes('text-xs')` |
+| Muted | `.classes('text-gray-500')` |
+
+```python
+ui.label('Main Title').classes('text-2xl font-bold')
+ui.label('Subtitle').classes('text-lg text-gray-600')
+ui.label('Body text').classes('text-sm')
+```
 
 ---
 
 ## Color Palette
 
-### Primary Colors
+Quasar provides semantic colors via `.props()`:
 
-| Name | Hex | Usage |
-|------|-----|-------|
-| Primary | `#0066CC` | Links, buttons, active states |
-| Primary Hover | `#0052A3` | Hover states |
-| Primary Light | `#E7F1FF` | Backgrounds |
+### Button/Element Colors
 
-### Semantic Colors
+| Quasar Color | Usage |
+|--------------|-------|
+| `primary` | Main actions, links |
+| `secondary` | Secondary actions |
+| `positive` | Success, completed |
+| `negative` | Errors, danger |
+| `warning` | Warnings, attention |
+| `info` | Information |
 
-| Name | Hex | Usage |
-|------|-----|-------|
-| Success | `#28A745` | Completed, success messages |
-| Warning | `#FFC107` | Warnings, pending |
-| Error | `#DC3545` | Errors, failures |
-| Info | `#17A2B8` | Information |
+### Tailwind Color Classes
 
-### Neutral Colors
+| Class | Usage |
+|-------|-------|
+| `text-primary` | Primary text color |
+| `bg-gray-50` | Light background |
+| `border-gray-200` | Subtle borders |
+| `text-gray-500` | Muted text |
+| `text-green-600` | Success text |
+| `text-red-600` | Error text |
+| `text-orange-500` | Warning text |
 
-| Name | Hex | Usage |
-|------|-----|-------|
-| Gray-900 | `#1A1A1A` | Primary text |
-| Gray-700 | `#4A4A4A` | Secondary text |
-| Gray-500 | `#6C757D` | Muted text |
-| Gray-300 | `#ADB5BD` | Disabled |
-| Gray-200 | `#E0E0E0` | Borders |
-| Gray-100 | `#F5F5F5` | Backgrounds |
+```python
+# Color examples
+ui.button('Submit').props('color=primary')
+ui.chip('Success', color='positive')
+ui.label('Error message').classes('text-red-600')
+ui.card().classes('bg-gray-50 border border-gray-200')
+```
 
 ---
 

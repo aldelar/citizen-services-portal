@@ -4,6 +4,18 @@ This document defines the overall layout structure, navigation patterns, and res
 
 ---
 
+## NiceGUI Framework
+
+This portal is built using **NiceGUI** (https://nicegui.io), a Python-based UI framework built on Vue.js and Quasar components. All UI specifications in these wireframes use NiceGUI's native elements exclusively.
+
+**Key NiceGUI concepts used:**
+- **Layout Elements**: `ui.header`, `ui.left_drawer`, `ui.right_drawer`, `ui.footer`, `ui.splitter`
+- **Styling**: Tailwind CSS classes via `.classes()` and Quasar props via `.props()`
+- **Data Binding**: `bind_value`, `bind_visibility` for reactive updates
+- **Events**: `on_click`, `on_change` callbacks for interactivity
+
+---
+
 ## Design Philosophy
 
 The Citizen Services Portal is a **chat-first, project-centric** application that helps citizens navigate multi-agency government processes. The UI must be:
@@ -17,276 +29,284 @@ The Citizen Services Portal is a **chat-first, project-centric** application tha
 
 ## Three-Panel Layout (Desktop)
 
-The primary layout consists of three panels optimized for the chat-first experience:
+The primary layout uses NiceGUI's native page layout components:
+
+```python
+# NiceGUI Layout Structure
+@ui.page('/')
+def main_page():
+    with ui.header().classes('items-center justify-between'):
+        # Brand, project title, user menu
+        
+    with ui.left_drawer().classes('bg-gray-100'):
+        # Projects panel (navigation)
+        
+    with ui.right_drawer().classes('bg-white'):
+        # Plan widget panel
+        
+    # Main content area (Chat)
+    with ui.column().classes('w-full h-full'):
+        # Chat interface
+```
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│ 🏛️ Citizen Services Portal                               [John Smith ▼] [?]   │
+│ ui.header()                                            [User Menu] [?]         │
 ├───────────────┬─────────────────────────────────────┬─────────────────────────┤
 │               │                                     │                         │
-│   LEFT PANEL  │           CENTER PANEL              │      RIGHT PANEL        │
-│   (240-320px) │           (flexible)                │      (320-400px)        │
+│ ui.left_      │      Main Content Area              │    ui.right_            │
+│ drawer()      │      (ui.column/ui.scroll_area)     │    drawer()             │
 │               │                                     │                         │
-│   Project     │           Chat Interface            │      Plan Graph         │
-│   Navigation  │                                     │      Widget             │
-│               │                                     │                         │
-│   • List      │   • Messages                        │   • Visual graph        │
-│   • Search    │   • Streaming responses             │   • Step statuses       │
-│   • Create    │   • UserAction cards                │   • Dependencies        │
-│               │   • Input area                      │   • Quick actions       │
+│ Project       │      Chat Interface                 │    Plan Widget          │
+│ Navigation    │      (ui.chat_message elements)     │    (ui.timeline or      │
+│               │                                     │     ui.mermaid)         │
 │               │                                     │                         │
 └───────────────┴─────────────────────────────────────┴─────────────────────────┘
 ```
 
-### Panel Sizes
+### NiceGUI Layout Components
 
-| Panel | Min Width | Max Width | Default | Collapsible |
-|-------|-----------|-----------|---------|-------------|
-| Left (Projects) | 200px | 360px | 280px | Yes |
-| Center (Chat) | 400px | Unlimited | Flexible | No |
-| Right (Plan) | 280px | 480px | 360px | Yes |
+| Panel | NiceGUI Element | Properties |
+|-------|-----------------|------------|
+| Header | `ui.header()` | `.classes('items-center')` |
+| Left (Projects) | `ui.left_drawer(value=True)` | `.classes('bg-gray-100')`, `.props('width=280')` |
+| Center (Chat) | `ui.column()` + `ui.scroll_area()` | `.classes('w-full h-full')` |
+| Right (Plan) | `ui.right_drawer()` | `.classes('bg-white')`, `.props('width=360')` |
 
-### Panel Collapse Behavior
+### Drawer Toggle Behavior
 
-- **Left panel**: Collapses to narrow strip showing project status indicators
-- **Right panel**: Can be hidden entirely or collapsed to summary bar (48px)
-- **Toggle controls**: Use panel header buttons to collapse/expand
+NiceGUI drawers have built-in toggle functionality:
+
+```python
+left_drawer = ui.left_drawer(value=True)  # Initially open
+right_drawer = ui.right_drawer(value=False)  # Initially closed
+
+# Toggle buttons in header
+ui.button(icon='menu', on_click=left_drawer.toggle)
+ui.button(icon='insights', on_click=right_drawer.toggle)
+```
 
 ---
 
 ## Header Bar
 
-The header provides global navigation and user context.
+The header uses NiceGUI's `ui.header()` with Quasar/Tailwind styling:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────┐
-│ 🏛️ Citizen Services Portal          [Current Project Title]    [👤 Name ▼] [?]│
-└────────────────────────────────────────────────────────────────────────────────┘
+```python
+with ui.header().classes('items-center justify-between px-4 bg-primary'):
+    with ui.row().classes('items-center gap-4'):
+        ui.icon('account_balance').classes('text-2xl text-white')
+        ui.label('Citizen Services Portal').classes('text-xl text-white font-bold')
+        
+    # Project title (shown when project selected)
+    project_title = ui.label().classes('text-white').bind_visibility_from(state, 'has_project')
+    
+    with ui.row().classes('items-center gap-2'):
+        # User menu using ui.button with ui.menu
+        with ui.button(icon='person').props('flat color=white'):
+            with ui.menu():
+                ui.menu_item('Profile', on_click=show_profile)
+                ui.menu_item('Settings', on_click=show_settings)
+                ui.separator()
+                ui.menu_item('Sign Out', on_click=sign_out)
+        
+        ui.button(icon='help_outline', on_click=show_help).props('flat color=white')
 ```
 
 ### Header Components
 
-| Component | Purpose | Behavior |
-|-----------|---------|----------|
-| Logo/Brand | Identity | Click returns to project list |
-| Project Title | Context | Shows current project name; hidden if no project selected |
-| User Menu | Account | Dropdown: Profile, Settings, Sign Out (see [User Account](ui-wireframes-user-account.md)) |
-| Help | Assistance | Opens help panel/modal |
+| Component | NiceGUI Element | Purpose |
+|-----------|-----------------|---------|
+| Logo/Brand | `ui.icon()` + `ui.label()` | Identity |
+| Project Title | `ui.label().bind_visibility_from()` | Context (hidden when no project) |
+| User Menu | `ui.button()` + `ui.menu()` + `ui.menu_item()` | Account dropdown |
+| Help | `ui.button(icon='help_outline')` | Opens help dialog |
 
 ---
 
-## Responsive Breakpoints
+## Responsive Behavior
 
-The portal adapts to different screen sizes:
+NiceGUI drawers have built-in responsive behavior via Quasar props:
 
-| Breakpoint | Width | Layout |
-|------------|-------|--------|
-| Desktop Large | ≥1440px | 3-panel, all visible |
-| Desktop | 1024-1439px | 3-panel, plan panel collapsible |
-| Tablet | 768-1023px | 2-panel, plan as overlay |
-| Mobile | <768px | Single panel, tab navigation |
-
-### Desktop (≥1024px)
-
-Full three-panel layout with resizable dividers.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ Header                                                          │
-├──────────┬──────────────────────────────┬──────────────────────┤
-│ Projects │           Chat               │      Plan Graph      │
-│          │                              │                      │
-└──────────┴──────────────────────────────┴──────────────────────┘
+```python
+# Responsive drawer configuration
+with ui.left_drawer(value=True).props('breakpoint=768'):
+    # Drawer auto-hides below 768px and shows toggle button
+    pass
+    
+with ui.right_drawer().props('breakpoint=1024 overlay'):
+    # Drawer overlays content below 1024px
+    pass
 ```
 
-### Tablet (768-1023px)
+### Breakpoint Behavior
 
-Two panels with plan as slide-over overlay.
+| Breakpoint | Width | Layout Behavior |
+|------------|-------|-----------------|
+| Desktop Large | ≥1440px | Both drawers visible, side-by-side |
+| Desktop | 1024-1439px | Left drawer visible, right drawer toggle |
+| Tablet | 768-1023px | Both drawers as overlays |
+| Mobile | <768px | Drawers hidden, use `ui.tabs` for navigation |
 
+### Mobile Layout with Tabs
+
+For mobile, use `ui.tabs` for bottom navigation:
+
+```python
+@ui.page('/')
+def main_page():
+    # Detect mobile via JavaScript or use ui.tabs for all sizes
+    with ui.tabs().classes('w-full fixed-bottom').props('dense'):
+        projects_tab = ui.tab('Projects', icon='folder')
+        chat_tab = ui.tab('Chat', icon='chat')
+        plan_tab = ui.tab('Plan', icon='analytics')
+    
+    with ui.tab_panels(tabs).classes('w-full h-full'):
+        with ui.tab_panel(projects_tab):
+            # Projects list
+            pass
+        with ui.tab_panel(chat_tab):
+            # Chat interface
+            pass
+        with ui.tab_panel(plan_tab):
+            # Plan widget
+            pass
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ Header                                              [Plan 📊]   │
-├──────────┬──────────────────────────────────────────────────────┤
-│ Projects │           Chat                                       │
-│ (narrow) │                                                      │
-└──────────┴──────────────────────────────────────────────────────┘
-                                                        ┌─────────┐
-                                                        │ Plan    │
-                                     Overlay on tap --> │ Graph   │
-                                                        │ Widget  │
-                                                        └─────────┘
-```
-
-### Mobile (<768px)
-
-Single-panel with bottom tab navigation.
-
-```
-┌─────────────────────────────────────────┐
-│ Header (compact)                        │
-├─────────────────────────────────────────┤
-│                                         │
-│                                         │
-│          Active Tab Content             │
-│          (Projects / Chat / Plan)       │
-│                                         │
-│                                         │
-├─────────────────────────────────────────┤
-│ [📋 Projects] [💬 Chat] [📊 Plan]       │
-└─────────────────────────────────────────┘
-```
-
-#### Mobile Tab Content
-
-| Tab | Content |
-|-----|---------|
-| Projects | Full project list with cards |
-| Chat | Full chat interface |
-| Plan | Plan graph (scrollable, zoomable) |
 
 ---
 
 ## Navigation Flow
 
-### Primary Navigation Paths
+Navigation is handled through NiceGUI's native routing and state management:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  Landing/Login ─────► Project List ─────► Chat + Plan           │
-│       │                    │                   │                │
-│       ▼                    ▼                   ▼                │
-│   Sign In             Create New          Interact with         │
-│   Sign Up             Project             Agent                 │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```python
+from nicegui import ui, app
+
+# Use app.storage for persistent state
+@ui.page('/')
+def main_page():
+    # Load user's projects
+    projects = app.storage.user.get('projects', [])
+    selected_project_id = app.storage.user.get('selected_project')
+    
+    if not projects:
+        show_welcome_empty_state()
+    else:
+        show_project_chat(selected_project_id)
 ```
 
 ### User Journey States
 
-| State | What User Sees | Primary Action |
+| State | Implementation | Primary Action |
 |-------|---------------|----------------|
-| First Visit | Empty state, welcome message | Create first project |
-| Has Projects | Project list with statuses | Select or create project |
-| In Project | Chat + Plan | Converse with agent |
-| Action Needed | UserAction card prominent | Complete user action |
-| Project Done | Completed badge, read-only | View summary, start new |
+| First Visit | `if not projects: show_empty_state()` | Create first project |
+| Has Projects | Render project list in `ui.left_drawer` | Select or create project |
+| In Project | Show chat + plan panels | Converse with agent |
+| Action Needed | Highlight with `ui.badge` + `ui.notify` | Complete user action |
+| Project Done | Show completed state with `ui.chip` | View summary, start new |
 
 ---
 
 ## Empty States
 
+Use NiceGUI's native elements for empty states:
+
 ### No Projects (First Visit)
 
-```
-┌────────────────────────────────────────────────────────────────────────────────┐
-│ 🏛️ Citizen Services Portal                                    [👤 Name ▼] [?] │
-├────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                │
-│                                                                                │
-│                      ┌─────────────────────────────────────┐                   │
-│                      │                                     │                   │
-│                      │    🏛️ Welcome to the                │                   │
-│                      │    Citizen Services Portal          │                   │
-│                      │                                     │                   │
-│                      │    I'm your AI assistant for        │                   │
-│                      │    navigating LA city services.     │                   │
-│                      │                                     │                   │
-│                      │    Tell me what you need help       │                   │
-│                      │    with, and I'll guide you         │                   │
-│                      │    through the process.             │                   │
-│                      │                                     │                   │
-│                      │    ┌─────────────────────────────┐  │                   │
-│                      │    │ Start a conversation...     │  │                   │
-│                      │    └─────────────────────────────┘  │                   │
-│                      │                                     │                   │
-│                      │    Examples:                        │                   │
-│                      │    • "I want to install solar"     │                   │
-│                      │    • "How do I get a business       │                   │
-│                      │      license?"                      │                   │
-│                      │    • "I need to schedule a bulk     │                   │
-│                      │      pickup"                        │                   │
-│                      │                                     │                   │
-│                      └─────────────────────────────────────┘                   │
-│                                                                                │
-└────────────────────────────────────────────────────────────────────────────────┘
+```python
+def show_welcome_empty_state():
+    with ui.card().classes('max-w-lg mx-auto mt-16 p-8'):
+        with ui.column().classes('items-center gap-4'):
+            ui.icon('account_balance').classes('text-6xl text-primary')
+            ui.label('Welcome to the Citizen Services Portal').classes('text-2xl font-bold text-center')
+            ui.label("I'm your AI assistant for navigating LA city services.").classes('text-center text-gray-600')
+            ui.label('Tell me what you need help with, and I\'ll guide you through the process.').classes('text-center text-gray-600')
+            
+            with ui.row().classes('w-full mt-4'):
+                message_input = ui.input(placeholder='Start a conversation...').classes('flex-grow')
+                ui.button(icon='send', on_click=lambda: start_conversation(message_input.value)).props('round color=primary')
 ```
 
 ### Project Selected, No Plan Yet
 
-```
-┌──────────────┬──────────────────────────────────────┬────────────────────────┐
-│ PROJECTS     │              CHAT                    │     PROJECT PLAN       │
-├──────────────┼──────────────────────────────────────┼────────────────────────┤
-│              │                                      │                        │
-│ ● New        │  🤖 Hi! I'm here to help you with   │  ┌────────────────────┐ │
-│   Project    │     your home renovation project.    │  │                    │ │
-│              │                                      │  │  📋 No plan yet    │ │
-│              │     Tell me about what you're        │  │                    │ │
-│              │     planning, and I'll help you      │  │  As we discuss     │ │
-│              │     figure out what's needed.        │  │  your project,     │ │
-│              │                                      │  │  I'll build a      │ │
-│              │  👤 I want to install solar panels   │  │  step-by-step      │ │
-│              │     and battery storage at my home   │  │  plan here.        │ │
-│              │                                      │  │                    │ │
-│              │  🤖 Great! I'll help you with that.  │  │  [Steps will       │ │
-│              │     Let me ask a few questions...    │  │   appear as we     │ │
-│              │                                      │  │   identify them]   │ │
-│              │                                      │  │                    │ │
-│              │                                      │  └────────────────────┘ │
-│              │  ┌────────────────────────────────┐  │                        │
-│              │  │ Type your message...       [→] │  │                        │
-│              │  └────────────────────────────────┘  │                        │
-└──────────────┴──────────────────────────────────────┴────────────────────────┘
+```python
+# Chat panel with welcome and plan panel with empty state
+with ui.column().classes('flex-grow'):  # Main chat area
+    with ui.scroll_area().classes('flex-grow'):
+        ui.chat_message(
+            "Hi! I'm here to help you with your home renovation project. "
+            "Tell me about what you're planning, and I'll help you figure out what's needed.",
+            name='Agent',
+            avatar='https://robohash.org/agent'
+        )
+    # Input area
+    with ui.row().classes('w-full p-4'):
+        ui.input(placeholder='Type your message...').classes('flex-grow')
+        ui.button(icon='send').props('round color=primary')
+
+# Right drawer - Plan empty state
+with ui.right_drawer():
+    with ui.card().classes('w-full'):
+        ui.label('PROJECT PLAN').classes('font-bold text-lg')
+        ui.separator()
+        with ui.column().classes('items-center py-8 gap-4'):
+            ui.icon('assignment').classes('text-4xl text-gray-400')
+            ui.label('No plan yet').classes('text-gray-500')
+            ui.label("As we discuss your project, I'll build a step-by-step plan here.").classes('text-center text-gray-400 text-sm')
 ```
 
 ---
 
 ## Loading States
 
-### Initial Page Load
+NiceGUI provides built-in loading components:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────┐
-│ 🏛️ Citizen Services Portal                                                    │
-├────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                │
-│                                                                                │
-│                                                                                │
-│                              ┌─────────────────┐                               │
-│                              │                 │                               │
-│                              │    🏛️           │                               │
-│                              │   Loading...    │                               │
-│                              │                 │                               │
-│                              └─────────────────┘                               │
-│                                                                                │
-│                                                                                │
-│                                                                                │
-└────────────────────────────────────────────────────────────────────────────────┘
+```python
+# Page loading spinner
+with ui.card().classes('max-w-sm mx-auto mt-16 p-8'):
+    with ui.column().classes('items-center gap-4'):
+        ui.spinner('dots', size='xl', color='primary')
+        ui.label('Loading...').classes('text-gray-500')
+
+# Skeleton loading for project cards
+ui.skeleton().classes('w-full h-24 mb-2')
+ui.skeleton().classes('w-full h-24 mb-2')
+ui.skeleton().classes('w-full h-24')
 ```
 
-### Project Loading
+### Loading Components
 
-Left panel shows skeleton cards while fetching project list.
-
-### Message Streaming
-
-Chat shows typing indicator while agent generates response (see Chat wireframe doc).
+| State | NiceGUI Element |
+|-------|-----------------|
+| Page Load | `ui.spinner('dots')` |
+| Content Loading | `ui.skeleton()` |
+| Button Loading | `ui.button(...).props('loading')` |
+| Chat Streaming | `ui.spinner('dots', size='sm')` in chat bubble |
 
 ---
 
 ## Accessibility Requirements
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Keyboard Navigation | Full keyboard support, visible focus states |
-| Screen Reader | ARIA labels, live regions for updates |
-| Color Contrast | WCAG 2.1 AA compliance (4.5:1 text, 3:1 UI) |
-| Focus Management | Logical tab order, skip links |
-| Reduced Motion | Respect `prefers-reduced-motion` |
-| Text Scaling | Support up to 200% zoom |
+NiceGUI elements have built-in accessibility, enhanced via props:
 
-> **Implementation Note:** All color combinations in the wireframes (especially status indicators, agency badges, and themed elements) must be validated against WCAG contrast ratios during implementation. Status indicators should not rely solely on color—use icons, text labels, and patterns as additional differentiators.
+```python
+# Accessible button with ARIA label
+ui.button('Submit', on_click=submit).props('aria-label="Submit form"')
+
+# Screen reader announcements via ui.notify
+ui.notify('Project saved successfully', type='positive')
+
+# Focus management
+input_field = ui.input().props('autofocus')
+```
+
+| Requirement | NiceGUI Implementation |
+|-------------|------------------------|
+| Keyboard Navigation | Built-in via Quasar components |
+| Screen Reader | Use `.props('aria-label="..."')` |
+| Color Contrast | Use Quasar theme colors (validated) |
+| Focus Management | `.props('autofocus')`, tabindex via classes |
+| Notifications | `ui.notify()` for announcements |
 
 ---
 

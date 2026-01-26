@@ -184,3 +184,15 @@ Can you do a research around what's used for most project, analyze their strengt
 
 Create the issue, and create a system prompt assist for the agent I'm going to delegate it to (github agent) to make sure the task stays on track and deliver maximum value so we quickly select the right framework.
 
+== UI wireframes Creation Assistance =====
+
+See GitHhu
+
+
+==== UI WIREFRAMES REfinement Assistance =====
+
+We've selected NiceGUI as the UI framework for this project, do some research around the functionality of this framework, and review all the wireframes under /docs/ui-wireframes.
+
+I'd like to make sure the wireframes are set to match the native functionality of NiceGUI as much as possible, so we do not build custom components/controls or define interactions that aren't supported by NiceGUI by default.
+
+We should stay within what comes out of the box with NiceGUI, so let's clean up the wireframes to keep the overall functionality, but leverage all the native constructs of the NiceGUI framework.
