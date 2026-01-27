@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from agent_framework import ChatMessageStore, HostedMCPTool
+from agent_framework import HostedMCPTool
 from agent_framework.azure import AzureOpenAIChatClient
 from azure.ai.agentserver.agentframework import from_agent_framework  # pyright: ignore[reportUnknownVariableType]
 from azure.identity import DefaultAzureCredential
@@ -78,9 +78,7 @@ def create_agent():
     instructions = load_system_prompt()
     
     # Create the agent using Azure OpenAI Chat Client
-    # Note: chat_message_store_factory is NOT used here - the thread_repository
-    # handles message persistence. The ChatMessageStore import is kept for reference.
-    # If needed in the future, add: chat_message_store_factory=ChatMessageStore
+    # the thread_repository handles message persistence.
     agent = AzureOpenAIChatClient(credential=DefaultAzureCredential()).create_agent(
         name="csp-agent",
         instructions=instructions,

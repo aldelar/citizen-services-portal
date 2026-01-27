@@ -223,12 +223,22 @@ class AgentService:
         elif isinstance(conversation, str):
             return conversation
         
+        # Check common alternative keys
+        for key in ("conversation_id", "conversationId"):
+            conv_id = data.get(key)
+            if isinstance(conv_id, str) and conv_id:
+                return conv_id
+        
         # Check in response object
         response_obj = data.get("response")
         if isinstance(response_obj, dict):
             conversation = response_obj.get("conversation")
             if isinstance(conversation, dict):
                 return conversation.get("id")
+            for key in ("conversation_id", "conversationId"):
+                conv_id = response_obj.get(key)
+                if isinstance(conv_id, str) and conv_id:
+                    return conv_id
         
         return None
     

@@ -206,13 +206,7 @@ class ProjectService:
             return messages
         except Exception as e:
             logger.error(f"Error getting messages from thread: {e}")
-            # Fallback to deprecated message repo for backwards compatibility
-            try:
-                messages = await self._message_repo.get_messages(project_id, limit=limit)
-                return [m.model_dump() for m in reversed(messages)]
-            except Exception as e2:
-                logger.error(f"Error getting messages from fallback: {e2}")
-                return []
+            return []
     
     async def save_message(
         self,

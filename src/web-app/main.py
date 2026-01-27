@@ -511,7 +511,7 @@ async def main_page():
             async for chunk in agent_service.send_message_stream(
                 message=user_msg,
                 conversation_id=selected_project.thread_id if selected_project else None,
-                messages=messages,  # Pass conversation history for context
+                messages=None,  # Rely on thread repository for history
             ):
                 # Handle metadata (conversation_id) vs text chunks
                 if isinstance(chunk, dict) and "_conversation_id" in chunk:
