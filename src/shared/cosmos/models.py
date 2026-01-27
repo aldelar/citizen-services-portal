@@ -147,6 +147,7 @@ class Project(CamelCaseModel):
     plan: Optional[Plan] = None
     summary: ProjectSummary = Field(default_factory=ProjectSummary)
     references: ProjectReferences = Field(default_factory=ProjectReferences)
+    thread_id: Optional[str] = None  # Agent conversation ID (conv_xxx format)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""
+Clear all data from CosmosDB containers.
+
+Usage:
+    python scripts/clear-cosmos-data.py [--confirm]
+
+Without --confirm, shows what would be deleted. With --confirm, performs deletion.
+"""
+
+import asyncio
+import argparse
+import sys
+from azure.cosmos.aio import CosmosClient
+from azure.identity.aio import DefaultAzureCredential
+from azure.cosmos import exceptions
+
+
+# Default values - override with environment variables if needed
+COSMOS_ENDPOINT = "https://aldelar-csp-cosmos.documents.azure.com:443/"
+DATABASE_NAME = "citizen-services"
+
+# Containers and their partition key paths
+CONTAINERS = {
+    "projects": "/userId",
+    "threads": "/id",
+    "messages": "/projectId",
+}
+
+
+async def count_items(container, partition_key_path: str) -> int:
+    """Count items in a container."""
+    count = 0
+    async for _ in container.query_items("SELECT c.id FROM c"):
+        count += 1
+    return count
+
+
+async def delete_items(container, partition_key_path: str, dry_run: bool = True) -> tuple[int, int]:
+    """Delete all items from a container. Returns (deleted, errors)."""
+    deleted = 0
+    errors = 0
+    
+    # Get the partition key field name (remove leading /)
+    pk_field = partition_key_path.lstrip("/")
+    
+    # Query all items with their partition keys
+    query = f"SELECT c.id, c.{pk_field} FROM c"
+    
+    async for item in container.query_items(query):
+        item_id = item["id"]
+        partition_key = item.get(pk_field, item_id)  # fallback to id if pk field not found
+        
+        if dry_run:
+            print(f"  Would delete: {item_id}")
+            deleted += 1
+        else:
+            try:
+                await container.delete_item(item_id, partition_key=partition_key)
+                deleted += 1
+            except exceptions.CosmosResourceNotFoundError:
+                # Already deleted
+                pass
+            except Exception as e:
+                print(f"  Error deleting {item_id}: {e}")
+                errors += 1
+    
+    return deleted, errors
+
+
+async def main(confirm: bool = False):
+    """Main function to clear all containers."""
+    print("=" * 60)
+    print("🗑️  CosmosDB Data Cleaner")
+    print("=" * 60)
+    print(f"\nEndpoint: {COSMOS_ENDPOINT}")
+    print(f"Database: {DATABASE_NAME}")
+    print(f"Containers: {', '.join(CONTAINERS.keys())}")
+    print(f"Mode: {'DELETE (confirmed)' if confirm else 'DRY RUN'}")
+    print()
+    
+    credential = DefaultAzureCredential()
+    client = CosmosClient(COSMOS_ENDPOINT, credential=credential)
+    
+    try:
+        db = client.get_database_client(DATABASE_NAME)
+        
+        for container_name, partition_key_path in CONTAINERS.items():
+            print(f"\n📦 Container: {container_name}")
+            print(f"   Partition key: {partition_key_path}")
+            
+            try:
+                container = db.get_container_client(container_name)
+                
+                # Count items first
+                item_count = await count_items(container, partition_key_path)
+                print(f"   Items found: {item_count}")
+                
+                if item_count == 0:
+                    print("   ✅ Already empty")
+                    continue
+                
+                if confirm:
+                    deleted, errors = await delete_items(container, partition_key_path, dry_run=False)
+                    if errors > 0:
+                        print(f"   ⚠️  Deleted {deleted} items, {errors} errors")
+                    else:
+                        print(f"   ✅ Deleted {deleted} items")
+                else:
+                    deleted, _ = await delete_items(container, partition_key_path, dry_run=True)
+                    print(f"   Would delete {deleted} items")
+                    
+            except exceptions.CosmosResourceNotFoundError:
+                print(f"   ⚠️  Container not found (skipping)")
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+        
+        print("\n" + "=" * 60)
+        if confirm:
+            print("✅ Done! All containers cleared.")
+        else:
+            print("ℹ️  Dry run complete. Run with --confirm to delete.")
+        print("=" * 60 + "\n")
+        
+    finally:
+        await client.close()
+        await credential.close()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Clear all data from CosmosDB containers")
+    parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Actually perform the deletion (without this flag, shows what would be deleted)"
+    )
+    args = parser.parse_args()
+    
+    asyncio.run(main(confirm=args.confirm))

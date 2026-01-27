@@ -8,6 +8,7 @@ dependencies = [
     "azure-ai-agentserver-agentframework==1.0.0b9",
     "agent-framework",
     "azure-identity",
+    "azure-cosmos",  # For CosmosDB-backed chat message store
     # OpenTelemetry exporters for observability
     "azure-monitor-opentelemetry",          # For Application Insights
     "opentelemetry-exporter-otlp-proto-grpc",  # For Aspire Dashboard / OTLP

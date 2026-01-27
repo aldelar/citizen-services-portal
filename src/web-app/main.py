@@ -5,6 +5,7 @@ Run with: uv run python main.py
 """
 
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from uuid import uuid4
 from nicegui import ui, app
 from config import settings
@@ -52,6 +53,7 @@ def convert_to_ui_project(project_data: dict) -> Project:
         description=project_data.get("context", {}).get("project_description"),
         status=ProjectStatus(project_data.get("status", "active")),
         progress=0.0,  # TODO: Calculate from plan steps
+        thread_id=project_data.get("thread_id", project_data.get("threadId")),
         created_at=datetime.fromisoformat(project_data["created_at"].replace("Z", "+00:00")) if isinstance(project_data.get("created_at"), str) else project_data.get("created_at"),
         updated_at=datetime.fromisoformat(project_data["updated_at"].replace("Z", "+00:00")) if isinstance(project_data.get("updated_at"), str) else project_data.get("updated_at"),
         plan=None,  # Plan widget handles its own data
@@ -119,10 +121,10 @@ async def main_page():
         projects.sort(key=lambda p: p.updated_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         return projects
     
-    async def load_messages(project_id: str):
+    async def load_messages(project_id: str, thread_id: Optional[str] = None):
         """Load messages for a project."""
         nonlocal messages
-        messages = await project_service.get_messages(project_id)
+        messages = await project_service.get_messages(project_id, thread_id=thread_id)
         return messages
     
     async def select_project(project_id: str):
@@ -136,8 +138,9 @@ async def main_page():
                 selected_project = p
                 break
         
-        # Load messages for selected project
-        messages = await project_service.get_messages(project_id)
+        # Load messages for selected project (using thread_id if available)
+        thread_id = selected_project.thread_id if selected_project else None
+        messages = await project_service.get_messages(project_id, thread_id=thread_id)
         
         # Refresh the UI
         await refresh_ui()
@@ -480,11 +483,9 @@ async def main_page():
                 with projects_container:
                     render_projects_list()
         
-        # Save user message to CosmosDB and update local messages list
-        await project_service.save_message(selected_project_id, "user", user_msg)
+        # Update local messages list for UI state (agent handles CosmosDB persistence)
         messages.append({"role": "user", "content": user_msg})
-        # Touch project to update timestamp - this is necessary for CosmosDB mode
-        # (save_message only updates timestamp in in-memory mode, see project_service.py)
+        # Touch project to update timestamp
         await project_service.touch_project(selected_project_id, user_id)
         
         # Reload projects and update UI to reflect new timestamp/order
@@ -501,14 +502,22 @@ async def main_page():
                 response_label = ui.markdown('⏳ *thinking...*').classes('chat-markdown')
         
         try:
-            # Call agent with streaming, passing conversation history for context
+            # Call agent with streaming
+            # Use thread_id if available (for conversation continuity), otherwise agent generates one
             response_text = ''
             chunk_count = 0
+            received_thread_id = None
+            
             async for chunk in agent_service.send_message_stream(
                 message=user_msg,
-                conversation_id=selected_project_id,
+                conversation_id=selected_project.thread_id if selected_project else None,
                 messages=messages,  # Pass conversation history for context
             ):
+                # Handle metadata (conversation_id) vs text chunks
+                if isinstance(chunk, dict) and "_conversation_id" in chunk:
+                    received_thread_id = chunk["_conversation_id"]
+                    continue
+                
                 response_text += chunk
                 chunk_count += 1
                 # Update UI every few chunks
@@ -519,11 +528,17 @@ async def main_page():
             # Final update
             if response_text:
                 response_label.set_content(response_text)
-                # Save agent response to CosmosDB and update local messages list
-                await project_service.save_message(selected_project_id, "assistant", response_text)
+                # Update local messages list for UI state (agent handles CosmosDB persistence)
                 messages.append({"role": "assistant", "content": response_text})
-                # Touch project to update timestamp - this is necessary for CosmosDB mode
-                # (save_message only updates timestamp in in-memory mode, see project_service.py)
+                
+                # Save thread_id to project if this is the first message (no existing thread_id)
+                if received_thread_id and selected_project and not selected_project.thread_id:
+                    await project_service.update_project(
+                        selected_project_id, user_id, {"thread_id": received_thread_id}
+                    )
+                    selected_project.thread_id = received_thread_id
+                
+                # Touch project to update timestamp
                 await project_service.touch_project(selected_project_id, user_id)
                 
                 # Reload projects and update UI to reflect new timestamp/order

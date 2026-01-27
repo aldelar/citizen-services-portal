@@ -41,9 +41,9 @@ class AgentService:
             "stream": stream,
         }
         
-        # Add conversation context if available
+        # Add conversation context if available (uses Foundry format)
         if conversation_id:
-            payload["conversation_id"] = conversation_id
+            payload["conversation"] = {"id": conversation_id}
         
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
@@ -133,8 +133,9 @@ class AgentService:
                 "stream": True,
             }
         
+        # Add conversation context if available (uses Foundry format)
         if conversation_id:
-            payload["conversation_id"] = conversation_id
+            payload["conversation"] = {"id": conversation_id}
         
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             async with client.stream(
@@ -146,6 +147,8 @@ class AgentService:
                 
                 # Always try to parse as SSE, regardless of content-type
                 buffer = ""
+                conversation_id_yielded = False
+                
                 async for chunk in response.aiter_text():
                     buffer += chunk
                     
@@ -163,6 +166,14 @@ class AgentService:
                             if data_str and data_str != "[DONE]":
                                 try:
                                     data = json.loads(data_str)
+                                    
+                                    # Extract conversation_id from response.created event
+                                    if not conversation_id_yielded:
+                                        conv_id = self._extract_conversation_id(data)
+                                        if conv_id:
+                                            yield {"_conversation_id": conv_id}
+                                            conversation_id_yielded = True
+                                    
                                     text = self._extract_delta_text(data)
                                     if text:
                                         yield text
@@ -174,6 +185,14 @@ class AgentService:
                             # Direct JSON (non-SSE streaming)
                             try:
                                 data = json.loads(line)
+                                
+                                # Extract conversation_id
+                                if not conversation_id_yielded:
+                                    conv_id = self._extract_conversation_id(data)
+                                    if conv_id:
+                                        yield {"_conversation_id": conv_id}
+                                        conversation_id_yielded = True
+                                
                                 text = self._extract_delta_text(data)
                                 if text:
                                     yield text
@@ -185,6 +204,33 @@ class AgentService:
                 if buffer.strip():
                     # Don't process final buffer - it would duplicate content
                     pass
+    
+    def _extract_conversation_id(self, data: dict) -> str | None:
+        """Extract conversation ID from streaming event.
+        
+        The conversation ID appears in the response.created event or
+        in the conversation object of any event.
+        """
+        if not isinstance(data, dict):
+            return None
+        
+        # Check for conversation object with id
+        conversation = data.get("conversation")
+        if isinstance(conversation, dict):
+            conv_id = conversation.get("id")
+            if conv_id:
+                return conv_id
+        elif isinstance(conversation, str):
+            return conversation
+        
+        # Check in response object
+        response_obj = data.get("response")
+        if isinstance(response_obj, dict):
+            conversation = response_obj.get("conversation")
+            if isinstance(conversation, dict):
+                return conversation.get("id")
+        
+        return None
     
     def _extract_delta_text(self, data: dict) -> str:
         """Extract text from streaming delta event.

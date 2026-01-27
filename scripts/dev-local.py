@@ -124,6 +124,11 @@ def get_csp_agent_config(azd_env: dict[str, str]) -> ServiceConfig:
             # Azure AI Foundry project (required for agent runtime)
             "AZURE_AI_PROJECT_ENDPOINT": azd_env.get("AZURE_AI_PROJECT_ENDPOINT", ""),
             "AGENT_PROJECT_RESOURCE_ID": azd_env.get("AZURE_AI_PROJECT_ID", ""),
+            # CosmosDB for agent thread/message persistence
+            "AGENT_COSMOS_ENDPOINT": azd_env.get("cosmosDbEndpoint", ""),
+            "AGENT_COSMOS_DATABASE": "citizen-services",
+            "AGENT_COSMOS_THREADS_CONTAINER": "threads",  # Thread persistence (conversation history)
+            "AGENT_COSMOS_CONTAINER": "messages",  # DEPRECATED: kept for backwards compatibility
             # Application Insights (optional but expected)
             "APPLICATIONINSIGHTS_CONNECTION_STRING": azd_env.get("applicationInsightsConnectionString", ""),
             # OpenTelemetry for local tracing with Aspire Dashboard

@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from agent_framework import HostedMCPTool
+from agent_framework import ChatMessageStore, HostedMCPTool
 from agent_framework.azure import AzureOpenAIChatClient
 from azure.ai.agentserver.agentframework import from_agent_framework  # pyright: ignore[reportUnknownVariableType]
 from azure.identity import DefaultAzureCredential
@@ -78,6 +78,9 @@ def create_agent():
     instructions = load_system_prompt()
     
     # Create the agent using Azure OpenAI Chat Client
+    # Note: chat_message_store_factory is NOT used here - the thread_repository
+    # handles message persistence. The ChatMessageStore import is kept for reference.
+    # If needed in the future, add: chat_message_store_factory=ChatMessageStore
     agent = AzureOpenAIChatClient(credential=DefaultAzureCredential()).create_agent(
         name="csp-agent",
         instructions=instructions,
@@ -89,9 +92,22 @@ def create_agent():
 
 
 def main():
-    """Run the CSP Agent as a hosted agent."""
+    """Run the CSP Agent as a hosted agent.
+    
+    The agent is stateless - conversation persistence is handled by the thread_repository
+    which loads/saves threads from CosmosDB based on conversation_id.
+    """
     agent = create_agent()
-    from_agent_framework(agent).run()
+    
+    # Create thread repository for conversation persistence if CosmosDB is configured
+    thread_repository = None
+    cosmos_endpoint = os.environ.get("AGENT_COSMOS_ENDPOINT")
+    if cosmos_endpoint:
+        from cosmos_thread_repository import create_cosmos_thread_repository
+        thread_repository = create_cosmos_thread_repository(agent)
+    
+    # Run the hosted agent with optional thread persistence
+    from_agent_framework(agent, thread_repository=thread_repository).run()
 
 
 if __name__ == "__main__":
