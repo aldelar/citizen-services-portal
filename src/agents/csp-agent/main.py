@@ -8,6 +8,14 @@ from agent_framework.azure import AzureOpenAIChatClient
 from azure.ai.agentserver.agentframework import from_agent_framework  # pyright: ignore[reportUnknownVariableType]
 from azure.identity import DefaultAzureCredential
 
+# Configure OpenTelemetry - reads environment variables automatically:
+#   - APPLICATIONINSIGHTS_CONNECTION_STRING (for Azure Monitor)
+#   - OTEL_EXPORTER_OTLP_ENDPOINT (for Aspire Dashboard/OTLP)
+#   - ENABLE_INSTRUMENTATION=true (required)
+#   - OTEL_SERVICE_NAME (defaults to agent_framework)
+from agent_framework.observability import configure_otel_providers
+configure_otel_providers()
+
 
 def load_system_prompt() -> str:
     """Load the system prompt from the prompts directory."""

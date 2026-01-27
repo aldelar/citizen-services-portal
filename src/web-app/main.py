@@ -455,7 +455,7 @@ async def main_page():
     
     async def send_message():
         """Send a message to the agent."""
-        nonlocal selected_project_id, selected_project
+        nonlocal selected_project_id, selected_project, messages
         
         text = message_input.value
         if not text or not text.strip():
@@ -473,14 +473,16 @@ async def main_page():
                 projects.insert(0, new_project)
                 selected_project_id = new_project.id
                 selected_project = new_project
+                messages = []  # New project starts with empty message history
                 
                 # Refresh projects panel
                 projects_container.clear()
                 with projects_container:
                     render_projects_list()
         
-        # Save user message to CosmosDB
+        # Save user message to CosmosDB and update local messages list
         await project_service.save_message(selected_project_id, "user", user_msg)
+        messages.append({"role": "user", "content": user_msg})
         # Touch project to update timestamp - this is necessary for CosmosDB mode
         # (save_message only updates timestamp in in-memory mode, see project_service.py)
         await project_service.touch_project(selected_project_id, user_id)
@@ -499,12 +501,13 @@ async def main_page():
                 response_label = ui.markdown('⏳ *thinking...*').classes('chat-markdown')
         
         try:
-            # Call agent with streaming
+            # Call agent with streaming, passing conversation history for context
             response_text = ''
             chunk_count = 0
             async for chunk in agent_service.send_message_stream(
                 message=user_msg,
                 conversation_id=selected_project_id,
+                messages=messages,  # Pass conversation history for context
             ):
                 response_text += chunk
                 chunk_count += 1
@@ -516,8 +519,9 @@ async def main_page():
             # Final update
             if response_text:
                 response_label.set_content(response_text)
-                # Save agent response to CosmosDB
+                # Save agent response to CosmosDB and update local messages list
                 await project_service.save_message(selected_project_id, "assistant", response_text)
+                messages.append({"role": "assistant", "content": response_text})
                 # Touch project to update timestamp - this is necessary for CosmosDB mode
                 # (save_message only updates timestamp in in-memory mode, see project_service.py)
                 await project_service.touch_project(selected_project_id, user_id)

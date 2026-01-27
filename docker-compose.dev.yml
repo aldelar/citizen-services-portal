@@ -163,6 +163,22 @@ services:
     # volumes:
     #   - ./src/web-app:/app:ro
 
+  # ============================================================================
+  # Observability - Aspire Dashboard for OpenTelemetry traces
+  # ============================================================================
+  
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+    container_name: csp-aspire-dashboard
+    ports:
+      - "18888:18888"   # Dashboard UI
+      - "4317:18889"    # OTLP gRPC endpoint (mapped to standard port)
+      - "4318:18890"    # OTLP HTTP endpoint (mapped to standard port)
+    environment:
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+    networks:
+      - csp-network
+
 networks:
   csp-network:
     driver: bridge

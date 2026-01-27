@@ -1,0 +1,24 @@
+[project]
+name = "csp-agent"
+version = "0.1.0"
+description = "Citizen Services Portal Agent - AI assistant for LA city services"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "azure-ai-agentserver-agentframework==1.0.0b9",
+    "agent-framework",
+    "azure-identity",
+    # OpenTelemetry exporters for observability
+    "azure-monitor-opentelemetry",          # For Application Insights
+    "opentelemetry-exporter-otlp-proto-grpc",  # For Aspire Dashboard / OTLP
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.uv]
+# This is a script project, not a package
+package = false

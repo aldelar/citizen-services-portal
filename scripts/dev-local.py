@@ -110,7 +110,7 @@ def get_csp_agent_config(azd_env: dict[str, str]) -> ServiceConfig:
     return ServiceConfig(
         name="csp-agent",
         path=PROJECT_ROOT / "src" / "agents" / "csp-agent",
-        command=[".venv/bin/python", "main.py"],
+        command=["uv", "run", "python", "main.py"],
         port=8088,  # Agent framework default port
         env={
             # Use local MCP servers
@@ -126,6 +126,12 @@ def get_csp_agent_config(azd_env: dict[str, str]) -> ServiceConfig:
             "AGENT_PROJECT_RESOURCE_ID": azd_env.get("AZURE_AI_PROJECT_ID", ""),
             # Application Insights (optional but expected)
             "APPLICATIONINSIGHTS_CONNECTION_STRING": azd_env.get("applicationInsightsConnectionString", ""),
+            # OpenTelemetry for local tracing with Aspire Dashboard
+            # Start Aspire: make aspire-start (or docker run -d -p 18888:18888 -p 4317:18889 -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true mcr.microsoft.com/dotnet/aspire-dashboard:9.0)
+            # View traces: http://localhost:18888
+            "ENABLE_INSTRUMENTATION": "true",
+            "OTEL_EXPORTER_OTLP_ENDPOINT": os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
+            "OTEL_SERVICE_NAME": "csp-agent",
         },
         health_endpoint="/health",
         depends_on=["mcp-ladbs", "mcp-ladwp", "mcp-lasan", "mcp-reporting"],

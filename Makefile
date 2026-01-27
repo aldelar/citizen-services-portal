@@ -26,6 +26,11 @@ help:
 	@echo "  make docker-logs  - Follow Docker logs"
 	@echo "  make docker-build - Rebuild all Docker images"
 	@echo ""
+	@echo "Observability:"
+	@echo "  make aspire-start - Start Aspire Dashboard for OTEL traces"
+	@echo "  make aspire-stop  - Stop Aspire Dashboard"
+	@echo "  make aspire-logs  - Follow Aspire Dashboard logs"
+	@echo ""
 	@echo "Testing:"
 	@echo "  make test              - Run all tests"
 	@echo "  make test-mcp          - Run MCP server unit tests"
@@ -58,6 +63,31 @@ dev-web:
 dev-mcp:
 	@echo "📡 Starting MCP servers only..."
 	cd scripts && uv run python dev-local.py --mcp-only
+
+# ============================================================================
+# Observability - Aspire Dashboard for OpenTelemetry traces
+# ============================================================================
+
+aspire-start:
+	@echo "📊 Starting Aspire Dashboard for OpenTelemetry traces..."
+	@echo "   Dashboard UI: http://localhost:18888"
+	@echo "   OTLP gRPC:    localhost:4317"
+	@docker run -d --name aspire-dashboard \
+		-p 18888:18888 \
+		-p 4317:18889 \
+		-p 4318:18890 \
+		-e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true \
+		mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+	@echo "✅ Aspire Dashboard started. Open http://localhost:18888"
+
+aspire-stop:
+	@echo "🛑 Stopping Aspire Dashboard..."
+	@docker stop aspire-dashboard 2>/dev/null || true
+	@docker rm aspire-dashboard 2>/dev/null || true
+	@echo "✅ Aspire Dashboard stopped"
+
+aspire-logs:
+	@docker logs -f aspire-dashboard
 
 # ============================================================================
 # Docker Development

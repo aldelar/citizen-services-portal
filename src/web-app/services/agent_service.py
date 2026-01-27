@@ -94,18 +94,45 @@ class AgentService:
         import json
         return f"[Raw response]: {json.dumps(data, indent=2)[:500]}"
     
-    async def send_message_stream(self, message: str, conversation_id: str | None = None):
+    async def send_message_stream(
+        self,
+        message: str,
+        conversation_id: str | None = None,
+        messages: list[dict] | None = None,
+    ):
         """Send a message and stream the response.
+        
+        Args:
+            message: The current user message.
+            conversation_id: Optional conversation/thread ID.
+            messages: Optional list of previous messages for context.
+                      Each message should have 'role' and 'content' keys.
         
         Yields:
             str: Chunks of the response text.
         """
         import json
         
-        payload = {
-            "input": message,
-            "stream": True,
-        }
+        # Build input with conversation history if provided
+        if messages:
+            # Format as array of messages for Responses API
+            # The messages list should already include the current user message
+            input_messages = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role and content:
+                    input_messages.append({"role": role, "content": content})
+            payload = {
+                "input": input_messages,
+                "stream": True,
+            }
+        else:
+            payload = {
+                "input": message,
+                "stream": True,
+            }
+        
         if conversation_id:
             payload["conversation_id"] = conversation_id
         
