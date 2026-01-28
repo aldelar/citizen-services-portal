@@ -1,0 +1,25 @@
+# Agent Evaluation Framework Dependencies
+# For CSP Agent testing and evaluation using Azure AI Evaluation SDK
+
+# Core Azure AI Evaluation SDK
+azure-ai-evaluation>=1.0.0
+
+# Azure Identity for authentication
+azure-identity>=1.15.0
+
+# Promptflow for custom evaluators
+promptflow>=1.12.0
+
+# OpenAI for LLM-based evaluators
+openai>=1.30.0
+
+# Data handling
+pyyaml>=6.0
+pandas>=2.0.0
+
+# Testing utilities
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# JSON Lines handling
+jsonlines>=4.0.0

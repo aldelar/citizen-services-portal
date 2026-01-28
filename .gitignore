@@ -208,3 +208,8 @@ __marimo__/
 
 # Bicep compiled outputs
 infra/main.json
+
+# Agent evaluation results (generated, not tracked)
+tests/evaluation/results/*.json
+tests/evaluation/results/*.md
+!tests/evaluation/results/.gitkeep
