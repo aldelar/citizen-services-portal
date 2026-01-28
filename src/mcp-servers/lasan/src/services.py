@@ -34,7 +34,7 @@ _search_enabled = bool(os.environ.get("AZURE_SEARCH_ENDPOINT"))
 # Search configuration
 _SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "lasan-kb")
 _SEARCH_SEMANTIC_CONFIG = os.environ.get("AZURE_SEARCH_SEMANTIC_CONFIG", "lasan-semantic-config")
-_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2"]
+_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2", "page_number"]
 _MAX_RERANKER_SCORE = 4.0  # Azure AI Search semantic reranker score typically ranges 0-4
 
 
@@ -118,10 +118,16 @@ class LASANService:
                     relevance_score = result.get("@search.reranker_score", 0) / _MAX_RERANKER_SCORE
                     relevance_score = max(0.0, min(1.0, relevance_score))
                     
+                    # Build section from headers (prefer more specific header)
+                    section = result.get("header_2") or result.get("header_1")
+                    
                     chunks.append(DocumentChunk(
                         content=result["chunk"],
                         source=result["source_file"],
-                        relevance_score=relevance_score
+                        relevance_score=relevance_score,
+                        title=result.get("title"),
+                        section=section,
+                        page_number=result.get("page_number")
                     ))
                 
                 return KnowledgeResult(
@@ -138,16 +144,25 @@ class LASANService:
                 content="LASAN bulky item pickup service: LA residents get 10 free bulky item collections per year, up to 10 items each. Items accepted include furniture, appliances (including refrigerators with Freon), mattresses, and electronics. Place items curbside by 6am on collection day.",
                 source="lasan-bulky-item-guide.pdf",
                 relevance_score=0.94,
+                title="Bulky Item Collection Guide",
+                section="Service Overview",
+                page_number=1,
             ),
             DocumentChunk(
                 content="Construction debris is NOT accepted for city pickup. This includes concrete, roof tiles, drywall, lumber, and dirt. Options for disposal: 1) Private hauling service (Junkluggers, 1-800-GOT-JUNK), 2) Self-haul to LA County landfill, 3) S.A.F.E. Centers for small quantities (weekends 9am-3pm).",
                 source="lasan-what-we-collect.pdf",
                 relevance_score=0.89,
+                title="What We Collect",
+                section="Items Not Accepted",
+                page_number=3,
             ),
             DocumentChunk(
                 content="E-waste curbside pickup: Schedule through 311 or MyLA311 app. Accepted items include TVs, computers, monitors, printers, cables, and small electronics. Items must be at curb by 6am. No lithium batteries loose - tape terminals or bring to S.A.F.E. Center.",
                 source="lasan-ewaste-guide.pdf",
                 relevance_score=0.82,
+                title="E-Waste Disposal Guide",
+                section="Curbside Pickup",
+                page_number=2,
             ),
         ]
 

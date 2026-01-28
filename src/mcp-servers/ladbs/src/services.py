@@ -38,7 +38,7 @@ _search_enabled = bool(os.environ.get("AZURE_SEARCH_ENDPOINT"))
 # Search configuration
 _SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "ladbs-kb")
 _SEARCH_SEMANTIC_CONFIG = os.environ.get("AZURE_SEARCH_SEMANTIC_CONFIG", "ladbs-semantic-config")
-_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2"]
+_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2", "page_number"]
 _MAX_RERANKER_SCORE = 4.0  # Azure AI Search semantic reranker score typically ranges 0-4
 
 
@@ -122,10 +122,16 @@ class LADBSService:
                     relevance_score = result.get("@search.reranker_score", 0) / _MAX_RERANKER_SCORE
                     relevance_score = max(0.0, min(1.0, relevance_score))
                     
+                    # Build section from headers (prefer more specific header)
+                    section = result.get("header_2") or result.get("header_1")
+                    
                     chunks.append(DocumentChunk(
                         content=result["chunk"],
                         source=result["source_file"],
-                        relevance_score=relevance_score
+                        relevance_score=relevance_score,
+                        title=result.get("title"),
+                        section=section,
+                        page_number=result.get("page_number")
                     ))
                 
                 return KnowledgeResult(
@@ -143,16 +149,25 @@ class LADBSService:
                 content="For electrical permits involving solar PV systems, you need: 1) Site plan showing panel layout, 2) Single-line electrical diagram, 3) Equipment specifications (inverter, panels), 4) Structural calculations for roof mounting, 5) C-10 contractor license documentation.",
                 source="ladbs-electrical-permits.pdf",
                 relevance_score=0.94,
+                title="Electrical Permits Overview",
+                section="Solar PV System Requirements",
+                page_number=3,
             ),
             DocumentChunk(
                 content="Electrical permit fees for solar installations: Plan check fee is typically $450 for residential systems under 10kW. Permit fee is based on valuation, approximately $800 for a standard residential solar installation. Additional fees may apply for battery storage systems.",
                 source="ladbs-fee-schedule-2026.pdf",
                 relevance_score=0.87,
+                title="Fee Schedule 2026",
+                section="Electrical Permit Fees",
+                page_number=12,
             ),
             DocumentChunk(
                 content="Inspection requirements for solar PV: 1) Rough electrical inspection after conduit and wiring installation, before covering. 2) Final electrical inspection after all equipment is installed and operational. Both inspections must pass before interconnection.",
                 source="ladbs-inspection-guide.pdf",
                 relevance_score=0.82,
+                title="Inspection Services Guide",
+                section="Solar Installation Inspections",
+                page_number=7,
             ),
         ]
 

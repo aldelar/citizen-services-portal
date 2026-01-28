@@ -15,7 +15,7 @@ from services.auth_service import get_current_user
 from services.agent_service import get_agent_service
 from services.project_service import get_project_service, generate_project_title
 from services.user_service import get_user_service
-from models.project import Project, ProjectStatus, Plan, PlanStep, StepStatus, ActionType
+from models.project import Project, ProjectStatus, Plan, PlanStep, StepStatus, ActionType, Reference
 from components.plan_widget import plan_widget
 
 
@@ -157,6 +157,7 @@ async def main_page():
     # UI references for dynamic updates
     projects_container = None
     chat_area = None
+    chat_scroll_area = None
     message_input = None
     send_button = None
     chat_header = None
@@ -264,9 +265,9 @@ async def main_page():
             flex-grow: 0 !important;
         }
         .plan-panel { 
-            width: 350px; 
+            width: calc(40% - 120px);
             min-width: 200px;
-            max-width: 800px;
+            max-width: calc(80vw - 300px);
             height: 100% !important;
             display: flex;
             flex-direction: column;
@@ -328,6 +329,79 @@ async def main_page():
         
         # Refresh the UI
         await refresh_ui()
+        
+        # If returning to a project with a plan, automatically ask the agent to review status
+        if is_returning_to_project:
+            await send_auto_resume_message()
+    
+    async def send_auto_resume_message():
+        """Automatically send a resume message when returning to a project.
+        
+        This triggers the agent to review the current project state and suggest next steps.
+        """
+        nonlocal is_returning_to_project
+        
+        # Add agent response bubble that we'll update as tokens stream in
+        with chat_area:
+            agent_msg = ui.chat_message(name='Agent', sent=False).props('bg-color=light-blue-2')
+            with agent_msg:
+                response_label = ui.markdown('⏳ *reviewing your project...*').classes('chat-markdown')
+        
+        try:
+            # Build messages with context (includes the returning user system message)
+            agent_messages = build_agent_messages()
+            
+            # Clear the returning-to-project flag after sending
+            is_returning_to_project = False
+            
+            # Use a synthetic message to prompt the agent to review status
+            resume_prompt = "I'm back. Please review my project status and let me know where we are and what I should tackle next."
+            
+            response_text = ''
+            chunk_count = 0
+            
+            async for chunk in agent_service.send_message_stream(
+                message=resume_prompt,
+                messages=agent_messages,
+            ):
+                response_text += chunk
+                chunk_count += 1
+                if chunk_count % 3 == 0:
+                    response_label.set_content(response_text + '▌')
+                    await ui.run_javascript('void(0)')
+            
+            # Check for plan updates and references
+            display_text, plan_data = extract_plan_from_response(response_text)
+            display_text, references = extract_references_from_response(display_text)
+            
+            if display_text:
+                response_label.set_content(display_text)
+                
+                if references:
+                    with agent_msg:
+                        render_references_row(references)
+                
+                # Save only the agent response (the resume prompt is not saved as user message)
+                messages.append({"role": "assistant", "content": display_text, "references": [r.model_dump() for r in references] if references else None})
+                refs_for_save = [r.model_dump() for r in references] if references else None
+                await project_service.save_message(selected_project_id, "assistant", display_text, references=refs_for_save)
+                
+                if plan_data:
+                    cosmos_plan_dict = convert_plan_to_cosmos_dict(plan_data)
+                    await project_service.update_project(selected_project_id, user_id, {"plan": cosmos_plan_dict})
+                    await reload_and_update_selected_project()
+                    plan_container.clear()
+                    with plan_container:
+                        render_plan_panel()
+                    ui.notify('Plan updated!', type='positive')
+                
+                await project_service.touch_project(selected_project_id, user_id)
+                await reload_and_update_selected_project()
+            else:
+                response_label.set_content('*(no response)*')
+                
+        except Exception as e:
+            response_label.set_content(f'**Error:** {e}')
     
     async def create_new_project():
         """Create a new project and select it."""
@@ -375,6 +449,20 @@ async def main_page():
         chat_area.clear()
         with chat_area:
             render_messages()
+        
+        # Scroll chat to bottom after rendering messages (with delay for DOM update)
+        if chat_scroll_area and messages:
+            await ui.run_javascript('''
+                setTimeout(() => {
+                    const scrollArea = document.querySelector('.chat-scroll');
+                    if (scrollArea) {
+                        const scrollContainer = scrollArea.querySelector('.q-scrollarea__container');
+                        if (scrollContainer) {
+                            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                        }
+                    }
+                }, 100);
+            ''')
         
         # Update chat header
         chat_header.clear()
@@ -511,6 +599,22 @@ async def main_page():
                             if project.status == ProjectStatus.CANCELLED:
                                 title_classes += ' line-through'
                             ui.label(project.title).classes(title_classes)
+                            
+                            # Calculate step-based progress
+                            total_steps = 0
+                            completed_steps = 0
+                            if project.plan and project.plan.steps:
+                                total_steps = len(project.plan.steps)
+                                completed_steps = sum(1 for step in project.plan.steps if step.status == StepStatus.COMPLETED)
+                            
+                            # Progress bar (show if there are steps)
+                            if total_steps > 0:
+                                step_progress = completed_steps / total_steps
+                                progress_pct = int(step_progress * 100)
+                                with ui.row().classes('items-center gap-2 w-full mt-1'):
+                                    ui.linear_progress(value=step_progress, show_value=False).props(f'color={color}').classes('flex-grow')
+                                    ui.label(f'{progress_pct}%').classes('text-xs text-gray-500')
+                            
                             # Show relative time based on updated_at
                             ui.label(f'Updated {format_relative_time(project.updated_at)}').classes('text-xs text-gray-400')
         else:
@@ -637,14 +741,17 @@ async def main_page():
         """Render the chat input area."""
         nonlocal message_input, send_button
         
-        if selected_project and selected_project.status != ProjectStatus.ACTIVE:
+        if not selected_project:
+            # No project selected - don't show input
+            ui.label('Select or create a project to start chatting').classes('text-gray-400 italic text-sm')
+        elif selected_project.status != ProjectStatus.ACTIVE:
             # Show disabled message for non-active projects
             if selected_project.status == ProjectStatus.CANCELLED:
                 ui.label('This project has been cancelled. You can no longer send messages.').classes('text-gray-500 italic')
             elif selected_project.status == ProjectStatus.COMPLETED:
                 ui.label('This project has been completed. You can no longer send messages.').classes('text-gray-500 italic')
         else:
-            # Normal input for active projects or no selection
+            # Normal input for active projects
             message_input = ui.textarea(placeholder='Type your message...').classes('flex-grow')
             message_input.props('autogrow rows=1 outlined')
             send_button = ui.button(icon='send', on_click=send_message).props('round color=primary')
@@ -657,6 +764,7 @@ async def main_page():
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
+            refs_data = msg.get("references", [])
             
             # Skip system messages - they are sent to agent but not displayed
             if role == "system":
@@ -667,8 +775,21 @@ async def main_page():
             with ui.chat_message(
                 name='You' if is_user else 'Agent',
                 sent=is_user,
-            ).props('bg-color=light-blue-2' if not is_user else ''):
+            ).props('bg-color=light-blue-2' if not is_user else '') as chat_msg:
                 ui.markdown(content).classes('chat-markdown')
+                
+                # Render references for assistant messages if any
+                if not is_user and refs_data:
+                    refs = [Reference(
+                        source=r.get('source', ''),
+                        agency=r.get('agency', ''),
+                        excerpt=r.get('excerpt', ''),
+                        title=r.get('title'),
+                        section=r.get('section'),
+                        page_number=r.get('page_number') or r.get('pageNumber')  # Handle both snake_case and camelCase
+                    ) for r in refs_data if isinstance(r, dict)]
+                    if refs:
+                        render_references_row(refs)
     
     def build_agent_messages() -> list[dict]:
         """Build the full message list to send to the agent.
@@ -680,8 +801,14 @@ async def main_page():
         - System message about returning user (if applicable)
         
         System messages are appended at the end and are NOT saved to Cosmos.
+        References are stripped from messages - they are for display only.
         """
-        agent_messages = list(messages)  # Copy the chat history
+        # Copy messages but strip out references (they shouldn't be in agent context)
+        agent_messages = [
+            {"role": msg.get("role"), "content": msg.get("content")}
+            for msg in messages
+            if msg.get("role") and msg.get("content")
+        ]
         
         # Add user info system message if user has profile with actual name
         if user and user.name:
@@ -856,6 +983,114 @@ Please:
         
         return response_text, None
     
+    def extract_references_from_response(response_text: str) -> tuple[str, list[Reference]]:
+        """Extract references JSON from response and return cleaned text + Reference list.
+        
+        Looks for ```json:references ... ``` blocks in the response.
+        If found, extracts the JSON, converts to Reference models, and removes the block.
+        """
+        pattern = r'```json:references\s*([\s\S]*?)```'
+        match = re.search(pattern, response_text)
+        references = []
+        
+        print(f"[DEBUG extract_references] Looking for references in response (len={len(response_text)})")
+        print(f"[DEBUG extract_references] Match found: {match is not None}")
+        
+        if match:
+            try:
+                raw_json = match.group(1)
+                print(f"[DEBUG extract_references] Raw JSON: {raw_json[:200]}...")
+                refs_json = json.loads(raw_json)
+                print(f"[DEBUG extract_references] Parsed {len(refs_json) if isinstance(refs_json, list) else 'non-list'} refs")
+                if isinstance(refs_json, list):
+                    for ref in refs_json:
+                        if isinstance(ref, dict) and 'source' in ref:
+                            references.append(Reference(
+                                source=ref.get('source', ''),
+                                agency=ref.get('agency', ''),
+                                excerpt=ref.get('excerpt', ''),
+                                title=ref.get('title'),
+                                section=ref.get('section'),
+                                page_number=ref.get('page_number') or ref.get('pageNumber')
+                            ))
+                print(f"[DEBUG extract_references] Created {len(references)} Reference objects")
+                # Remove the JSON block from the response
+                cleaned_text = re.sub(pattern, '', response_text).strip()
+                return cleaned_text, references
+            except (json.JSONDecodeError, Exception) as e:
+                print(f"[DEBUG extract_references] Error parsing references JSON: {e}")
+                pass
+        
+        return response_text, []
+    
+    def create_reference_dialog(ref: Reference, ref_num: int):
+        """Create a dialog to show reference details."""
+        with ui.dialog() as dialog, ui.card().classes('w-[600px] max-w-[90vw]'):
+            # Title section
+            if ref.title:
+                ui.label(ref.title).classes('text-xl font-bold')
+            else:
+                ui.label(f'Source #{ref_num}').classes('text-xl font-bold')
+            
+            # Source and location info
+            source_info = f'📄 {ref.source}'
+            if ref.page_number:
+                source_info += f' (page {ref.page_number})'
+            ui.label(source_info).classes('text-sm text-gray-600')
+            
+            # Section heading if available
+            if ref.section:
+                ui.label(f'📑 Section: {ref.section}').classes('text-sm text-gray-500 italic mb-2')
+            
+            ui.separator()
+            with ui.scroll_area().classes('h-64 w-full'):
+                ui.markdown(ref.excerpt).classes('text-base')
+            ui.separator()
+            with ui.row().classes('w-full justify-between items-center'):
+                ui.badge(ref.agency, color='primary').props('outline')
+                ui.button('Close', on_click=dialog.close).props('flat')
+        return dialog
+    
+    def render_references_row(references: list[Reference]):
+        """Render references as clickable badges in a row."""
+        if not references:
+            return
+        
+        with ui.row().classes('items-center gap-2 mt-3 flex-wrap'):
+            ui.label('📚 Sources:').classes('text-sm text-gray-600 font-medium')
+            
+            # Group references by agency
+            by_agency: dict[str, list[tuple[int, Reference]]] = {}
+            for i, ref in enumerate(references, 1):
+                agency = ref.agency or 'Other'
+                if agency not in by_agency:
+                    by_agency[agency] = []
+                by_agency[agency].append((i, ref))
+            
+            # Render each agency group
+            for agency, refs in by_agency.items():
+                with ui.row().classes('items-center gap-1'):
+                    ui.label(f'[{agency}]').classes('text-sm font-medium text-gray-700')
+                    for ref_num, ref in refs:
+                        dialog = create_reference_dialog(ref, ref_num)
+                        # Build rich tooltip with title and section info
+                        tooltip_parts = []
+                        if ref.title:
+                            tooltip_parts.append(ref.title)
+                        if ref.section:
+                            tooltip_parts.append(f'§ {ref.section}')
+                        tooltip_parts.append(ref.source)
+                        if ref.page_number:
+                            tooltip_parts.append(f'(p. {ref.page_number})')
+                        tooltip_text = ' — '.join(tooltip_parts) if len(tooltip_parts) > 1 else tooltip_parts[0]
+                        
+                        ui.button(
+                            f'Ref {ref_num}',
+                            on_click=dialog.open
+                        ).props('flat dense').classes(
+                            'text-blue-800 font-semibold hover:bg-blue-100 px-2'
+                        ).tooltip(tooltip_text)
+    
     async def send_message():
         """Send a message to the agent."""
         nonlocal selected_project_id, selected_project, messages, is_returning_to_project
@@ -928,14 +1163,24 @@ Please:
             # Check for plan updates in the response
             display_text, plan_data = extract_plan_from_response(response_text)
             
+            # Check for references in the response
+            display_text, references = extract_references_from_response(display_text)
+            
             # Final update with cleaned text (plan JSON replaced with visual indicator)
             if display_text:
                 response_label.set_content(display_text)
                 
+                # Render clickable references row if any
+                if references:
+                    with agent_msg:
+                        render_references_row(references)
+                
                 # Save the CLEANED text (without JSON plan block) to messages
                 # The plan is saved separately in the project, no need to keep JSON in history
-                messages.append({"role": "assistant", "content": display_text})
-                await project_service.save_message(selected_project_id, "assistant", display_text)
+                # References are saved with the message but NOT included in agent context
+                messages.append({"role": "assistant", "content": display_text, "references": [r.model_dump() for r in references] if references else None})
+                refs_for_save = [r.model_dump() for r in references] if references else None
+                await project_service.save_message(selected_project_id, "assistant", display_text, references=refs_for_save)
                 
                 # If plan was extracted, save it to the project and refresh
                 if plan_data:
@@ -1007,7 +1252,8 @@ Please:
                 render_chat_header()
             
             # Chat messages area (scrollable)
-            with ui.scroll_area().classes('chat-scroll p-4'):
+            chat_scroll_area = ui.scroll_area().classes('chat-scroll p-4')
+            with chat_scroll_area:
                 chat_area = ui.column().classes('w-full gap-2')
                 with chat_area:
                     if selected_project:
@@ -1019,8 +1265,13 @@ Please:
                             ui.label('Welcome to the Citizen Services Portal').classes('text-2xl font-bold text-center mt-4')
                             ui.label(
                                 "I'm your AI assistant for navigating LA city services. "
-                                "Select a project or click + to start a new conversation."
+                                "Select a project or start a new conversation."
                             ).classes('text-center text-gray-600 mt-2 max-w-md')
+                            ui.button(
+                                'Start New Project',
+                                icon='add',
+                                on_click=create_new_project
+                            ).props('color=primary size=lg').classes('mt-6')
             
             # Input area (fixed at bottom)
             chat_input_container = ui.row().classes('w-full p-4 border-t items-end gap-2 chat-input-area bg-white')
@@ -1060,7 +1311,12 @@ Please:
             document.addEventListener('mousemove', function(e) {
                 if (!isDragging) return;
                 const diff = startX - e.clientX;
-                const newWidth = Math.min(Math.max(startWidth + diff, 200), 800);
+                // Calculate max width: 80% of (viewport - projects panel), leaving 20% for chat
+                const projectsPanel = document.querySelector('.projects-panel');
+                const projectsWidth = projectsPanel ? projectsPanel.offsetWidth : 300;
+                const availableWidth = window.innerWidth - projectsWidth;
+                const maxWidth = availableWidth * 0.8;
+                const newWidth = Math.min(Math.max(startWidth + diff, 200), maxWidth);
                 panel.style.width = newWidth + 'px';
             });
             

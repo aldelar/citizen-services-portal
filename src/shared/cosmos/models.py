@@ -48,7 +48,19 @@ class ActionType(str, Enum):
 
     AUTOMATED = "automated"  # Agent can execute directly via tools
     USER_ACTION = "user_action"  # User must take action (call, email, visit)
-    INFORMATION = "information"  # Information gathering or waiting step
+
+
+class StepType(str, Enum):
+    """Step type enumeration - categorizes what kind of task the step represents."""
+
+    PRM = "PRM"  # Permit - apply for/obtain official permits
+    INS = "INS"  # Inspection - city inspections including final sign-off
+    TRD = "TRD"  # Trade - hire professionals + physical work phases
+    APP = "APP"  # Application - non-permit applications
+    SCH = "SCH"  # Schedule - book appointments/pickups
+    ENR = "ENR"  # Enroll - sign up for programs/plans
+    DOC = "DOC"  # Document - gather documents/materials
+    PAY = "PAY"  # Payment - pay fees/deposits
 
 
 # Configure camelCase alias for all models
@@ -127,6 +139,7 @@ class PlanStep(CamelCaseModel):
     description: Optional[str] = None  # Made optional for flexibility
     agency: Optional[str] = None  # Changed from Agency enum to string for flexibility
     status: StepStatus = StepStatus.NOT_STARTED
+    step_type: Optional[str] = None  # PRM, INS, TRD, APP, SCH, ENR, DOC, PAY
     action_type: Optional[str] = "automated"  # automated, user_action, or information
     order: Optional[int] = None  # Made optional for flexibility
     estimated_duration_days: Optional[int] = None
@@ -182,6 +195,17 @@ class TokenUsage(CamelCaseModel):
     total_tokens: int
 
 
+class KBReference(CamelCaseModel):
+    """Knowledge base reference citation."""
+
+    source: str  # Source document filename
+    agency: str  # LADBS, LADWP, or LASAN
+    excerpt: str  # Brief excerpt of the content used
+    title: Optional[str] = None  # Document title
+    section: Optional[str] = None  # Section heading where content was found
+    page_number: Optional[int] = None  # Page number (for PDFs)
+
+
 class Message(CamelCaseModel):
     """Message document model."""
 
@@ -192,6 +216,7 @@ class Message(CamelCaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     tool_calls: Optional[List[ToolCall]] = None
     token_usage: Optional[TokenUsage] = None
+    references: Optional[List[KBReference]] = None  # KB citations for assistant messages
 
 
 # Step completion models

@@ -101,12 +101,21 @@ def project_card(
         if project.description:
             ui.label(project.description).classes('text-sm text-gray-600 truncate')
         
-        # Progress bar
+        # Calculate step-based progress
+        total_steps = 0
+        completed_steps = 0
+        if project.plan and project.plan.steps:
+            total_steps = len(project.plan.steps)
+            completed_steps = sum(1 for step in project.plan.steps if step.status == StepStatus.COMPLETED)
+        
+        step_progress = completed_steps / total_steps if total_steps > 0 else 0.0
+        
+        # Progress bar (full width, between title and updated time)
         with ui.row().classes('items-center gap-2 mt-2 w-full'):
             ui.linear_progress(
-                value=project.progress,
+                value=step_progress,
             ).props(f'color={color}').classes('flex-grow')
-            ui.label(f'{int(project.progress * 100)}%').classes('text-xs text-gray-500 w-8 text-right')
+            ui.label(f'{completed_steps}/{total_steps}').classes('text-xs text-gray-500 min-w-fit')
         
         # Last updated
         ui.label(f'Updated {format_relative_time(project.updated_at)}').classes('text-xs text-gray-400 mt-1')

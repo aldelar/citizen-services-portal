@@ -41,7 +41,7 @@ _search_enabled = bool(os.environ.get("AZURE_SEARCH_ENDPOINT"))
 # Search configuration
 _SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "ladwp-kb")
 _SEARCH_SEMANTIC_CONFIG = os.environ.get("AZURE_SEARCH_SEMANTIC_CONFIG", "ladwp-semantic-config")
-_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2"]
+_SEARCH_SELECT_FIELDS = ["chunk", "source_file", "title", "header_1", "header_2", "page_number"]
 _MAX_RERANKER_SCORE = 4.0  # Azure AI Search semantic reranker score typically ranges 0-4
 
 
@@ -133,10 +133,16 @@ class LADWPService:
                     relevance_score = result.get("@search.reranker_score", 0) / _MAX_RERANKER_SCORE
                     relevance_score = max(0.0, min(1.0, relevance_score))
                     
+                    # Build section from headers (prefer more specific header)
+                    section = result.get("header_2") or result.get("header_1")
+                    
                     chunks.append(DocumentChunk(
                         content=result["chunk"],
                         source=result["source_file"],
-                        relevance_score=relevance_score
+                        relevance_score=relevance_score,
+                        title=result.get("title"),
+                        section=section,
+                        page_number=result.get("page_number")
                     ))
                 
                 return KnowledgeResult(
@@ -155,16 +161,25 @@ class LADWPService:
                 content="TOU-D-PRIME is LADWP's Time-of-Use rate designed for solar customers. Off-peak hours are 8pm-4pm weekdays and all weekend at $0.15/kWh. On-peak hours are 4pm-9pm weekdays at $0.45/kWh. This rate maximizes savings when combined with battery storage.",
                 source="ladwp-rate-plans-2026.pdf",
                 relevance_score=0.95,
+                title="Residential Rate Plans Guide",
+                section="TOU-D-PRIME Solar Rate",
+                page_number=8,
             ),
             DocumentChunk(
                 content="LADWP Clean Replacement Program offers rebates for heat pump HVAC systems: $2,500 per ton for ducted systems (max 5 tons), $2,000 per ton for ductless mini-splits. AHRI certification and LADBS permit required. Processing takes 8-12 weeks.",
                 source="ladwp-rebate-guide.pdf",
                 relevance_score=0.88,
+                title="Consumer Rebate Program",
+                section="Heat Pump HVAC Rebates",
+                page_number=4,
             ),
             DocumentChunk(
                 content="Solar interconnection process: 1) Submit application to SolarCoordinator@ladwp.com with single-line diagram, equipment specs, and site plan. 2) Engineering review takes 4-6 weeks. 3) After installation, request PTO (Permission to Operate) inspection.",
                 source="ladwp-solar-interconnection.pdf",
                 relevance_score=0.82,
+                title="Solar Interconnection Guide",
+                section="Application Process",
+                page_number=2,
             ),
         ]
 

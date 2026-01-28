@@ -18,6 +18,9 @@ class DocumentChunk(BaseModel):
     content: str = Field(description="Text content")
     source: str = Field(description="Source document name")
     relevance_score: float = Field(description="Relevance score 0.0 to 1.0", ge=0.0, le=1.0)
+    title: Optional[str] = Field(default=None, description="Document title")
+    section: Optional[str] = Field(default=None, description="Section heading where content was found")
+    page_number: Optional[int] = Field(default=None, description="Page number (for PDFs)")
 
 
 class KnowledgeResult(BaseModel):

@@ -205,6 +205,7 @@ class ProjectService:
         role: str,
         content: str,
         tool_calls: Optional[list] = None,
+        references: Optional[list] = None,
     ) -> Optional[dict]:
         """Save a message to the database.
         
@@ -213,6 +214,7 @@ class ProjectService:
             role: Message role ('user' or 'assistant').
             content: Message content.
             tool_calls: Optional list of tool calls for assistant messages.
+            references: Optional list of KB references for assistant messages.
             
         Returns:
             Created message dictionary or None if save failed.
@@ -226,6 +228,7 @@ class ProjectService:
                 "content": content,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "tool_calls": tool_calls,
+                "references": references,
             }
             if project_id not in _in_memory_messages:
                 _in_memory_messages[project_id] = []
@@ -238,7 +241,21 @@ class ProjectService:
             return message
         
         try:
-            from cosmos.models import Message
+            from cosmos.models import Message, KBReference
+            
+            # Convert reference dicts to KBReference models if provided
+            kb_refs = None
+            if references:
+                kb_refs = [
+                    KBReference(
+                        source=ref.get('source', ''),
+                        agency=ref.get('agency', ''),
+                        excerpt=ref.get('excerpt', ''),
+                        title=ref.get('title'),
+                        section=ref.get('section'),
+                        page_number=ref.get('page_number')
+                    ) for ref in references if isinstance(ref, dict)
+                ]
             
             message = Message(
                 id=str(uuid4()),
@@ -246,6 +263,7 @@ class ProjectService:
                 role=role,
                 content=content,
                 timestamp=datetime.now(timezone.utc),
+                references=kb_refs,
             )
             
             saved = await self._message_repo.append_message(message)

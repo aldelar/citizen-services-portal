@@ -32,6 +32,9 @@ class DocumentChunk(BaseModel):
     content: str                  # Text content
     source: str                   # Source document name
     relevance_score: float        # 0.0 to 1.0
+    title: Optional[str]          # Document title (for citations)
+    section: Optional[str]        # Section heading where content was found
+    page_number: Optional[int]    # Page number (for PDFs)
 ```
 
 #### UserActionResponse
