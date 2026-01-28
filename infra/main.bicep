@@ -184,6 +184,17 @@ module foundryRbac './core/security/foundry-rbac.bicep' = if (principalId != '')
   }
 }
 
+// Foundry RBAC - Grant managed identity access to Foundry for Azure OpenAI calls
+module foundryIdentityRbac './core/security/foundry-rbac.bicep' = {
+  name: 'foundry-identity-rbac-deployment'
+  scope: rg
+  params: {
+    foundryId: foundry.outputs.id
+    principalId: managedIdentity.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Foundry RBAC - Grant AI Search service access to Foundry (for AI enrichment)
 module foundrySearchRbac './core/security/foundry-rbac.bicep' = {
   name: 'foundry-search-rbac-deployment'
@@ -559,6 +570,60 @@ module mcpReportingRbac './core/security/mcp-server-rbac.bicep' = {
   }
 }
 
+// CSP Agent (Azure Container App)
+module cspAgent './app/csp-agent.bicep' = {
+  name: 'csp-agent-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    containerAppName: 'aldelar-csp-agent'
+    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
+    containerRegistryName: containerRegistry.outputs.name
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
+    identityId: managedIdentity.outputs.identityId
+    identityClientId: managedIdentity.outputs.clientId
+    applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    azureOpenAiEndpoint: 'https://${foundry.outputs.name}.openai.azure.com/'
+    azureOpenAiChatDeploymentName: 'gpt-4.1'
+    mcpLadbsUrl: mcpLadbs.outputs.uri
+    mcpLadwpUrl: mcpLadwp.outputs.uri
+    mcpLasanUrl: mcpLasan.outputs.uri
+    mcpReportingUrl: mcpReporting.outputs.uri
+    agentProjectResourceId: foundryProject.outputs.id
+    agentProjectEndpoint: 'https://${foundry.outputs.name}.services.ai.azure.com/api/projects/${foundryProject.outputs.name}'
+    external: true
+  }
+}
+
+// Web App (Azure Container App)
+module webApp './app/webapp.bicep' = {
+  name: 'webapp-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    containerAppName: 'aldelar-csp-webapp'
+    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
+    containerRegistryName: containerRegistry.outputs.name
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
+    identityId: managedIdentity.outputs.identityId
+    identityClientId: managedIdentity.outputs.clientId
+    applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
+    cosmosEndpoint: cosmosDb.outputs.endpoint
+    cosmosDatabase: 'citizen-services'
+    cspAgentUrl: cspAgent.outputs.uri
+    mcpLadbsUrl: mcpLadbs.outputs.uri
+    mcpLadwpUrl: mcpLadwp.outputs.uri
+    mcpLasanUrl: mcpLasan.outputs.uri
+    mcpReportingUrl: mcpReporting.outputs.uri
+    enableAuthentication: false
+    appClientId: ''
+    appClientSecret: ''
+    external: true
+  }
+}
+
 // =================================
 // Outputs
 // =================================
@@ -602,6 +667,12 @@ output containerRegistryLoginServer string = containerRegistry.outputs.loginServ
 
 @description('Container Apps Environment name')
 output containerAppsEnvironmentName string = containerAppsEnvironment.outputs.name
+
+@description('CSP Agent Container App URL')
+output cspAgentUrl string = cspAgent.outputs.uri
+
+@description('Web App Container App URL')
+output webAppUrl string = webApp.outputs.uri
 
 // AI Services
 @description('AI Search service name')
@@ -651,6 +722,9 @@ output foundryProjectName string = foundryProject.outputs.name
 
 @description('Foundry Project endpoint - Use this for agent deployment')
 output foundryProjectEndpoint string = 'https://${foundry.outputs.name}.services.ai.azure.com/api/projects/${foundryProject.outputs.name}'
+
+@description('Cosmos DB endpoint for agent thread persistence')
+output COSMOS_ENDPOINT string = cosmosDb.outputs.endpoint
 
 // Application Services
 @description('LADBS MCP Server FQDN')

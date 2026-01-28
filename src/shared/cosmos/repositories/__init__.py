@@ -3,7 +3,6 @@
 from .messages import MessageRepository
 from .projects import ProjectRepository
 from .reporting import ReportingRepository
-from .threads import ThreadRepository
 from .users import UserRepository
 
 __all__ = [
@@ -11,5 +10,4 @@ __all__ = [
     "ProjectRepository",
     "MessageRepository",
     "ReportingRepository",
-    "ThreadRepository",
 ]

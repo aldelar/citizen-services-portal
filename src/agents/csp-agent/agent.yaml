@@ -19,7 +19,7 @@ metadata:
         - Government
 protocols:
     - protocol: responses
-      version: ""
+      version: "1.0"
 environment_variables:
     - name: AZURE_AI_PROJECT_ENDPOINT
       value: ${AZURE_AI_PROJECT_ENDPOINT}
@@ -35,4 +35,11 @@ environment_variables:
       value: ${MCP_LASAN_URL}  # From Bicep output
     - name: MCP_REPORTING_URL
       value: ${MCP_REPORTING_URL}  # From Bicep output
+    # Thread persistence (Cosmos DB)
+    - name: AGENT_COSMOS_ENDPOINT
+      value: ${COSMOS_ENDPOINT}
+    - name: AGENT_COSMOS_DATABASE
+      value: citizen-services
+    - name: AGENT_COSMOS_THREADS_CONTAINER
+      value: threads
 

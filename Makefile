@@ -44,8 +44,8 @@ help:
 	@echo "  make test-web          - Run web app tests"
 	@echo ""
 	@echo "Utilities:"
-	@echo "  make cosmos-clear         - Show what CosmosDB data would be deleted (dry run)"
-	@echo "  make cosmos-clear-confirm - Delete all CosmosDB data (projects, threads, messages)"
+	@echo "  make cosmos-clear         - Delete all CosmosDB data (projects, threads, messages)"
+	@echo "  make cosmos-clear-dry     - Show what CosmosDB data would be deleted (dry run)"
 	@echo "  make clean                - Clean up virtual environments and caches"
 	@echo "  make sync                 - Sync all dependencies"
 	@echo ""
@@ -185,12 +185,12 @@ rbac:
 # ============================================================================
 
 cosmos-clear:
-	@echo "🗑️  Clearing CosmosDB data (dry run)..."
-	cd scripts && uv run python clear-cosmos-data.py
-
-cosmos-clear-confirm:
 	@echo "🗑️  Clearing CosmosDB data (CONFIRMED - deleting all data)..."
 	cd scripts && uv run python clear-cosmos-data.py --confirm
+
+cosmos-clear-dry:
+	@echo "🗑️  Clearing CosmosDB data (dry run)..."
+	cd scripts && uv run python clear-cosmos-data.py
 
 # ============================================================================
 # Utilities

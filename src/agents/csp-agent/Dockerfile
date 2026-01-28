@@ -2,7 +2,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY . user_agent/
+# Build context is repo root (set in azure.yaml), so copy agent folder explicitly
+COPY src/agents/csp-agent/ /app/user_agent/
 WORKDIR /app/user_agent
 
 RUN if [ -f requirements.txt ]; then \

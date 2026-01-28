@@ -40,8 +40,7 @@ class ProjectService:
     def __init__(self):
         """Initialize the project service."""
         self._project_repo = None
-        self._message_repo = None  # Deprecated: messages now stored in threads
-        self._thread_repo = None   # New: reads from threads collection
+        self._message_repo = None
         self._cosmos_available = None
     
     async def _check_cosmos_available(self) -> bool:
@@ -59,14 +58,13 @@ class ProjectService:
         os.environ.setdefault("COSMOS_DATABASE", settings.COSMOS_DATABASE)
         
         try:
-            from cosmos.repositories import ProjectRepository, MessageRepository, ThreadRepository
+            from cosmos.repositories import ProjectRepository, MessageRepository
             from cosmos.client import get_cosmos_client
             
             # Try to get the client to verify connection
             await get_cosmos_client()
             self._project_repo = ProjectRepository()
-            self._message_repo = MessageRepository()  # Keep for fallback
-            self._thread_repo = ThreadRepository()    # New: for reading messages from threads
+            self._message_repo = MessageRepository()
             self._cosmos_available = True
             logger.info("CosmosDB connection established")
             return True
@@ -176,12 +174,11 @@ class ProjectService:
             return None
     
     async def get_messages(self, project_id: str, thread_id: Optional[str] = None, limit: int = 100) -> List[dict]:
-        """Get messages for a project from the agent's thread storage.
+        """Get messages for a project from the app-side messages store.
         
         Args:
-            project_id: The project ID (for in-memory fallback and deprecated message repo).
-            thread_id: The thread ID (conv_xxx format) for the agent's thread storage.
-                       If not provided, messages won't be found in threads collection.
+            project_id: The project ID (for in-memory fallback and message repo).
+            thread_id: Unused for app-side history (kept for compatibility).
             limit: Maximum number of messages to return.
             
         Returns:
@@ -192,20 +189,14 @@ class ProjectService:
             return _in_memory_messages.get(project_id, [])
         
         try:
-            # Get messages from thread repository (new approach)
-            # The agent stores the full thread in the threads collection
-            if thread_id:
-                messages = await self._thread_repo.get_messages_from_thread(thread_id)
-            else:
-                messages = []
-            
-            # Apply limit if needed (messages are already in chronological order)
-            if limit and len(messages) > limit:
-                messages = messages[-limit:]
-            
+            # Use messages repository (stateless application approach)
+            items = await self._message_repo.get_messages(project_id, limit=limit)
+            messages = [item.model_dump() for item in items]
+            # Repository returns newest-first; reverse to chronological order
+            messages.reverse()
             return messages
         except Exception as e:
-            logger.error(f"Error getting messages from thread: {e}")
+            logger.error(f"Error getting messages from messages store: {e}")
             return []
     
     async def save_message(

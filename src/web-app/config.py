@@ -15,16 +15,17 @@ class Settings:
     
     # Auth settings
     USE_MOCK_AUTH: bool = os.getenv('USE_MOCK_AUTH', 'true').lower() == 'true'
-    MOCK_USER_ID: str = os.getenv('MOCK_USER_ID', 'local-dev-user')
-    MOCK_USER_EMAIL: str = os.getenv('MOCK_USER_EMAIL', 'dev@example.com')
-    MOCK_USER_NAME: str = os.getenv('MOCK_USER_NAME', 'John Smith')
+    MOCK_USER_ID: str = os.getenv('MOCK_USER_ID', 'local_user')
+    MOCK_USER_EMAIL: str = os.getenv('MOCK_USER_EMAIL', '')
+    MOCK_USER_NAME: str = os.getenv('MOCK_USER_NAME', '')
     
     # Server settings
     NICEGUI_PORT: int = int(os.getenv('NICEGUI_PORT', '8080'))
     NICEGUI_HOST: str = os.getenv('NICEGUI_HOST', '0.0.0.0')
     
     # Backend services
-    CSP_AGENT_URL: str = os.getenv('CSP_AGENT_URL', 'http://localhost:8010')
+    CSP_AGENT_URL: str = os.getenv('CSP_AGENT_URL', 'http://localhost:8088')
+    CSP_AGENT_USE_AUTH: bool = os.getenv('CSP_AGENT_USE_AUTH', 'false').lower() == 'true'
     
     # CosmosDB settings
     COSMOS_ENDPOINT: str = os.getenv('COSMOS_ENDPOINT', '')
