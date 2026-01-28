@@ -3,7 +3,7 @@
 # Common commands for local development and testing.
 # Run `make help` to see all available commands.
 
-.PHONY: help dev dev-web dev-mcp dev-setup rbac docker-up docker-down clean
+.PHONY: help dev dev-web dev-mcp dev-setup rbac docker-up docker-down clean eval eval-generate eval-check
 
 # Default target
 help:
@@ -42,6 +42,11 @@ help:
 	@echo "  make test-lasan        - Run full LASAN test suite"
 	@echo "  make test-reporting    - Run full Reporting test suite"
 	@echo "  make test-web          - Run web app tests"
+	@echo ""
+	@echo "Agent Evaluation:"
+	@echo "  make eval              - Run CSP Agent evaluation"
+	@echo "  make eval-generate     - Generate test data for evaluation"
+	@echo "  make eval-check        - Check evaluation thresholds"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make cosmos-clear         - Delete all CosmosDB data (projects, threads, messages)"
@@ -166,6 +171,31 @@ test-reporting:
 test-web:
 	@echo "🧪 Running web app tests..."
 	cd src/web-app && uv run pytest
+
+# ============================================================================
+# Agent Evaluation
+# ============================================================================
+
+eval:
+	@echo "📊 Running CSP Agent evaluation..."
+	pip install -q -r tests/evaluation/requirements.txt
+	python tests/evaluation/run_evaluation.py \
+		--dataset tests/evaluation/data/regression_tests.jsonl \
+		--output-path tests/evaluation/results \
+		--thresholds tests/evaluation/thresholds.yaml
+
+eval-generate:
+	@echo "📋 Generating test data for evaluation..."
+	pip install -q -r tests/evaluation/requirements.txt
+	python tests/evaluation/scripts/generate_test_data.py \
+		--type all \
+		--output-dir tests/evaluation/data
+
+eval-check:
+	@echo "🔍 Checking evaluation thresholds..."
+	python tests/evaluation/check_thresholds.py \
+		--results tests/evaluation/results \
+		--thresholds tests/evaluation/thresholds.yaml
 
 # ============================================================================
 # Setup

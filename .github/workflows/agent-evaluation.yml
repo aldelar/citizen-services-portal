@@ -1,0 +1,157 @@
+# CSP Agent Evaluation Workflow
+# 
+# Runs agent evaluation on PRs that modify agent or MCP server code.
+# Blocks PRs that fail to meet quality thresholds.
+
+name: Agent Evaluation
+
+on:
+  pull_request:
+    paths:
+      - 'src/agents/**'
+      - 'src/mcp-servers/**'
+      - 'specs/4-spec-csp-agent.md'
+      - 'specs/1-spec-mcp-servers.md'
+      - 'tests/evaluation/**'
+  workflow_dispatch:
+    inputs:
+      full_evaluation:
+        description: 'Run full evaluation suite'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  evaluate-agent:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: tests/evaluation/requirements.txt
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/evaluation/requirements.txt
+      
+      - name: Run Custom Evaluators (Offline)
+        id: custom_eval
+        run: |
+          echo "Running custom evaluators on test data..."
+          
+          # Run evaluation with custom evaluators only (no Azure API needed)
+          python tests/evaluation/run_evaluation.py \
+            --dataset tests/evaluation/data/regression_tests.jsonl \
+            --output-path tests/evaluation/results \
+            --thresholds tests/evaluation/thresholds.yaml
+        continue-on-error: true
+      
+      - name: Run Full Evaluation (with Azure AI)
+        id: full_eval
+        if: ${{ github.event.inputs.full_evaluation == 'true' }}
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
+        run: |
+          echo "Running full evaluation with Azure AI evaluators..."
+          
+          python tests/evaluation/run_evaluation.py \
+            --dataset tests/evaluation/data/regression_tests.jsonl \
+            --output-path tests/evaluation/results \
+            --thresholds tests/evaluation/thresholds.yaml
+        continue-on-error: true
+      
+      - name: Check Thresholds
+        id: check_thresholds
+        run: |
+          echo "Checking evaluation results against thresholds..."
+          
+          python tests/evaluation/check_thresholds.py \
+            --results tests/evaluation/results \
+            --thresholds tests/evaluation/thresholds.yaml
+        continue-on-error: true
+      
+      - name: Upload Evaluation Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-report
+          path: tests/evaluation/results/
+          retention-days: 30
+      
+      - name: Post PR Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let summaryContent = '## 🏛️ CSP Agent Evaluation Results\n\n';
+            
+            // Try to read the summary file
+            try {
+              const summary = fs.readFileSync('tests/evaluation/results/summary.md', 'utf8');
+              summaryContent += summary;
+            } catch (error) {
+              summaryContent += '⚠️ Evaluation summary not available.\n\n';
+              summaryContent += 'This may indicate the evaluation did not complete successfully.\n';
+            }
+            
+            // Try to read threshold check results
+            try {
+              const thresholdCheck = fs.readFileSync('tests/evaluation/results/threshold_check.md', 'utf8');
+              summaryContent += '\n\n---\n\n' + thresholdCheck;
+            } catch (error) {
+              // Threshold check file not available
+            }
+            
+            // Find existing comment to update
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('CSP Agent Evaluation Results')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                comment_id: botComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summaryContent
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summaryContent
+              });
+            }
+      
+      - name: Fail if thresholds not met
+        if: steps.check_thresholds.outcome == 'failure'
+        run: |
+          echo "❌ Evaluation thresholds not met!"
+          echo "Please review the evaluation report and address the issues."
+          exit 1
