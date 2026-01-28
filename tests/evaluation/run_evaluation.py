@@ -103,6 +103,7 @@ def run_evaluation(
     azure_evaluators: dict[str, Any],
     custom_evaluators: dict[str, Any],
     output_path: Path,
+    thresholds: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Run evaluation on all test cases.
@@ -112,6 +113,7 @@ def run_evaluation(
         azure_evaluators: Azure AI Evaluation SDK evaluators
         custom_evaluators: Custom CSP evaluators
         output_path: Path to store results
+        thresholds: Optional threshold configuration for pass/fail determination
         
     Returns:
         Aggregated evaluation results
@@ -183,12 +185,14 @@ def run_evaluation(
         
         results.append(case_results)
         
-        # Progress indicator
-        if (i + 1) % 10 == 0:
-            print(f"  Processed {i + 1}/{len(test_cases)} test cases")
+        # Progress indicator - show every 10 cases, or every case if total < 10
+        total_cases = len(test_cases)
+        progress_interval = 10 if total_cases >= 10 else 1
+        if (i + 1) % progress_interval == 0 or (i + 1) == total_cases:
+            print(f"  Processed {i + 1}/{total_cases} test cases")
     
     # Calculate aggregated metrics
-    aggregated = aggregate_results(results)
+    aggregated = aggregate_results(results, thresholds)
     
     # Save detailed results
     output_path.mkdir(parents=True, exist_ok=True)
@@ -205,9 +209,27 @@ def run_evaluation(
     return aggregated
 
 
-def aggregate_results(results: list[dict[str, Any]]) -> dict[str, Any]:
+def aggregate_results(
+    results: list[dict[str, Any]],
+    thresholds: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Aggregate evaluation results across all test cases."""
     aggregated: dict[str, dict[str, Any]] = {}
+    
+    # Build threshold lookup from configuration
+    threshold_lookup: dict[str, float] = {}
+    if thresholds:
+        # Built-in evaluators use 1-5 scale
+        for name, value in thresholds.get("pass_thresholds", {}).items():
+            threshold_lookup[name] = value
+        # Custom evaluators use 0-1 scale
+        for name, value in thresholds.get("custom_thresholds", {}).items():
+            # Map names like "agency_boundary" to evaluator key
+            key = name.replace("_valid", "").replace("_correct", "")
+            threshold_lookup[key] = value
+        # Prompt-based evaluators use 1-5 scale
+        for name, value in thresholds.get("prompt_thresholds", {}).items():
+            threshold_lookup[name] = value
     
     for result in results:
         if result.get("status") == "skipped":
@@ -230,8 +252,14 @@ def aggregate_results(results: list[dict[str, Any]]) -> dict[str, Any]:
                 if score is not None:
                     aggregated[eval_name]["scores"].append(score)
                     aggregated[eval_name]["total"] += 1
-                    # Consider score >= 0.8 (or 4.0 for 1-5 scale) as passed
-                    threshold = 0.8 if score <= 1.0 else 4.0
+                    
+                    # Use configured threshold or fall back to heuristic
+                    if eval_name in threshold_lookup:
+                        threshold = threshold_lookup[eval_name]
+                    else:
+                        # Fallback: 0.8 for 0-1 scale, 4.0 for 1-5 scale
+                        threshold = 0.8 if score <= 1.0 else 4.0
+                    
                     if score >= threshold:
                         aggregated[eval_name]["passed"] += 1
                     else:
@@ -399,6 +427,7 @@ def main() -> int:
         azure_evaluators,
         custom_evaluators,
         output_path,
+        thresholds,
     )
     
     print("\n" + "=" * 50)

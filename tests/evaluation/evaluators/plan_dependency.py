@@ -152,40 +152,36 @@ class PlanDependencyEvaluator:
                 depends_on = [depends_on]
             graph[step_id] = [str(d) for d in depends_on]
         
-        # DFS for cycle detection
-        white = set(graph.keys())  # Not visited
-        gray: set[str] = set()     # Currently being visited
-        black: set[str] = set()    # Completely visited
+        # DFS for cycle detection using standard coloring approach
+        # unvisited = not yet processed
+        # visiting = currently in the DFS stack (part of current path)
+        # visited = completely processed
+        unvisited = set(graph.keys())
+        visiting: set[str] = set()
+        visited: set[str] = set()
         
-        parent: dict[str, str | None] = {}
-        
-        def dfs(node: str) -> list[str] | None:
-            white.discard(node)
-            gray.add(node)
+        def dfs(node: str, path: list[str]) -> list[str] | None:
+            unvisited.discard(node)
+            visiting.add(node)
             
             for neighbor in graph.get(node, []):
-                if neighbor in gray:
-                    # Found a cycle - reconstruct it
-                    cycle = [neighbor, node]
-                    current = node
-                    while parent.get(current) and parent[current] != neighbor:
-                        current = parent[current]
-                        cycle.append(current)
-                    return list(reversed(cycle))
+                if neighbor in visiting:
+                    # Found a cycle - return the cycle path
+                    cycle_start = path.index(neighbor) if neighbor in path else 0
+                    return path[cycle_start:] + [neighbor]
                 
-                if neighbor in white:
-                    parent[neighbor] = node
-                    result = dfs(neighbor)
+                if neighbor in unvisited:
+                    result = dfs(neighbor, path + [neighbor])
                     if result:
                         return result
             
-            gray.discard(node)
-            black.add(node)
+            visiting.discard(node)
+            visited.add(node)
             return None
         
-        for node in list(white):
-            if node in white:
-                result = dfs(node)
+        for node in list(unvisited):
+            if node in unvisited:
+                result = dfs(node, [node])
                 if result:
                     return result
         
