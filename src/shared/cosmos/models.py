@@ -43,6 +43,14 @@ class UserTaskType(str, Enum):
     WAIT = "wait"
 
 
+class ActionType(str, Enum):
+    """Step action type enumeration - determines if step is automated or requires user action."""
+
+    AUTOMATED = "automated"  # Agent can execute directly via tools
+    USER_ACTION = "user_action"  # User must take action (call, email, visit)
+    INFORMATION = "information"  # Information gathering or waiting step
+
+
 # Configure camelCase alias for all models
 class CamelCaseModel(BaseModel):
     """Base model with camelCase serialization."""
@@ -119,6 +127,7 @@ class PlanStep(CamelCaseModel):
     description: Optional[str] = None  # Made optional for flexibility
     agency: Optional[str] = None  # Changed from Agency enum to string for flexibility
     status: StepStatus = StepStatus.NOT_STARTED
+    action_type: Optional[str] = "automated"  # automated, user_action, or information
     order: Optional[int] = None  # Made optional for flexibility
     estimated_duration_days: Optional[int] = None
     user_tasks: List[UserTask] = Field(default_factory=list)

@@ -4,6 +4,7 @@ from .base_repository import BaseRepository
 from .client import close_client, get_container, get_cosmos_client, get_database
 from .exceptions import ConflictError, NotFoundError, ValidationError
 from .models import (
+    ActionType,
     Agency,
     Message,
     Plan,
@@ -48,6 +49,7 @@ __all__ = [
     "Plan",
     "PlanStep",
     "StepStatus",
+    "ActionType",
     "Agency",
     "UserTask",
     "UserTaskType",

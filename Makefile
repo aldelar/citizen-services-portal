@@ -46,6 +46,7 @@ help:
 	@echo "Utilities:"
 	@echo "  make cosmos-clear         - Delete all CosmosDB data (projects, threads, messages)"
 	@echo "  make cosmos-clear-dry     - Show what CosmosDB data would be deleted (dry run)"
+	@echo "  make cosmos-clear-projects - Delete only projects and messages"
 	@echo "  make clean                - Clean up virtual environments and caches"
 	@echo "  make sync                 - Sync all dependencies"
 	@echo ""
@@ -191,6 +192,10 @@ cosmos-clear:
 cosmos-clear-dry:
 	@echo "🗑️  Clearing CosmosDB data (dry run)..."
 	cd scripts && uv run python clear-cosmos-data.py
+
+cosmos-clear-projects:
+	@echo "🗑️  Clearing projects and messages from CosmosDB..."
+	cd scripts && uv run python clear-cosmos-data.py --confirm --containers projects,messages
 
 # ============================================================================
 # Utilities

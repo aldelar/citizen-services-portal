@@ -3,9 +3,10 @@
 Clear all data from CosmosDB containers.
 
 Usage:
-    python scripts/clear-cosmos-data.py [--confirm]
+    python scripts/clear-cosmos-data.py [--confirm] [--containers CONTAINERS]
 
 Without --confirm, shows what would be deleted. With --confirm, performs deletion.
+Use --containers to specify which containers to clear (comma-separated).
 """
 
 import asyncio
@@ -21,7 +22,8 @@ COSMOS_ENDPOINT = "https://aldelar-csp-cosmos.documents.azure.com:443/"
 DATABASE_NAME = "citizen-services"
 
 # Containers and their partition key paths
-CONTAINERS = {
+ALL_CONTAINERS = {
+    "users": "/id",
     "projects": "/userId",
     "threads": "/id",
     "messages": "/projectId",
@@ -65,14 +67,25 @@ async def delete_items(container, partition_key_path: str, dry_run: bool = True)
     return deleted, errors
 
 
-async def main(confirm: bool = False):
+async def main(confirm: bool = False, containers: list[str] | None = None):
     """Main function to clear all containers."""
+    # Determine which containers to clear
+    if containers:
+        target_containers = {k: v for k, v in ALL_CONTAINERS.items() if k in containers}
+        invalid = set(containers) - set(ALL_CONTAINERS.keys())
+        if invalid:
+            print(f"❌ Invalid container names: {', '.join(invalid)}")
+            print(f"   Valid containers: {', '.join(ALL_CONTAINERS.keys())}")
+            return
+    else:
+        target_containers = ALL_CONTAINERS
+    
     print("=" * 60)
     print("🗑️  CosmosDB Data Cleaner")
     print("=" * 60)
     print(f"\nEndpoint: {COSMOS_ENDPOINT}")
     print(f"Database: {DATABASE_NAME}")
-    print(f"Containers: {', '.join(CONTAINERS.keys())}")
+    print(f"Containers: {', '.join(target_containers.keys())}")
     print(f"Mode: {'DELETE (confirmed)' if confirm else 'DRY RUN'}")
     print()
     
@@ -82,7 +95,7 @@ async def main(confirm: bool = False):
     try:
         db = client.get_database_client(DATABASE_NAME)
         
-        for container_name, partition_key_path in CONTAINERS.items():
+        for container_name, partition_key_path in target_containers.items():
             print(f"\n📦 Container: {container_name}")
             print(f"   Partition key: {partition_key_path}")
             
@@ -131,6 +144,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Actually perform the deletion (without this flag, shows what would be deleted)"
     )
+    parser.add_argument(
+        "--containers",
+        type=str,
+        help=f"Comma-separated list of containers to clear (default: all). Valid: {', '.join(ALL_CONTAINERS.keys())}"
+    )
     args = parser.parse_args()
     
-    asyncio.run(main(confirm=args.confirm))
+    containers = args.containers.split(",") if args.containers else None
+    asyncio.run(main(confirm=args.confirm, containers=containers))

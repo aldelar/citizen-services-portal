@@ -1,6 +1,6 @@
 """Project and Plan models for the Citizen Services Portal."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from enum import Enum
@@ -31,6 +31,13 @@ class UserTaskType(str, Enum):
     ONLINE_PORTAL = "online_portal"
 
 
+class ActionType(str, Enum):
+    """Step action type enumeration - determines if step is automated or requires user action."""
+    AUTOMATED = "automated"  # Agent can execute directly via tools
+    USER_ACTION = "user_action"  # User must take action (call, email, visit)
+    INFORMATION = "information"  # Information gathering or waiting step
+
+
 class UserTask(BaseModel):
     """Details for user-action steps."""
     type: UserTaskType
@@ -49,7 +56,8 @@ class PlanStep(BaseModel):
     title: str  # Human-readable step name
     agency: str  # LADBS, LADWP, LASAN, or any agency
     status: StepStatus
-    depends_on: List[str] = []  # IDs of prerequisite steps
+    action_type: ActionType = ActionType.AUTOMATED  # automated, user_action, or information
+    depends_on: List[str] = Field(default_factory=list)  # IDs of prerequisite steps
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     result: Optional[Dict[str, Any]] = None  # Outcome data (permit numbers, etc.)

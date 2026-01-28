@@ -1,7 +1,7 @@
 """Plan widget component for the Citizen Services Portal."""
 
 from nicegui import ui
-from models.project import Project, PlanStep, StepStatus
+from models.project import Project, PlanStep, StepStatus, ActionType
 from typing import Optional
 
 
@@ -22,6 +22,16 @@ STATUS_STYLES = {
     'failed': 'fill:#fecaca,stroke:#dc2626',
 }
 
+# Icons for action types (used in node labels)
+ACTION_TYPE_ICONS = {
+    ActionType.AUTOMATED: '🤖',
+    ActionType.USER_ACTION: '👤',
+    ActionType.INFORMATION: 'ℹ️',
+    'automated': '🤖',
+    'user_action': '👤',
+    'information': 'ℹ️',
+}
+
 
 def render_plan_mermaid(steps: list[PlanStep]) -> str:
     """Generate Mermaid diagram code for the plan steps.
@@ -34,14 +44,31 @@ def render_plan_mermaid(steps: list[PlanStep]) -> str:
     """
     lines = ['graph TD']
     
+    # Debug: print all steps and their dependencies
+    print(f"[DEBUG render_plan_mermaid] Rendering {len(steps)} steps:")
+    for s in steps:
+        print(f"  Step {s.id}: depends_on={s.depends_on} (type={type(s.depends_on)})")
+    
     for step in steps:
-        # Node with label
+        # Get action type icon
+        action_type = getattr(step, 'action_type', None)
+        if action_type:
+            action_key = action_type.value if hasattr(action_type, 'value') else action_type
+        else:
+            action_key = 'automated'
+        icon = ACTION_TYPE_ICONS.get(action_type, ACTION_TYPE_ICONS.get(action_key, ''))
+        
+        # Node with label including action type icon
         # Escape quotes and special characters in title
         safe_title = step.title.replace('"', "'")
-        lines.append(f'    {step.id}["{safe_title}"]')
+        if icon:
+            lines.append(f'    {step.id}["{icon} {safe_title}"]')
+        else:
+            lines.append(f'    {step.id}["{safe_title}"]')
         
         # Edges from dependencies
-        for dep_id in step.depends_on:
+        depends = step.depends_on or []
+        for dep_id in depends:
             lines.append(f'    {dep_id} --> {step.id}')
         
         # Status styling
@@ -94,8 +121,8 @@ def plan_widget(project: Optional[Project]) -> ui.column:
                 ui.mermaid(mermaid_code).classes('w-full')
                 
                 # Legend
-                with ui.column().classes('mt-4 gap-1'):
-                    ui.label('Legend:').classes('text-xs text-gray-500 font-semibold')
+                with ui.column().classes('mt-4 gap-2'):
+                    ui.label('Status:').classes('text-xs text-gray-500 font-semibold')
                     with ui.row().classes('gap-4 flex-wrap'):
                         with ui.row().classes('items-center gap-1'):
                             ui.element('div').classes('w-3 h-3 rounded bg-green-200 border border-green-600')
@@ -109,6 +136,18 @@ def plan_widget(project: Optional[Project]) -> ui.column:
                         with ui.row().classes('items-center gap-1'):
                             ui.element('div').classes('w-3 h-3 rounded bg-gray-200 border border-gray-500 border-dashed')
                             ui.label('Blocked').classes('text-xs')
+                    
+                    ui.label('Step Type:').classes('text-xs text-gray-500 font-semibold mt-2')
+                    with ui.row().classes('gap-4 flex-wrap'):
+                        with ui.row().classes('items-center gap-1'):
+                            ui.label('🤖').classes('text-sm')
+                            ui.label('Automated').classes('text-xs')
+                        with ui.row().classes('items-center gap-1'):
+                            ui.label('👤').classes('text-sm')
+                            ui.label('User Action').classes('text-xs')
+                        with ui.row().classes('items-center gap-1'):
+                            ui.label('ℹ️').classes('text-sm')
+                            ui.label('Information').classes('text-xs')
             
             # Action needed footer
             if actions_needed > 0:

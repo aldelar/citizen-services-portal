@@ -254,7 +254,15 @@ class AgentService:
         # Add plan update instructions
         lines.append("""
 --- Instructions ---
+BEFORE creating a plan, use queryKB tools to research requirements, fees, and processes. Do this automatically - don't make "research" a plan step.
+
 When you create or update a project plan, include the plan as a JSON code block with the identifier 'json:plan'.
+
+CRITICAL: Every step MUST have a "depends_on" array. Think carefully about what must complete BEFORE each step can start.
+- First steps have depends_on: []
+- Most steps depend on at least one prior step
+- Use step IDs (e.g., "P1", "U1") to reference dependencies
+
 Format:
 ```json:plan
 {
@@ -264,15 +272,62 @@ Format:
   "steps": [
     {
       "id": "P1",
-      "title": "Step title",
+      "title": "Submit electrical permit application",
       "agency": "LADBS",
       "status": "not_started",
+      "action_type": "automated",
       "depends_on": []
+    },
+    {
+      "id": "P2",
+      "title": "Hire licensed electrician",
+      "agency": "LADBS",
+      "status": "not_started",
+      "action_type": "user_action",
+      "depends_on": []
+    },
+    {
+      "id": "U1",
+      "title": "Request LADWP service upgrade",
+      "agency": "LADWP",
+      "status": "not_started",
+      "action_type": "user_action",
+      "depends_on": ["P1"]
+    },
+    {
+      "id": "I1",
+      "title": "Schedule and pass LADBS inspection",
+      "agency": "LADBS",
+      "status": "not_started",
+      "action_type": "user_action",
+      "depends_on": ["P2", "U1"]
+    },
+    {
+      "id": "F1",
+      "title": "LADWP finalizes service connection",
+      "agency": "LADWP",
+      "status": "not_started",
+      "action_type": "information",
+      "depends_on": ["I1"]
     }
   ]
 }
 ```
-Update the plan whenever there's new information that affects scope, steps, or dependencies.
+
+action_type values:
+- "automated" = Agent can execute directly via tools (🤖)
+- "user_action" = User must take action like call, email, visit (👤)  
+- "information" = Waiting period or external process (ℹ️)
+
+Dependency logic for above example:
+- P1 (submit permit) → no dependencies, can start immediately
+- P2 (hire electrician) → no dependencies, can run parallel to P1
+- U1 (utility request) → depends on P1 (permit must be submitted first)
+- I1 (inspection) → depends on P2 AND U1 (work done + utility ready)
+- F1 (finalize) → depends on I1 (inspection must pass)
+
+DO NOT include "research" steps - you do research automatically using queryKB before presenting the plan.
+Update the plan whenever there's new information that affects scope, steps, dependencies, or when a step status changes.
 Respond to the latest user message using the context above.""")
         
         return "\n".join(lines)

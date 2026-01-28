@@ -15,7 +15,7 @@ from services.auth_service import get_current_user
 from services.agent_service import get_agent_service
 from services.project_service import get_project_service, generate_project_title
 from services.user_service import get_user_service
-from models.project import Project, ProjectStatus, Plan, PlanStep, StepStatus
+from models.project import Project, ProjectStatus, Plan, PlanStep, StepStatus, ActionType
 from components.plan_widget import plan_widget
 
 
@@ -77,6 +77,15 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
         except ValueError:
             status = StepStatus.NOT_STARTED
         
+        # Handle action_type - default to automated if not present
+        action_type_val = step_data.get("action_type", step_data.get("actionType", "automated"))
+        if isinstance(action_type_val, dict):
+            action_type_val = action_type_val.get("value", "automated")
+        try:
+            action_type = ActionType(action_type_val)
+        except ValueError:
+            action_type = ActionType.AUTOMATED
+        
         # Handle dependencies vs depends_on (Cosmos uses 'dependencies')
         depends_on = step_data.get("depends_on", step_data.get("dependencies", step_data.get("dependsOn", [])))
         
@@ -85,6 +94,7 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
             title=step_data.get("title", "Untitled Step"),
             agency=step_data.get("agency", "Unknown"),
             status=status,
+            action_type=action_type,
             depends_on=depends_on,
         )
         steps.append(step)
@@ -142,6 +152,7 @@ async def main_page():
     selected_project = None
     projects = []
     messages = []
+    is_returning_to_project = False  # Flag to track if user just returned to an existing project
     
     # UI references for dynamic updates
     projects_container = None
@@ -296,7 +307,7 @@ async def main_page():
     
     async def select_project(project_id: str):
         """Handle project selection."""
-        nonlocal selected_project_id, selected_project, messages
+        nonlocal selected_project_id, selected_project, messages, is_returning_to_project
         selected_project_id = project_id
         
         # Find project in list
@@ -307,6 +318,13 @@ async def main_page():
         
         # Load messages for selected project (app-side message history)
         messages = await project_service.get_messages(project_id)
+        
+        # If project has existing messages (beyond initial system message), mark as returning user
+        non_system_messages = [m for m in messages if m.get("role") != "system"]
+        if len(non_system_messages) > 0 and selected_project and selected_project.plan:
+            is_returning_to_project = True
+        else:
+            is_returning_to_project = False
         
         # Refresh the UI
         await refresh_ui()
@@ -659,6 +677,7 @@ async def main_page():
         - Full chat history (user/assistant messages from Cosmos)
         - System message with user info (if set)
         - System message with current plan (if any)
+        - System message about returning user (if applicable)
         
         System messages are appended at the end and are NOT saved to Cosmos.
         """
@@ -689,6 +708,7 @@ async def main_page():
                         "title": step.title,
                         "agency": step.agency,
                         "status": step.status.value if hasattr(step.status, 'value') else step.status,
+                        "action_type": step.action_type.value if hasattr(step.action_type, 'value') else (step.action_type or 'automated'),
                         "depends_on": step.depends_on,
                     }
                     for step in selected_project.plan.steps
@@ -696,6 +716,41 @@ async def main_page():
             }
             plan_context = f"Current Project Plan:\n```json\n{json.dumps(plan_dict, indent=2)}\n```"
             agent_messages.append({"role": "system", "content": plan_context})
+        
+        # Add returning user context if user just came back to this project
+        if is_returning_to_project and selected_project:
+            last_activity = selected_project.updated_at
+            if last_activity:
+                last_activity_str = format_relative_time(last_activity)
+            else:
+                last_activity_str = "unknown"
+            
+            # Build status summary
+            status_summary = []
+            if selected_project.plan and selected_project.plan.steps:
+                completed = sum(1 for s in selected_project.plan.steps if s.status == StepStatus.COMPLETED)
+                user_action_pending = sum(1 for s in selected_project.plan.steps 
+                    if s.status == StepStatus.AWAITING_USER or 
+                    (hasattr(s, 'action_type') and s.action_type and 
+                     (s.action_type == ActionType.USER_ACTION or s.action_type == 'user_action') and 
+                     s.status != StepStatus.COMPLETED))
+                total = len(selected_project.plan.steps)
+                status_summary.append(f"- Plan progress: {completed}/{total} steps completed")
+                if user_action_pending > 0:
+                    status_summary.append(f"- {user_action_pending} step(s) require user action")
+            
+            returning_context = f"""[SYSTEM - User Return Notification]
+User just returned to check on this project. Last activity was {last_activity_str}.
+
+{chr(10).join(status_summary) if status_summary else 'No plan established yet.'}
+
+Please:
+1. Review the current plan status and summarize progress
+2. If there are user_action steps that were assigned, ask about their status
+3. Propose next steps to continue the project
+4. If automated steps are ready (dependencies met), offer to proceed with them"""
+            
+            agent_messages.append({"role": "system", "content": returning_context})
         
         return agent_messages
     
@@ -713,13 +768,22 @@ async def main_page():
             except ValueError:
                 status = StepStatus.NOT_STARTED
             
+            # Convert action_type string to ActionType enum
+            action_type_str = step_dict.get('action_type', 'automated')
+            try:
+                action_type = ActionType(action_type_str)
+            except ValueError:
+                action_type = ActionType.AUTOMATED
+            
             step = PlanStep(
                 id=step_dict.get('id', f'S{len(steps)+1}'),
                 title=step_dict.get('title', 'Untitled Step'),
                 agency=step_dict.get('agency', 'Unknown'),
                 status=status,
+                action_type=action_type,
                 depends_on=step_dict.get('depends_on', []),
             )
+            print(f"[DEBUG convert_plan_dict_to_model] Step {step.id}: depends_on={step.depends_on}")
             steps.append(step)
         
         return Plan(
@@ -733,19 +797,22 @@ async def main_page():
         """Convert UI Plan model to Cosmos-compatible dict format.
         
         The Cosmos Plan model expects: steps, created_at, updated_at
-        Each step needs: id, title, description, agency, status, order, dependencies
+        Each step needs: id, title, description, agency, status, action_type, order, dependencies
         """
         cosmos_steps = []
         for i, step in enumerate(plan.steps):
+            # Use depends_on as the key (matching what agent outputs and what we parse)
             cosmos_step = {
                 "id": step.id,
                 "title": step.title,
                 "description": step.title,  # Use title as description
                 "agency": step.agency.lower() if step.agency else "unknown",
                 "status": step.status.value if hasattr(step.status, 'value') else step.status,
+                "action_type": step.action_type.value if hasattr(step.action_type, 'value') else (step.action_type or 'automated'),
                 "order": i + 1,
-                "dependencies": step.depends_on or [],
+                "depends_on": step.depends_on or [],
             }
+            print(f"[DEBUG convert_plan_to_cosmos_dict] Step {step.id}: depends_on={step.depends_on}")
             cosmos_steps.append(cosmos_step)
         
         return {
@@ -769,7 +836,12 @@ async def main_page():
         
         if match:
             try:
-                plan_json = json.loads(match.group(1))
+                raw_json = match.group(1)
+                print(f"[DEBUG extract_plan_from_response] Raw JSON from agent:\n{raw_json[:500]}...")
+                plan_json = json.loads(raw_json)
+                # Debug: print the steps and their depends_on
+                for step in plan_json.get('steps', []):
+                    print(f"[DEBUG extract_plan_from_response] Step {step.get('id')}: depends_on={step.get('depends_on')}")
                 plan_model = convert_plan_dict_to_model(plan_json)
                 # Replace the JSON block with a plan update indicator
                 cleaned_text = re.sub(
@@ -786,7 +858,7 @@ async def main_page():
     
     async def send_message():
         """Send a message to the agent."""
-        nonlocal selected_project_id, selected_project, messages
+        nonlocal selected_project_id, selected_project, messages, is_returning_to_project
         
         text = message_input.value
         if not text or not text.strip():
@@ -834,6 +906,11 @@ async def main_page():
             # Call agent with streaming
             # Build messages with context (user info, current plan) appended
             agent_messages = build_agent_messages()
+            
+            # Clear the returning-to-project flag after first message
+            # This ensures the returning user context is only sent once
+            is_returning_to_project = False
+            
             response_text = ''
             chunk_count = 0
             
