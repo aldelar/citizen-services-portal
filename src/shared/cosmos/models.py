@@ -116,13 +116,14 @@ class PlanStep(CamelCaseModel):
 
     id: str
     title: str
-    description: str
-    agency: Agency
+    description: Optional[str] = None  # Made optional for flexibility
+    agency: Optional[str] = None  # Changed from Agency enum to string for flexibility
     status: StepStatus = StepStatus.NOT_STARTED
-    order: int
+    order: Optional[int] = None  # Made optional for flexibility
     estimated_duration_days: Optional[int] = None
     user_tasks: List[UserTask] = Field(default_factory=list)
     dependencies: List[str] = Field(default_factory=list)
+    depends_on: List[str] = Field(default_factory=list)  # Alias for dependencies
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     notes: Optional[str] = None
@@ -131,6 +132,9 @@ class PlanStep(CamelCaseModel):
 class Plan(CamelCaseModel):
     """Project plan containing steps."""
 
+    id: Optional[str] = None
+    title: Optional[str] = None
+    status: Optional[str] = "active"
     steps: List[PlanStep] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -3,52 +3,85 @@
 import httpx
 from typing import Optional
 from config import settings
+from azure.identity.aio import DefaultAzureCredential
 
 
 class AgentService:
     """Service for interacting with the CSP Agent."""
     
-    def __init__(self, base_url: Optional[str] = None):
+    # Responses API version aligned with spec
+    API_VERSION = "2025-11-15-preview"
+    
+    def __init__(self, base_url: Optional[str] = None, use_auth: bool | None = None):
         """Initialize the agent service.
         
         Args:
             base_url: Base URL of the CSP Agent. Defaults to settings.CSP_AGENT_URL.
+            use_auth: Whether to use AAD authentication (defaults to config).
         """
         self.base_url = (base_url or settings.CSP_AGENT_URL).rstrip('/')
         self.timeout = 120.0  # Agent responses can take time (longer for multi-tool calls)
+        self.use_auth = settings.CSP_AGENT_USE_AUTH if use_auth is None else use_auth
+        self._credential = None
+    
+    async def _get_auth_token(self) -> Optional[str]:
+        """Get AAD access token for AI Foundry."""
+        if not self.use_auth:
+            return None
+        
+        if self._credential is None:
+            self._credential = DefaultAzureCredential()
+        
+        token = await self._credential.get_token("https://ai.azure.com/.default")
+        return token.token
+    
+    def _build_url(self, path: str) -> str:
+        """Build full URL with api-version query parameter."""
+        separator = "&" if "?" in path else "?"
+        return f"{self.base_url}{path}{separator}api-version={self.API_VERSION}"
     
     async def send_message(
         self,
         message: str,
-        conversation_id: Optional[str] = None,
+        messages: list[dict] | None = None,
         stream: bool = False,
-    ) -> str:
+    ) -> tuple[str, Optional[str]]:
         """Send a message to the CSP Agent and get a response.
         
         Args:
             message: The user's message.
-            conversation_id: Optional conversation/thread ID for context.
+            messages: Optional list of previous messages for context.
+                      Each message should have 'role' and 'content' keys.
             stream: Whether to stream the response (not yet implemented).
             
         Returns:
-            The agent's response text.
+            Tuple of (response_text, None).
             
         Raises:
             Exception: If the agent fails to respond.
         """
         payload = {
-            "input": message,
             "stream": stream,
         }
         
-        # Add conversation context if available (uses Foundry format)
-        if conversation_id:
-            payload["conversation"] = {"id": conversation_id}
+        if messages:
+            payload["input"] = self._build_input_text(messages)
+        else:
+            payload["input"] = message
+        
+        # Build headers with auth token if needed
+        headers = {"Content-Type": "application/json"}
+        token = await self._get_auth_token()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        
+        url = self._build_url("/responses")
         
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
-                f"{self.base_url}/responses",
+                url,
                 json=payload,
+                headers=headers,
             )
             response.raise_for_status()
             
@@ -57,7 +90,7 @@ class AgentService:
             
             # Extract text from OpenAI Responses API format
             # Format: {"id": "...", "output": [{"type": "message", "content": [{"type": "output_text", "text": "..."}]}]}
-            return self._extract_response_text(data)
+            return self._extract_response_text(data), None
     
     def _extract_response_text(self, data) -> str:
         """Extract text content from OpenAI Responses API format."""
@@ -97,14 +130,12 @@ class AgentService:
     async def send_message_stream(
         self,
         message: str,
-        conversation_id: str | None = None,
         messages: list[dict] | None = None,
     ):
         """Send a message and stream the response.
         
         Args:
             message: The current user message.
-            conversation_id: Optional conversation/thread ID.
             messages: Optional list of previous messages for context.
                       Each message should have 'role' and 'content' keys.
         
@@ -117,14 +148,8 @@ class AgentService:
         if messages:
             # Format as array of messages for Responses API
             # The messages list should already include the current user message
-            input_messages = []
-            for msg in messages:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if role and content:
-                    input_messages.append({"role": role, "content": content})
             payload = {
-                "input": input_messages,
+                "input": self._build_input_text(messages),
                 "stream": True,
             }
         else:
@@ -133,21 +158,25 @@ class AgentService:
                 "stream": True,
             }
         
-        # Add conversation context if available (uses Foundry format)
-        if conversation_id:
-            payload["conversation"] = {"id": conversation_id}
+        # Build headers with auth token if needed
+        headers = {"Content-Type": "application/json"}
+        token = await self._get_auth_token()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        
+        url = self._build_url("/responses")
         
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             async with client.stream(
                 "POST",
-                f"{self.base_url}/responses",
+                url,
                 json=payload,
+                headers=headers,
             ) as response:
                 response.raise_for_status()
                 
-                # Always try to parse as SSE, regardless of content-type
+                # Remove any conversation-id side-channel for stateless app endpoint
                 buffer = ""
-                conversation_id_yielded = False
                 
                 async for chunk in response.aiter_text():
                     buffer += chunk
@@ -167,13 +196,6 @@ class AgentService:
                                 try:
                                     data = json.loads(data_str)
                                     
-                                    # Extract conversation_id from response.created event
-                                    if not conversation_id_yielded:
-                                        conv_id = self._extract_conversation_id(data)
-                                        if conv_id:
-                                            yield {"_conversation_id": conv_id}
-                                            conversation_id_yielded = True
-                                    
                                     text = self._extract_delta_text(data)
                                     if text:
                                         yield text
@@ -186,13 +208,6 @@ class AgentService:
                             try:
                                 data = json.loads(line)
                                 
-                                # Extract conversation_id
-                                if not conversation_id_yielded:
-                                    conv_id = self._extract_conversation_id(data)
-                                    if conv_id:
-                                        yield {"_conversation_id": conv_id}
-                                        conversation_id_yielded = True
-                                
                                 text = self._extract_delta_text(data)
                                 if text:
                                     yield text
@@ -204,6 +219,63 @@ class AgentService:
                 if buffer.strip():
                     # Don't process final buffer - it would duplicate content
                     pass
+
+    def _build_input_text(self, messages: list[dict]) -> str:
+        """Flatten message history into a single input string.
+        
+        Messages are structured as:
+        - Regular conversation (user/assistant) comes first
+        - System messages (user context, current plan) are appended at the end
+        """
+        conversation_lines = []
+        system_lines = []
+        
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if not role or not content:
+                continue
+            
+            if role == "system":
+                system_lines.append(content)
+            elif role == "user":
+                conversation_lines.append(f"User: {content}")
+            else:
+                conversation_lines.append(f"Assistant: {content}")
+        
+        lines = ["Conversation so far:"]
+        lines.extend(conversation_lines)
+        
+        # Add system context at the end
+        if system_lines:
+            lines.append("\n--- Context ---")
+            lines.extend(system_lines)
+        
+        # Add plan update instructions
+        lines.append("""
+--- Instructions ---
+When you create or update a project plan, include the plan as a JSON code block with the identifier 'json:plan'.
+Format:
+```json:plan
+{
+  "id": "plan-id",
+  "title": "Plan Title",
+  "status": "active",
+  "steps": [
+    {
+      "id": "P1",
+      "title": "Step title",
+      "agency": "LADBS",
+      "status": "not_started",
+      "depends_on": []
+    }
+  ]
+}
+```
+Update the plan whenever there's new information that affects scope, steps, or dependencies.
+Respond to the latest user message using the context above.""")
+        
+        return "\n".join(lines)
     
     def _extract_conversation_id(self, data: dict) -> str | None:
         """Extract conversation ID from streaming event.
@@ -306,5 +378,5 @@ def get_agent_service() -> AgentService:
     """Get the singleton agent service instance."""
     global _agent_service
     if _agent_service is None:
-        _agent_service = AgentService()
+        _agent_service = AgentService(use_auth=settings.CSP_AGENT_USE_AUTH)
     return _agent_service

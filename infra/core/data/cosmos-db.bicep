@@ -225,42 +225,6 @@ resource messagesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   }
 }
 
-// Threads container - stores serialized agent thread state for conversation persistence
-// Each document contains the full conversation history for a project/conversation
-// Used by the agent's thread_repository for loading/saving conversation context
-resource threadsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
-  parent: database
-  name: 'threads'
-  properties: {
-    resource: {
-      id: 'threads'
-      partitionKey: {
-        paths: [
-          '/id'  // conversation_id (same as project_id)
-        ]
-        kind: 'Hash'
-      }
-      indexingPolicy: {
-        automatic: true
-        indexingMode: 'consistent'
-        includedPaths: [
-          {
-            path: '/updatedAt/?'
-          }
-        ]
-        excludedPaths: [
-          {
-            path: '/serializedThread/?'  // Large blob, don't index
-          }
-          {
-            path: '/*'
-          }
-        ]
-      }
-    }
-  }
-}
-
 // Step completions container with TTL
 resource stepCompletionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
   parent: database

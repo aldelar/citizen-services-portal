@@ -6,7 +6,7 @@ from pathlib import Path
 from agent_framework import HostedMCPTool
 from agent_framework.azure import AzureOpenAIChatClient
 from azure.ai.agentserver.agentframework import from_agent_framework  # pyright: ignore[reportUnknownVariableType]
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, ChainedTokenCredential, ManagedIdentityCredential, EnvironmentCredential, AzureCliCredential
 
 # Configure OpenTelemetry - reads environment variables automatically:
 #   - APPLICATIONINSIGHTS_CONNECTION_STRING (for Azure Monitor)
@@ -70,6 +70,7 @@ def create_agent():
     # Get Azure OpenAI configuration from environment
     azure_openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
     deployment_name = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME", "gpt-4.1")
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY")  # Optional: for local dev
     
     # Construct model URL
     model_url = f"{azure_openai_endpoint}/openai/deployments/{deployment_name}"
@@ -78,8 +79,22 @@ def create_agent():
     instructions = load_system_prompt()
     
     # Create the agent using Azure OpenAI Chat Client
-    # the thread_repository handles message persistence.
-    agent = AzureOpenAIChatClient(credential=DefaultAzureCredential()).create_agent(
+    # Use API key if provided (for local dev), otherwise use credential chain (for production)
+    if api_key:
+        client = AzureOpenAIChatClient(api_key=api_key)
+    else:
+        # Use a credential chain for authentication
+        # For local dev: AzureCliCredential (uses 'az login')
+        # For production (Azure): ManagedIdentityCredential
+        mi_client_id = os.environ.get("AZURE_CLIENT_ID")
+        credential = ChainedTokenCredential(
+            EnvironmentCredential(),  # For explicit env var auth
+            AzureCliCredential(),  # For local dev with 'az login'
+            ManagedIdentityCredential(client_id=mi_client_id)  # For production in Azure (user-assigned MI)
+        )
+        client = AzureOpenAIChatClient(credential=credential)
+    
+    agent = client.create_agent(
         name="csp-agent",
         instructions=instructions,
         model_url=model_url,
@@ -92,20 +107,13 @@ def create_agent():
 def main():
     """Run the CSP Agent as a hosted agent.
     
-    The agent is stateless - conversation persistence is handled by the thread_repository
-    which loads/saves threads from CosmosDB based on conversation_id.
+    The agent is stateless. Conversation history is managed by the client
+    (web app) and sent on each request.
     """
     agent = create_agent()
     
-    # Create thread repository for conversation persistence if CosmosDB is configured
-    thread_repository = None
-    cosmos_endpoint = os.environ.get("AGENT_COSMOS_ENDPOINT")
-    if cosmos_endpoint:
-        from cosmos_thread_repository import create_cosmos_thread_repository
-        thread_repository = create_cosmos_thread_repository(agent)
-    
-    # Run the hosted agent with optional thread persistence
-    from_agent_framework(agent, thread_repository=thread_repository).run()
+    # Run the hosted agent without server-side thread persistence
+    from_agent_framework(agent).run()
 
 
 if __name__ == "__main__":

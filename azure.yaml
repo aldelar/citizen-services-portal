@@ -1,35 +1,23 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
-requiredVersions:
-    extensions:
-        azure.ai.agents: '>=0.1.0-preview'
 name: citizen-services-portal
 metadata:
     template: citizen-services-portal@0.0.1
 services:
     csp-agent:
-        project: src/agents/csp-agent
-        host: azure.ai.agent
-        language: docker
+        project: ./src/agents/csp-agent
+        host: containerapp
+        language: python
         docker:
-            remoteBuild: true
-        config:
-            container:
-                resources:
-                    cpu: "1"
-                    memory: 2Gi
-                scale:
-                    maxReplicas: 3
-                    minReplicas: 1
-            deployments:
-                - model:
-                    format: OpenAI
-                    name: gpt-4.1
-                    version: "2025-04-14"
-                  name: gpt-4.1
-                  sku:
-                    capacity: 1000
-                    name: GlobalStandard
+            path: ./Dockerfile
+            context: ../../..
+    csp-web-app:
+        project: ./src/web-app
+        host: containerapp
+        language: python
+        docker:
+            path: ./Dockerfile
+            context: ../..
     mcp-ladbs:
         project: ./src/mcp-servers/ladbs
         host: containerapp
@@ -71,31 +59,12 @@ hooks:
         posix:
             shell: sh
             run: |
-                echo "Deploying CSP Agent to Microsoft Foundry..."
-                cd src/agents/csp-agent
-
-                # Export required environment variables from azd
-                export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
-                export AZURE_SUBSCRIPTION_ID=$(azd env get-value AZURE_SUBSCRIPTION_ID)
-                export resourceGroupName=$(azd env get-value resourceGroupName)
-                export foundryName=$(azd env get-value foundryName)
-                export foundryProjectName=$(azd env get-value foundryProjectName)
-
-                # Export MCP server URLs from azd environment
-                export MCP_LADBS_URL=$(azd env get-value SERVICE_MCP_LADBS_URI)
-                export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
-                export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
-                export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
-
-                # Agent is now deployed via 'host: azure.ai.agent' in azure.yaml
-                # No additional deployment commands needed
-                echo "CSP Agent deployment handled by azd deploy"
+                echo "CSP Agent deployed as Azure Container App via azd deploy"
     postprovision:
         posix:
             shell: sh
             run: |
-                echo "Configuring AI Gateway..."
-                cd scripts/ai-gateway && uv run python configure_ai_gateway_arm.py
+                echo "Skipping AI Gateway configuration (deferred to APIM implementation)"
 
                 echo ""
                 echo "Setting up CosmosDB RBAC for local development..."

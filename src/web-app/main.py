@@ -7,12 +7,16 @@ Run with: uv run python main.py
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import uuid4
+import json
+import re
 from nicegui import ui, app
 from config import settings
 from services.auth_service import get_current_user
 from services.agent_service import get_agent_service
 from services.project_service import get_project_service, generate_project_title
-from models.project import Project, ProjectStatus
+from services.user_service import get_user_service
+from models.project import Project, ProjectStatus, Plan, PlanStep, StepStatus
+from components.plan_widget import plan_widget
 
 
 def format_relative_time(dt: datetime | None) -> str:
@@ -44,8 +48,63 @@ def format_relative_time(dt: datetime | None) -> str:
         return dt.strftime("%b %d")
 
 
+def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
+    """Convert plan data from CosmosDB format to UI Plan model.
+    
+    Handles differences between Cosmos and UI plan/step models.
+    """
+    if not plan_data:
+        print("[DEBUG] convert_plan_from_cosmos: No plan data")
+        return None
+    
+    print(f"[DEBUG] convert_plan_from_cosmos: Got plan data with keys: {plan_data.keys()}")
+    
+    steps_data = plan_data.get("steps", [])
+    if not steps_data:
+        print("[DEBUG] convert_plan_from_cosmos: No steps in plan")
+        return None
+    
+    print(f"[DEBUG] convert_plan_from_cosmos: Converting {len(steps_data)} steps")
+    
+    steps = []
+    for step_data in steps_data:
+        # Handle status - could be string or dict
+        status_val = step_data.get("status", "not_started")
+        if isinstance(status_val, dict):
+            status_val = status_val.get("value", "not_started")
+        try:
+            status = StepStatus(status_val)
+        except ValueError:
+            status = StepStatus.NOT_STARTED
+        
+        # Handle dependencies vs depends_on (Cosmos uses 'dependencies')
+        depends_on = step_data.get("depends_on", step_data.get("dependencies", step_data.get("dependsOn", [])))
+        
+        step = PlanStep(
+            id=step_data.get("id", f"S{len(steps)+1}"),
+            title=step_data.get("title", "Untitled Step"),
+            agency=step_data.get("agency", "Unknown"),
+            status=status,
+            depends_on=depends_on,
+        )
+        steps.append(step)
+    
+    plan = Plan(
+        id=plan_data.get("id", "plan-1"),
+        title=plan_data.get("title", "Project Plan"),
+        status=plan_data.get("status", "active"),
+        steps=steps,
+    )
+    print(f"[DEBUG] convert_plan_from_cosmos: Created plan '{plan.title}' with {len(plan.steps)} steps")
+    return plan
+
+
 def convert_to_ui_project(project_data: dict) -> Project:
     """Convert project data from CosmosDB to UI Project model."""
+    # Convert plan if present
+    plan_data = project_data.get("plan")
+    plan = convert_plan_from_cosmos(plan_data)
+    
     return Project(
         id=project_data.get("id", ""),
         user_id=project_data.get("user_id", project_data.get("userId", "")),
@@ -56,7 +115,7 @@ def convert_to_ui_project(project_data: dict) -> Project:
         thread_id=project_data.get("thread_id", project_data.get("threadId")),
         created_at=datetime.fromisoformat(project_data["created_at"].replace("Z", "+00:00")) if isinstance(project_data.get("created_at"), str) else project_data.get("created_at"),
         updated_at=datetime.fromisoformat(project_data["updated_at"].replace("Z", "+00:00")) if isinstance(project_data.get("updated_at"), str) else project_data.get("updated_at"),
-        plan=None,  # Plan widget handles its own data
+        plan=plan,
     )
 
 
@@ -66,8 +125,17 @@ async def main_page():
     # Get services
     agent_service = get_agent_service()
     project_service = get_project_service()
+    user_service = get_user_service()
     user = get_current_user()
     user_id = user.id if user else settings.MOCK_USER_ID
+    
+    # Load user profile from storage immediately (before rendering UI)
+    stored_user = await user_service.get_user(user_id)
+    if stored_user:
+        user = stored_user
+    elif user:
+        # Save initial user data to storage
+        await user_service.save_user(user)
     
     # State management using app.storage for this session
     selected_project_id = None
@@ -82,18 +150,73 @@ async def main_page():
     send_button = None
     chat_header = None
     chat_input_container = None
+    plan_container = None
+    
+    # Profile edit dialog function
+    def open_profile_dialog():
+        """Open dialog to edit user profile."""
+        async def save_profile():
+            """Save profile changes."""
+            nonlocal user
+            updated_user = await user_service.update_user_profile(
+                user_id=user_id,
+                name=name_input.value.strip() if name_input.value else None,
+                email=email_input.value.strip() if email_input.value else None,
+                phone=phone_input.value.strip() if phone_input.value else None,
+                address=address_input.value.strip() if address_input.value else None,
+            )
+            if updated_user:
+                user = updated_user
+                user_name_label.set_text(user.name if user.name else 'Setup Account')
+                ui.notify('Profile updated', type='positive')
+            dialog.close()
+        
+        with ui.dialog() as dialog, ui.card().classes('w-96'):
+            ui.label('Edit Profile').classes('text-xl font-bold mb-4')
+            
+            name_input = ui.input('Name', value=user.name if user else '').classes('w-full')
+            email_input = ui.input('Email', value=user.email if user else '').classes('w-full')
+            phone_input = ui.input('Phone', value=user.phone if user else '').classes('w-full')
+            address_input = ui.textarea('Address', value=user.address if user else '').classes('w-full').props('rows=2')
+            
+            with ui.row().classes('w-full justify-end gap-2 mt-4'):
+                ui.button('Cancel', on_click=dialog.close).props('flat')
+                ui.button('Save', on_click=save_profile).props('color=primary')
+        
+        dialog.open()
     
     # Header
-    with ui.header().classes('items-center justify-between px-4 bg-blue-800'):
+    with ui.header().classes('items-center justify-between px-4 bg-blue-800 h-14'):
         ui.icon('account_balance').classes('text-2xl text-white')
         ui.label('Citizen Services Portal').classes('text-xl text-white font-bold')
         ui.space()
         if user:
-            ui.label(user.name).classes('text-white text-sm')
+            display_name = user.name if user.name else 'Setup Account'
+            user_name_label = ui.label(display_name).classes('text-white text-sm cursor-pointer hover:underline')
+            user_name_label.on('click', open_profile_dialog)
     
     # Add custom CSS for better markdown styling in chat
     ui.add_head_html('''
     <style>
+        html, body { 
+            height: 100vh !important; 
+            max-height: 100vh !important;
+            margin: 0 !important; 
+            padding: 0 !important; 
+            overflow: hidden !important; 
+        }
+        .q-page-container { 
+            padding-top: 50px !important; 
+            height: 100vh !important;
+            max-height: 100vh !important;
+            overflow: hidden !important;
+        }
+        .nicegui-content { 
+            height: calc(100vh - 50px) !important;
+            max-height: calc(100vh - 50px) !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
         .chat-markdown h1 { font-size: 1.25rem; font-weight: 600; margin: 0.5rem 0; }
         .chat-markdown h2 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0; }
         .chat-markdown h3 { font-size: 1rem; font-weight: 600; margin: 0.4rem 0; }
@@ -104,11 +227,55 @@ async def main_page():
         .chat-markdown code { background: rgba(0,0,0,0.1); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
         .chat-markdown pre { background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 5px; overflow-x: auto; }
         .chat-markdown strong { font-weight: 600; }
-        .projects-panel { width: 300px; min-width: 300px; }
-        .main-content { height: calc(100vh - 52px); }  /* Account for header height */
-        .chat-column { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        .chat-scroll { flex: 1; overflow-y: auto; min-height: 0; }
-        .chat-input-area { flex-shrink: 0; }
+        .projects-panel { width: 300px; min-width: 300px; height: 100% !important; }
+        .main-content { 
+            height: 100% !important; 
+            max-height: 100% !important;
+            min-height: 0 !important; 
+            overflow: hidden !important; 
+        }
+        .chat-column { 
+            display: flex !important; 
+            flex-direction: column !important; 
+            height: 100% !important; 
+            max-height: 100% !important;
+            min-height: 0 !important; 
+            overflow: hidden !important; 
+        }
+        .chat-scroll { 
+            flex: 1 1 0 !important; 
+            overflow-y: auto !important; 
+            min-height: 0 !important; 
+            max-height: 100% !important;
+        }
+        .chat-input-area { 
+            flex-shrink: 0 !important; 
+            flex-grow: 0 !important;
+        }
+        .plan-panel { 
+            width: 350px; 
+            min-width: 200px;
+            max-width: 800px;
+            height: 100% !important;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .resize-handle {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 100;
+            transition: background 0.2s;
+        }
+        .resize-handle:hover,
+        .resize-handle.dragging {
+            background: rgba(59, 130, 246, 0.5);
+        }
     </style>
     ''')
     
@@ -124,7 +291,7 @@ async def main_page():
     async def load_messages(project_id: str, thread_id: Optional[str] = None):
         """Load messages for a project."""
         nonlocal messages
-        messages = await project_service.get_messages(project_id, thread_id=thread_id)
+        messages = await project_service.get_messages(project_id)
         return messages
     
     async def select_project(project_id: str):
@@ -138,9 +305,8 @@ async def main_page():
                 selected_project = p
                 break
         
-        # Load messages for selected project (using thread_id if available)
-        thread_id = selected_project.thread_id if selected_project else None
-        messages = await project_service.get_messages(project_id, thread_id=thread_id)
+        # Load messages for selected project (app-side message history)
+        messages = await project_service.get_messages(project_id)
         
         # Refresh the UI
         await refresh_ui()
@@ -160,6 +326,22 @@ async def main_page():
             selected_project_id = new_project.id
             selected_project = new_project
             messages = []  # New project has no messages
+            
+            # Add system message with user context if user has profile info
+            if user and user.name:
+                user_info_lines = [f"- Name: {user.name}"]
+                if user.email:
+                    user_info_lines.append(f"- Email: {user.email}")
+                if user.phone:
+                    user_info_lines.append(f"- Phone: {user.phone}")
+                if user.address:
+                    user_info_lines.append(f"- Address: {user.address}")
+                
+                system_content = "You are assisting this User:\n" + "\n".join(user_info_lines)
+                system_content += "\n\nPlease use this information when helping them with city services."
+                
+                await project_service.save_message(new_project.id, "system", system_content)
+                messages.append({"role": "system", "content": system_content})
             
             # Refresh the UI
             await refresh_ui()
@@ -185,6 +367,15 @@ async def main_page():
         chat_input_container.clear()
         with chat_input_container:
             render_chat_input()
+        
+        # Update plan panel
+        plan_container.clear()
+        with plan_container:
+            render_plan_panel()
+    
+    def render_plan_panel():
+        """Render the plan panel content."""
+        plan_widget(selected_project)
     
     async def reload_and_update_selected_project():
         """Reload projects from database and update the selected project reference."""
@@ -448,6 +639,11 @@ async def main_page():
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
+            
+            # Skip system messages - they are sent to agent but not displayed
+            if role == "system":
+                continue
+            
             is_user = role == "user"
             
             with ui.chat_message(
@@ -455,6 +651,138 @@ async def main_page():
                 sent=is_user,
             ).props('bg-color=light-blue-2' if not is_user else ''):
                 ui.markdown(content).classes('chat-markdown')
+    
+    def build_agent_messages() -> list[dict]:
+        """Build the full message list to send to the agent.
+        
+        This includes:
+        - Full chat history (user/assistant messages from Cosmos)
+        - System message with user info (if set)
+        - System message with current plan (if any)
+        
+        System messages are appended at the end and are NOT saved to Cosmos.
+        """
+        agent_messages = list(messages)  # Copy the chat history
+        
+        # Add user info system message if user has profile with actual name
+        if user and user.name:
+            user_info_lines = [f"- Name: {user.name}"]
+            if user.email:
+                user_info_lines.append(f"- Email: {user.email}")
+            if user.phone:
+                user_info_lines.append(f"- Phone: {user.phone}")
+            if user.address:
+                user_info_lines.append(f"- Address: {user.address}")
+            
+            user_context = "User Information:\n" + "\n".join(user_info_lines)
+            agent_messages.append({"role": "system", "content": user_context})
+        
+        # Add current plan system message if project has a plan
+        if selected_project and selected_project.plan and selected_project.plan.steps:
+            plan_dict = {
+                "id": selected_project.plan.id,
+                "title": selected_project.plan.title,
+                "status": selected_project.plan.status,
+                "steps": [
+                    {
+                        "id": step.id,
+                        "title": step.title,
+                        "agency": step.agency,
+                        "status": step.status.value if hasattr(step.status, 'value') else step.status,
+                        "depends_on": step.depends_on,
+                    }
+                    for step in selected_project.plan.steps
+                ]
+            }
+            plan_context = f"Current Project Plan:\n```json\n{json.dumps(plan_dict, indent=2)}\n```"
+            agent_messages.append({"role": "system", "content": plan_context})
+        
+        return agent_messages
+    
+    def convert_plan_dict_to_model(plan_dict: dict) -> Plan:
+        """Convert a plan dictionary to a Plan model.
+        
+        Handles string status values by converting them to StepStatus enums.
+        """
+        steps = []
+        for step_dict in plan_dict.get('steps', []):
+            # Convert status string to StepStatus enum
+            status_str = step_dict.get('status', 'not_started')
+            try:
+                status = StepStatus(status_str)
+            except ValueError:
+                status = StepStatus.NOT_STARTED
+            
+            step = PlanStep(
+                id=step_dict.get('id', f'S{len(steps)+1}'),
+                title=step_dict.get('title', 'Untitled Step'),
+                agency=step_dict.get('agency', 'Unknown'),
+                status=status,
+                depends_on=step_dict.get('depends_on', []),
+            )
+            steps.append(step)
+        
+        return Plan(
+            id=plan_dict.get('id', str(uuid4())[:8]),
+            title=plan_dict.get('title', 'Project Plan'),
+            status=plan_dict.get('status', 'active'),
+            steps=steps,
+        )
+    
+    def convert_plan_to_cosmos_dict(plan: Plan) -> dict:
+        """Convert UI Plan model to Cosmos-compatible dict format.
+        
+        The Cosmos Plan model expects: steps, created_at, updated_at
+        Each step needs: id, title, description, agency, status, order, dependencies
+        """
+        cosmos_steps = []
+        for i, step in enumerate(plan.steps):
+            cosmos_step = {
+                "id": step.id,
+                "title": step.title,
+                "description": step.title,  # Use title as description
+                "agency": step.agency.lower() if step.agency else "unknown",
+                "status": step.status.value if hasattr(step.status, 'value') else step.status,
+                "order": i + 1,
+                "dependencies": step.depends_on or [],
+            }
+            cosmos_steps.append(cosmos_step)
+        
+        return {
+            "steps": cosmos_steps,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            # Also include id, title, status for UI compatibility when loaded back
+            "id": plan.id,
+            "title": plan.title,
+            "status": plan.status,
+        }
+    
+    def extract_plan_from_response(response_text: str) -> tuple[str, Plan | None]:
+        """Extract plan JSON from response and return cleaned text + Plan model.
+        
+        Looks for ```json:plan ... ``` blocks in the response.
+        If found, extracts the JSON, converts to Plan model, and replaces the block with a card placeholder.
+        """
+        pattern = r'```json:plan\s*([\s\S]*?)```'
+        match = re.search(pattern, response_text)
+        
+        if match:
+            try:
+                plan_json = json.loads(match.group(1))
+                plan_model = convert_plan_dict_to_model(plan_json)
+                # Replace the JSON block with a plan update indicator
+                cleaned_text = re.sub(
+                    pattern, 
+                    '\n\n📋 **Plan Updated**\n\n', 
+                    response_text
+                )
+                return cleaned_text.strip(), plan_model
+            except (json.JSONDecodeError, Exception) as e:
+                print(f"Error parsing plan JSON: {e}")
+                pass
+        
+        return response_text, None
     
     async def send_message():
         """Send a message to the agent."""
@@ -483,8 +811,9 @@ async def main_page():
                 with projects_container:
                     render_projects_list()
         
-        # Update local messages list for UI state (agent handles CosmosDB persistence)
+        # Update local messages list and persist user message (app-side persistence)
         messages.append({"role": "user", "content": user_msg})
+        await project_service.save_message(selected_project_id, "user", user_msg)
         # Touch project to update timestamp
         await project_service.touch_project(selected_project_id, user_id)
         
@@ -503,21 +832,15 @@ async def main_page():
         
         try:
             # Call agent with streaming
-            # Use thread_id if available (for conversation continuity), otherwise agent generates one
+            # Build messages with context (user info, current plan) appended
+            agent_messages = build_agent_messages()
             response_text = ''
             chunk_count = 0
-            received_thread_id = None
             
             async for chunk in agent_service.send_message_stream(
                 message=user_msg,
-                conversation_id=selected_project.thread_id if selected_project else None,
-                messages=None,  # Rely on thread repository for history
+                messages=agent_messages,  # Includes history + context system messages
             ):
-                # Handle metadata (conversation_id) vs text chunks
-                if isinstance(chunk, dict) and "_conversation_id" in chunk:
-                    received_thread_id = chunk["_conversation_id"]
-                    continue
-                
                 response_text += chunk
                 chunk_count += 1
                 # Update UI every few chunks
@@ -525,18 +848,41 @@ async def main_page():
                     response_label.set_content(response_text + '▌')
                     await ui.run_javascript('void(0)')
             
-            # Final update
-            if response_text:
-                response_label.set_content(response_text)
-                # Update local messages list for UI state (agent handles CosmosDB persistence)
-                messages.append({"role": "assistant", "content": response_text})
+            # Check for plan updates in the response
+            display_text, plan_data = extract_plan_from_response(response_text)
+            
+            # Final update with cleaned text (plan JSON replaced with visual indicator)
+            if display_text:
+                response_label.set_content(display_text)
                 
-                # Save thread_id to project if this is the first message (no existing thread_id)
-                if received_thread_id and selected_project and not selected_project.thread_id:
+                # Save the CLEANED text (without JSON plan block) to messages
+                # The plan is saved separately in the project, no need to keep JSON in history
+                messages.append({"role": "assistant", "content": display_text})
+                await project_service.save_message(selected_project_id, "assistant", display_text)
+                
+                # If plan was extracted, save it to the project and refresh
+                if plan_data:
+                    print(f"[DEBUG] Plan extracted with {len(plan_data.steps)} steps: {plan_data.title}")
+                    # Convert UI Plan model to Cosmos-compatible dict format
+                    cosmos_plan_dict = convert_plan_to_cosmos_dict(plan_data)
+                    print(f"[DEBUG] Converted to Cosmos format: {len(cosmos_plan_dict.get('steps', []))} steps")
                     await project_service.update_project(
-                        selected_project_id, user_id, {"thread_id": received_thread_id}
+                        selected_project_id, 
+                        user_id, 
+                        {"plan": cosmos_plan_dict}
                     )
-                    selected_project.thread_id = received_thread_id
+                    print(f"[DEBUG] Plan saved to project {selected_project_id}")
+                    # Reload project to get updated plan
+                    await reload_and_update_selected_project()
+                    print(f"[DEBUG] Project reloaded. Plan exists: {selected_project.plan is not None}")
+                    if selected_project and selected_project.plan:
+                        print(f"[DEBUG] Reloaded plan has {len(selected_project.plan.steps)} steps")
+                    # Refresh the plan panel
+                    plan_container.clear()
+                    with plan_container:
+                        render_plan_panel()
+                    print(f"[DEBUG] Plan panel refreshed")
+                    ui.notify('Plan updated!', type='positive')
                 
                 # Touch project to update timestamp
                 await project_service.touch_project(selected_project_id, user_id)
@@ -603,6 +949,56 @@ async def main_page():
             chat_input_container = ui.row().classes('w-full p-4 border-t items-end gap-2 chat-input-area bg-white')
             with chat_input_container:
                 render_chat_input()
+        
+        # Right panel - Plan widget (resizable)
+        with ui.column().classes('plan-panel h-full bg-gray-50 border-l') as plan_panel:
+            # Resize handle
+            ui.html('<div class="resize-handle" id="plan-resize-handle"></div>', sanitize=False)
+            plan_container = ui.column().classes('w-full h-full')
+            with plan_container:
+                render_plan_panel()
+    
+    # Add JavaScript for resize functionality
+    ui.add_body_html('''
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const handle = document.getElementById('plan-resize-handle');
+            const panel = document.querySelector('.plan-panel');
+            if (!handle || !panel) return;
+            
+            let isDragging = false;
+            let startX, startWidth;
+            
+            handle.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX;
+                startWidth = panel.offsetWidth;
+                handle.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                const diff = startX - e.clientX;
+                const newWidth = Math.min(Math.max(startWidth + diff, 200), 800);
+                panel.style.width = newWidth + 'px';
+            });
+            
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    handle.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        }, 500);
+    });
+    </script>
+    ''')
 
 
 def main():

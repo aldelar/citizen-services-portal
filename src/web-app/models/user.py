@@ -17,6 +17,7 @@ class User(BaseModel):
     email: str
     name: str
     phone: Optional[str] = None
+    address: Optional[str] = None
     created_at: Optional[datetime] = None
     last_login_at: Optional[datetime] = None
     preferences: UserPreferences = UserPreferences()

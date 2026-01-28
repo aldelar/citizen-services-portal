@@ -72,7 +72,7 @@ class Project(BaseModel):
     description: Optional[str] = None
     status: ProjectStatus = ProjectStatus.ACTIVE
     progress: float = 0.0  # 0.0 to 1.0
-    thread_id: Optional[str] = None  # Agent conversation ID (conv_xxx format)
+    thread_id: Optional[str] = None  # Deprecated (stateless agent uses app-side message history)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     plan: Optional[Plan] = None

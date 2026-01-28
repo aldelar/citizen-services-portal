@@ -3,13 +3,14 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copy dependency files
-COPY requirements.txt .
+COPY src/web-app/requirements.txt ./requirements.txt
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY src/web-app/ /app/
+COPY src/shared/ /app/shared/
 
 # Expose port
 EXPOSE 8080

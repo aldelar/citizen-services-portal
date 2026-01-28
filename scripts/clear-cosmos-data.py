@@ -28,10 +28,10 @@ CONTAINERS = {
 }
 
 
-async def count_items(container, partition_key_path: str) -> int:
+async def count_items(container) -> int:
     """Count items in a container."""
     count = 0
-    async for _ in container.query_items("SELECT c.id FROM c"):
+    async for _ in container.read_all_items():
         count += 1
     return count
 
@@ -44,10 +44,7 @@ async def delete_items(container, partition_key_path: str, dry_run: bool = True)
     # Get the partition key field name (remove leading /)
     pk_field = partition_key_path.lstrip("/")
     
-    # Query all items with their partition keys
-    query = f"SELECT c.id, c.{pk_field} FROM c"
-    
-    async for item in container.query_items(query):
+    async for item in container.read_all_items():
         item_id = item["id"]
         partition_key = item.get(pk_field, item_id)  # fallback to id if pk field not found
         
@@ -93,7 +90,7 @@ async def main(confirm: bool = False):
                 container = db.get_container_client(container_name)
                 
                 # Count items first
-                item_count = await count_items(container, partition_key_path)
+                item_count = await count_items(container)
                 print(f"   Items found: {item_count}")
                 
                 if item_count == 0:
