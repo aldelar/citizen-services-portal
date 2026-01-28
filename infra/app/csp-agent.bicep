@@ -54,7 +54,7 @@ param applicationInsightsConnectionString string = ''
 param azureOpenAiEndpoint string = ''
 
 @description('Azure OpenAI chat deployment name')
-param azureOpenAiChatDeploymentName string = 'gpt-4.1'
+param azureOpenAiChatDeploymentName string = 'gpt-5.2'
 
 @description('MCP LADBS URL')
 param mcpLadbsUrl string = ''

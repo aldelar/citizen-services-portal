@@ -12,6 +12,7 @@ param environmentName string
 @description('Primary location for all resources')
 @allowed([
   'northcentralus'
+  'southcentralus'
   'eastus'
   'eastus2'
   'westus2'
@@ -202,6 +203,59 @@ module foundrySearchRbac './core/security/foundry-rbac.bicep' = {
   params: {
     foundryId: foundry.outputs.id
     principalId: aiSearch.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// =================================
+// South Central US AI Foundry (for GPT-5.2)
+// =================================
+
+// AI Foundry - South Central US region for GPT-5.2 deployment
+module foundrySouthCentralUs './core/ai/foundry.bicep' = {
+  name: 'ai-foundry-southcentralus'
+  scope: rg
+  params: {
+    location: 'southcentralus'
+    tags: tags
+    foundryName: 'aldelar-csp-foundry-southcentralus'
+    friendlyName: 'Citizen Services AI Foundry - South Central US'
+    foundryDescription: 'AI Foundry in South Central US for GPT-5.2 model deployment'
+  }
+}
+
+// GPT-5.2 Model Deployment in South Central US Foundry
+module gpt52 './core/ai/openai-deployment.bicep' = {
+  name: 'gpt52-deployment'
+  scope: rg
+  params: {
+    foundryName: foundrySouthCentralUs.outputs.name
+    deploymentName: 'gpt-5.2'
+    modelName: 'gpt-5.2'
+    modelVersion: '2025-04-14'
+    sku: 'GlobalStandard'
+    capacity: 1000
+  }
+}
+
+// Foundry RBAC - Grant user access to South Central US Foundry
+module foundrySouthCentralUsRbac './core/security/foundry-rbac.bicep' = if (principalId != '') {
+  name: 'foundry-southcentralus-rbac-deployment'
+  scope: rg
+  params: {
+    foundryId: foundrySouthCentralUs.outputs.id
+    principalId: principalId
+    principalType: 'User'
+  }
+}
+
+// Foundry RBAC - Grant managed identity access to South Central US Foundry for cross-region Azure OpenAI calls
+module foundrySouthCentralUsIdentityRbac './core/security/foundry-rbac.bicep' = {
+  name: 'foundry-southcentralus-identity-rbac-deployment'
+  scope: rg
+  params: {
+    foundryId: foundrySouthCentralUs.outputs.id
+    principalId: managedIdentity.outputs.principalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -584,8 +638,8 @@ module cspAgent './app/csp-agent.bicep' = {
     identityId: managedIdentity.outputs.identityId
     identityClientId: managedIdentity.outputs.clientId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
-    azureOpenAiEndpoint: 'https://${foundry.outputs.name}.openai.azure.com/'
-    azureOpenAiChatDeploymentName: 'gpt-4.1'
+    azureOpenAiEndpoint: 'https://${foundrySouthCentralUs.outputs.name}.openai.azure.com/'
+    azureOpenAiChatDeploymentName: 'gpt-5.2'
     mcpLadbsUrl: mcpLadbs.outputs.uri
     mcpLadwpUrl: mcpLadwp.outputs.uri
     mcpLasanUrl: mcpLasan.outputs.uri
@@ -594,6 +648,9 @@ module cspAgent './app/csp-agent.bicep' = {
     agentProjectEndpoint: 'https://${foundry.outputs.name}.services.ai.azure.com/api/projects/${foundryProject.outputs.name}'
     external: true
   }
+  dependsOn: [
+    gpt52  // Ensure GPT-5.2 is deployed before agent configuration
+  ]
 }
 
 // Web App (Azure Container App)
@@ -722,6 +779,16 @@ output foundryProjectName string = foundryProject.outputs.name
 
 @description('Foundry Project endpoint - Use this for agent deployment')
 output foundryProjectEndpoint string = 'https://${foundry.outputs.name}.services.ai.azure.com/api/projects/${foundryProject.outputs.name}'
+
+// AI Foundry - South Central US (for GPT-5.2)
+@description('Foundry name - South Central US')
+output foundrySouthCentralUsName string = foundrySouthCentralUs.outputs.name
+
+@description('Foundry endpoint - South Central US (for GPT-5.2)')
+output foundrySouthCentralUsEndpoint string = foundrySouthCentralUs.outputs.endpoint
+
+@description('Azure OpenAI endpoint for GPT-5.2 - South Central US')
+output azureOpenAiEndpointGpt52 string = 'https://${foundrySouthCentralUs.outputs.name}.openai.azure.com/'
 
 @description('Cosmos DB endpoint for agent thread persistence')
 output COSMOS_ENDPOINT string = cosmosDb.outputs.endpoint
