@@ -277,6 +277,39 @@ class ProjectService:
             logger.error(f"Error saving message: {e}")
             return None
     
+    async def delete_project(self, project_id: str, user_id: str) -> bool:
+        """Delete a project and all its messages.
+        
+        Args:
+            project_id: The project ID to delete.
+            user_id: The user ID (partition key).
+            
+        Returns:
+            True if deletion was successful, False otherwise.
+        """
+        if not await self._check_cosmos_available():
+            # Delete from in-memory storage
+            if project_id in _in_memory_projects:
+                del _in_memory_projects[project_id]
+            if project_id in _in_memory_messages:
+                del _in_memory_messages[project_id]
+            return True
+        
+        try:
+            # Delete all messages for this project
+            messages = await self._message_repo.get_messages(project_id)
+            for message in messages:
+                await self._message_repo.delete_message(message.id, project_id)
+            
+            # Delete the project
+            await self._project_repo.delete_project(project_id, user_id)
+            
+            logger.info(f"Deleted project {project_id} and {len(messages)} messages")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting project {project_id}: {e}")
+            return False
+    
     async def update_project(
         self,
         project_id: str,

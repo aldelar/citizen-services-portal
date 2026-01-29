@@ -5,8 +5,18 @@ from models.project import Project, PlanStep, StepStatus, ActionType
 from typing import Optional, Callable, Awaitable
 
 
-# Step type stroke colors (outline) - bolder colors for visibility
-STEP_TYPE_STROKES = {
+# Agency border colors (stroke)
+AGENCY_STROKES = {
+    'LADBS': '#3b82f6',  # lighter blue (blue-500)
+    'LADWP': '#a855f7',  # lighter purple (purple-500)
+    'LASAN': '#22c55e',  # lighter green (green-500)
+    'ladbs': '#3b82f6',
+    'ladwp': '#a855f7',
+    'lasan': '#22c55e',
+}
+
+# Step type colors (for text coloring)
+STEP_TYPE_COLORS = {
     'PRM': '#2563eb',  # blue-600 - Permit
     'INS': '#16a34a',  # green-600 - Inspection
     'TRD': '#ea580c',  # orange-600 - Trade
@@ -72,7 +82,7 @@ def get_step_type_from_id(step_id: str) -> str | None:
     """Extract step type prefix from step ID (e.g., 'PRM-1' -> 'PRM')."""
     if '-' in step_id:
         prefix = step_id.split('-')[0].upper()
-        if prefix in STEP_TYPE_STROKES:
+        if prefix in STEP_TYPE_COLORS:
             return prefix
     return None
 
@@ -137,13 +147,17 @@ def render_plan_mermaid(steps: list[PlanStep]) -> str:
         safe_node_id = mermaid_safe_id(step.id)
         # Escape quotes and special characters in title
         safe_title = step.title.replace('"', "'")
-        # Include step ID, action type icon, and agency icon in the label
-        label_parts = []
-        if action_icon:
-            label_parts.append(action_icon)
-        if agency_icon:
-            label_parts.append(agency_icon)
-        label_prefix = ''.join(label_parts)
+        
+        # Color-code the step ID based on step type
+        step_type = get_step_type_from_id(step.id)
+        if step_type and step_type in STEP_TYPE_COLORS:
+            step_color = STEP_TYPE_COLORS[step_type]
+            colored_step_id = f"<b style='color:{step_color}'>{step.id}</b>"
+        else:
+            colored_step_id = f"<b>{step.id}</b>"
+        
+        # Include action type icon in the label (no agency icon)
+        label_prefix = action_icon if action_icon else ''
         
         # Build secondary line with result and/or duration
         secondary_parts = []
@@ -156,14 +170,14 @@ def render_plan_mermaid(steps: list[PlanStep]) -> str:
         # Build label with optional secondary line
         if secondary_line:
             if label_prefix:
-                lines.append(f'    {safe_node_id}["{label_prefix} {step.id}: {safe_title}<br/>{secondary_line}"]')
+                lines.append(f'    {safe_node_id}["{label_prefix} {colored_step_id}: {safe_title}<br/>{secondary_line}"]')
             else:
-                lines.append(f'    {safe_node_id}["{step.id}: {safe_title}<br/>{secondary_line}"]')
+                lines.append(f'    {safe_node_id}["{colored_step_id}: {safe_title}<br/>{secondary_line}"]')
         else:
             if label_prefix:
-                lines.append(f'    {safe_node_id}["{label_prefix} {step.id}: {safe_title}"]')
+                lines.append(f'    {safe_node_id}["{label_prefix} {colored_step_id}: {safe_title}"]')
             else:
-                lines.append(f'    {safe_node_id}["{step.id}: {safe_title}"]')
+                lines.append(f'    {safe_node_id}["{colored_step_id}: {safe_title}"]')
         
         # Edges from dependencies (also convert dep IDs to safe format)
         depends = step.depends_on or []
@@ -171,20 +185,24 @@ def render_plan_mermaid(steps: list[PlanStep]) -> str:
             safe_dep_id = mermaid_safe_id(dep_id)
             lines.append(f'    {safe_dep_id} --> {safe_node_id}')
         
-        # Build combined style: status fill (background) + step type stroke (outline)
-        step_type = get_step_type_from_id(step.id)
+        # Build combined style: status fill (background) + agency stroke (outline)
         status = step.status
         status_key = status.value if isinstance(status, StepStatus) else status
         
         # Get status fill color for background
         fill_color = STATUS_FILLS.get(status, STATUS_FILLS.get(status_key, '#f5f5f5'))
         
-        if step_type and step_type in STEP_TYPE_STROKES:
-            # Use step type for stroke color (bold, continuous outline)
-            stroke_color = STEP_TYPE_STROKES[step_type]
-            style = f'fill:{fill_color},stroke:{stroke_color},stroke-width:3'
+        # Get agency stroke color for border
+        agency_upper = agency.upper() if agency else ''
+        if agency_upper in AGENCY_STROKES:
+            stroke_color = AGENCY_STROKES[agency_upper]
+            # Lighter border for user action steps
+            if action_key == 'user_action':
+                style = f'fill:{fill_color},stroke:{stroke_color},stroke-width:2'
+            else:
+                style = f'fill:{fill_color},stroke:{stroke_color},stroke-width:4'
         else:
-            # Fallback to gray outline if step type not recognized
+            # Fallback to gray outline if agency not recognized
             style = f'fill:{fill_color},stroke:#6b7280,stroke-width:2'
         
         if style:
@@ -197,6 +215,7 @@ def plan_widget(
     project: Optional[Project],
     on_view_action: Optional[Callable[[], Awaitable[None]]] = None,
     on_step_click: Optional[Callable[[str], Awaitable[None]]] = None,
+    on_complete: Optional[Callable[[str, str], Awaitable[None]]] = None,
 ) -> ui.column:
     """Render the plan widget (right drawer content).
     
@@ -204,6 +223,7 @@ def plan_widget(
         project: The currently selected project.
         on_view_action: Callback when "View in Chat" is clicked.
         on_step_click: Callback when a step is clicked, receives step_id.
+        on_complete: Callback when action card is marked complete.
         
     Returns:
         A NiceGUI column element containing the plan widget.
@@ -222,8 +242,13 @@ def plan_widget(
             completed = sum(1 for s in steps if s.status == StepStatus.COMPLETED)
             progress = completed / total if total > 0 else 0
             
-            # Count actions needed (scheduled steps are awaiting user action)
-            actions_needed = sum(1 for s in steps if s.status == StepStatus.SCHEDULED)
+            # Count actions needed (steps with action cards in SCHEDULED or IN_PROGRESS state)
+            actions_needed = sum(
+                1 for s in steps 
+                if s.status in [StepStatus.SCHEDULED, StepStatus.IN_PROGRESS] 
+                and hasattr(s, 'user_action_card') 
+                and s.user_action_card is not None
+            )
             
             # Progress summary
             with ui.row().classes('w-full items-center px-4 py-2 gap-2'):
@@ -233,109 +258,140 @@ def plan_widget(
             
             ui.separator()
             
+            # Action cards for SCHEDULED or IN_PROGRESS steps with user_action_card
+            in_progress_cards = [
+                (step, step.user_action_card) 
+                for step in steps 
+                if step.status in [StepStatus.SCHEDULED, StepStatus.IN_PROGRESS] and step.user_action_card
+            ]
+            
+            if in_progress_cards:
+                from components.inline_action_card import render_inline_action_card
+                
+                with ui.column().classes('w-full px-4 py-2 gap-2 bg-blue-50'):
+                    ui.label('Actions Needed').classes('text-xs font-bold text-gray-700 uppercase')
+                    
+                    for step, action_card in in_progress_cards:
+                        try:
+                            # Import here to avoid circular dependency
+                            from models.project import UserActionCard
+                            
+                            # Convert dict to UserActionCard if needed
+                            if isinstance(action_card, dict):
+                                card_obj = UserActionCard(**action_card)
+                            else:
+                                card_obj = action_card
+                            
+                            render_inline_action_card(
+                                action_card=card_obj,
+                                on_complete=on_complete,
+                                on_help=None,
+                                initially_expanded=False
+                            )
+                        except Exception as e:
+                            print(f"[ERROR plan_widget] Failed to render card: {e}")
+                            import traceback
+                            traceback.print_exc()
+                
+                ui.separator()
+                        
             # Graph container
             with ui.scroll_area().classes('flex-grow p-4'):
                 mermaid_code = render_plan_mermaid(steps)
                 ui.mermaid(mermaid_code).classes('w-full')
                 
-                # Legend
-                with ui.column().classes('mt-4 gap-2'):
-                    ui.label('Status:').classes('text-xs text-gray-500 font-semibold')
-                    with ui.row().classes('gap-3 flex-wrap'):
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('ℹ️').classes('text-sm')
-                            ui.element('div').classes('w-3 h-3 rounded bg-gray-100 border border-gray-400')
-                            ui.label('Defined').classes('text-xs')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('📅').classes('text-sm')
-                            ui.element('div').classes('w-3 h-3 rounded bg-blue-100 border border-gray-400')
-                            ui.label('Scheduled').classes('text-xs')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('⏳').classes('text-sm')
-                            ui.element('div').classes('w-3 h-3 rounded bg-blue-200 border border-gray-400')
-                            ui.label('In Progress').classes('text-xs')
-                    with ui.row().classes('gap-3 flex-wrap'):
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('✅').classes('text-sm')
-                            ui.element('div').classes('w-3 h-3 rounded bg-green-200 border border-gray-400')
-                            ui.label('Completed').classes('text-xs')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('⚠️').classes('text-sm')
-                            ui.element('div').classes('w-3 h-3 rounded bg-orange-200 border border-gray-400')
-                            ui.label('Needs Rework').classes('text-xs')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('❌').classes('text-sm')
-                            ui.element('div').classes('w-3 h-3 rounded bg-red-200 border border-gray-400')
-                            ui.label('Rejected').classes('text-xs')
+                # Legend - 2x2 Quadrant Layout
+                with ui.column().classes('mt-4 gap-3 w-full'):
+                    # Top row: Action Type | Agency
+                    with ui.row().classes('w-full').style('gap: 1rem;'):
+                        # Action Type (left) - takes 50%
+                        with ui.column().classes('gap-1').style('width: calc(50% - 0.5rem);'):
+                            ui.label('Action Type:').classes('text-xs text-gray-700 font-bold mb-1')
+                            with ui.row().classes('gap-3 flex-wrap'):
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('🤖').classes('text-sm')
+                                    ui.label('Automated').classes('text-xs')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('👤').classes('text-sm')
+                                    ui.label('User Action').classes('text-xs')
+                        
+                        # Agency (right) - takes 50%
+                        with ui.column().classes('gap-1').style('width: calc(50% - 0.5rem);'):
+                            ui.label('Agency:').classes('text-xs text-gray-700 font-bold mb-1')
+                            with ui.row().classes('gap-3 flex-wrap'):
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-white border-4').style('border-color: #3b82f6')
+                                    ui.label('LADBS').classes('text-xs font-mono')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-white border-4').style('border-color: #a855f7')
+                                    ui.label('LADWP').classes('text-xs font-mono')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-white border-4').style('border-color: #22c55e')
+                                    ui.label('LASAN').classes('text-xs font-mono')
                     
-                    ui.label('Action Type:').classes('text-xs text-gray-500 font-semibold mt-2')
-                    with ui.row().classes('gap-4 flex-wrap'):
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('🤖').classes('text-sm')
-                            ui.label('Automated').classes('text-xs')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('👤').classes('text-sm')
-                            ui.label('User Action').classes('text-xs')
+                    ui.separator()
                     
-                    ui.label('Agency:').classes('text-xs text-gray-500 font-semibold mt-2')
-                    with ui.row().classes('gap-4 flex-wrap'):
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('🏗️').classes('text-sm')
-                            ui.label('LADBS').classes('text-xs font-mono')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('⚡').classes('text-sm')
-                            ui.label('LADWP').classes('text-xs font-mono')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.label('♻️').classes('text-sm')
-                            ui.label('LASAN').classes('text-xs font-mono')
-                    
-                    ui.label('Step Type (outline):').classes('text-xs text-gray-500 font-semibold mt-2')
-                    with ui.row().classes('gap-3 flex-wrap'):
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-blue-600')
-                            ui.label('PRM').classes('text-xs font-mono')
-                            ui.label('Permit').classes('text-xs text-gray-500')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-green-600')
-                            ui.label('INS').classes('text-xs font-mono')
-                            ui.label('Inspection').classes('text-xs text-gray-500')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-orange-600')
-                            ui.label('TRD').classes('text-xs font-mono')
-                            ui.label('Trade').classes('text-xs text-gray-500')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-purple-600')
-                            ui.label('APP').classes('text-xs font-mono')
-                            ui.label('Application').classes('text-xs text-gray-500')
-                    with ui.row().classes('gap-3 flex-wrap'):
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-cyan-600')
-                            ui.label('PCK').classes('text-xs font-mono')
-                            ui.label('Pickup').classes('text-xs text-gray-500')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-pink-600')
-                            ui.label('ENR').classes('text-xs font-mono')
-                            ui.label('Enroll').classes('text-xs text-gray-500')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-yellow-600')
-                            ui.label('DOC').classes('text-xs font-mono')
-                            ui.label('Document').classes('text-xs text-gray-500')
-                        with ui.row().classes('items-center gap-1'):
-                            ui.element('div').classes('w-3 h-3 rounded bg-white border-2 border-red-600')
-                            ui.label('PAY').classes('text-xs font-mono')
-                            ui.label('Payment').classes('text-xs text-gray-500')
+                    # Bottom row: Status | Step Type
+                    with ui.row().classes('w-full').style('gap: 1rem;'):
+                        # Status (left) - takes 50%
+                        with ui.column().classes('gap-1').style('width: calc(50% - 0.5rem);'):
+                            ui.label('Status:').classes('text-xs text-gray-700 font-bold mb-1')
+                            with ui.row().classes('gap-2 flex-wrap'):
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-gray-100 border border-gray-400')
+                                    ui.label('Defined').classes('text-xs')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-blue-100 border border-gray-400')
+                                    ui.label('Scheduled').classes('text-xs')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-blue-200 border border-gray-400')
+                                    ui.label('In Progress').classes('text-xs')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-green-200 border border-gray-400')
+                                    ui.label('Completed').classes('text-xs')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-orange-200 border border-gray-400')
+                                    ui.label('Needs Rework').classes('text-xs')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.element('div').classes('w-2.5 h-2.5 rounded bg-red-200 border border-gray-400')
+                                    ui.label('Rejected').classes('text-xs')
+                        
+                        # Step Type (right) - takes 50%
+                        with ui.column().classes('gap-1').style('width: calc(50% - 0.5rem);'):
+                            ui.label('Step Type:').classes('text-xs text-gray-700 font-bold mb-1')
+                            with ui.row().classes('gap-2 flex-wrap'):
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('PRM').classes('text-xs font-mono font-bold').style('color: #2563eb')
+                                    ui.label('Permit').classes('text-xs text-gray-500')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('INS').classes('text-xs font-mono font-bold').style('color: #16a34a')
+                                    ui.label('Inspection').classes('text-xs text-gray-500')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('TRD').classes('text-xs font-mono font-bold').style('color: #ea580c')
+                                    ui.label('Trade').classes('text-xs text-gray-500')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('APP').classes('text-xs font-mono font-bold').style('color: #9333ea')
+                                    ui.label('Application').classes('text-xs text-gray-500')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('PCK').classes('text-xs font-mono font-bold').style('color: #0891b2')
+                                    ui.label('Pickup').classes('text-xs text-gray-500')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('ENR').classes('text-xs font-mono font-bold').style('color: #db2777')
+                                    ui.label('Enroll').classes('text-xs text-gray-500')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('DOC').classes('text-xs font-mono font-bold').style('color: #ca8a04')
+                                    ui.label('Document').classes('text-xs text-gray-500')
+                                with ui.row().classes('items-center gap-1'):
+                                    ui.label('PAY').classes('text-xs font-mono font-bold').style('color: #dc2626')
+                                    ui.label('Payment').classes('text-xs text-gray-500')
             
             # Action needed footer
             if actions_needed > 0:
                 with ui.card().classes('mx-4 mb-4 bg-orange-50 border border-orange-300'):
-                    with ui.row().classes('items-center gap-2'):
+                    with ui.row().classes('items-center gap-2 p-2'):
                         ui.icon('bolt', color='warning')
                         action_text = f'{actions_needed} action{"s" if actions_needed > 1 else ""} need{"" if actions_needed > 1 else "s"} your attention'
                         ui.label(action_text).classes('text-sm flex-grow')
-                    if on_view_action:
-                        ui.button('View in Chat', on_click=on_view_action).props('flat color=warning size=sm')
-                    else:
-                        ui.button('View in Chat', on_click=lambda: None).props('flat color=warning size=sm disabled')
         else:
             # Empty state
             with ui.column().classes('w-full h-full items-center justify-center p-8'):

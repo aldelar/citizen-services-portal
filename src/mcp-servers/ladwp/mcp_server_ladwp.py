@@ -26,7 +26,7 @@ async def queryKB(
     top: int = 5,
 ) -> str:
     """
-    Search LADWP knowledge base for rate plans, rebates, solar programs.
+    Search LADWP (Los Angeles Department of Water and Power) knowledge base for rate plans, rebates, solar programs.
 
     Args:
         query: Natural language query
@@ -65,10 +65,10 @@ async def plans_list(
     account_number: str,
 ) -> str:
     """
-    List available LADWP rate plans.
+    List available LADWP (Los Angeles Department of Water and Power) rate plans.
 
     Args:
-        account_number: The utility account number
+        account_number: The utility account number, aka user_id
 
     Returns:
         PlansListResult with available plans and recommendation
@@ -171,7 +171,7 @@ async def rebates_filed(
     List all rebate applications for an account.
 
     Args:
-        account_number: The utility account number
+        account_number: The utility account number aka user_id
 
     Returns:
         RebatesFiledResult with all applications and their status

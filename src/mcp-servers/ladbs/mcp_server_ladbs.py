@@ -26,7 +26,7 @@ async def queryKB(
     top: int = 5,
 ) -> str:
     """
-    Search LADBS knowledge base for permit requirements, fees, processes.
+    Search LADBS (Los Angeles Department of Building and Safety) knowledge base for permit requirements, fees, processes.
 
     Args:
         query: Natural language query

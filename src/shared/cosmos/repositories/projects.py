@@ -286,3 +286,22 @@ class ProjectRepository:
             return Project.model_validate(updated_item)
         except cosmos_exceptions.CosmosResourceNotFoundError:
             raise NotFoundError(f"Project with ID {project_id} not found")
+
+    async def delete_project(self, project_id: str, user_id: str) -> bool:
+        """
+        Delete a project by ID and user ID.
+
+        Args:
+            project_id: The project ID.
+            user_id: The user ID (partition key).
+
+        Returns:
+            bool: True if deleted successfully.
+        """
+        container = await get_container(self.container_name)
+        
+        try:
+            await container.delete_item(item=project_id, partition_key=user_id)
+            return True
+        except cosmos_exceptions.CosmosResourceNotFoundError:
+            return False

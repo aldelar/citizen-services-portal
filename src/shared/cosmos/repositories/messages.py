@@ -109,3 +109,22 @@ class MessageRepository:
             items.append(item)
         
         return items[0] if items else 0
+
+    async def delete_message(self, message_id: str, project_id: str) -> bool:
+        """
+        Delete a message by ID and project ID (partition key).
+
+        Args:
+            message_id: The message ID.
+            project_id: The project ID (partition key).
+
+        Returns:
+            bool: True if deleted successfully.
+        """
+        container = await get_container(self.container_name)
+        
+        try:
+            await container.delete_item(item=message_id, partition_key=project_id)
+            return True
+        except cosmos_exceptions.CosmosResourceNotFoundError:
+            return False

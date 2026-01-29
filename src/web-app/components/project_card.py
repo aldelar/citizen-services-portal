@@ -62,6 +62,7 @@ def project_card(
     project: Project,
     is_selected: bool = False,
     on_click: Optional[Callable] = None,
+    on_delete: Optional[Callable] = None,
 ) -> ui.card:
     """Render a project card.
     
@@ -69,6 +70,7 @@ def project_card(
         project: The project to display.
         is_selected: Whether this project is currently selected.
         on_click: Callback function when the card is clicked.
+        on_delete: Callback function when delete is requested.
         
     Returns:
         A NiceGUI card element representing the project.
@@ -90,6 +92,12 @@ def project_card(
     with ui.card().classes(card_classes) as card:
         if on_click:
             card.on('click', on_click)
+        
+        # Add context menu for delete option
+        if on_delete:
+            with card:
+                with ui.context_menu() as menu:
+                    ui.menu_item('Delete Project', on_click=lambda: on_delete(project.id)).props('icon=delete')
         
         # Header row: icon, title, status chip
         with ui.row().classes('items-center gap-2 w-full'):

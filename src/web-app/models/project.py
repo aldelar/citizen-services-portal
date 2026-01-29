@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from enum import Enum
 
 
@@ -105,27 +105,29 @@ class ToolExecutionRecord(BaseModel):
 
 class UserActionCard(BaseModel):
     """The action card shown to the user for a user-driven step."""
-    step_id: str  # Required - links to plan step
-    card_type: str  # phone_call, email, form_submission, in_person, upload
+    step_id: str = Field(alias="stepId")  # Required - links to plan step
+    card_type: str = Field(alias="cardType")  # phone_call, email, form_submission, in_person, upload
     title: str  # Short title for the card
     instructions: str  # Full markdown instructions
 
     # Prepared materials
-    phone_script: Optional[str] = None
-    email_draft: Optional[str] = None
-    form_data: Optional[Dict[str, Any]] = None
+    phone_script: Optional[str] = Field(None, alias="phoneScript")
+    email_draft: Optional[str] = Field(None, alias="emailDraft")
+    form_data: Optional[Dict[str, Any]] = Field(None, alias="formData")
     checklist: List[str] = Field(default_factory=list)
 
     # Contact/action info
-    contact_name: Optional[str] = None
-    contact_phone: Optional[str] = None
-    contact_email: Optional[str] = None
-    action_url: Optional[str] = None
+    contact_name: Optional[str] = Field(None, alias="contactName")
+    contact_phone: Optional[str] = Field(None, alias="contactPhone")
+    contact_email: Optional[str] = Field(None, alias="contactEmail")
+    action_url: Optional[str] = Field(None, alias="actionUrl")
 
     # Timing
-    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    due_by: Optional[datetime] = None
-    estimated_duration: Optional[str] = None
+    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), alias="assignedAt")
+    due_by: Optional[datetime] = Field(None, alias="dueBy")
+    estimated_duration: Optional[str] = Field(None, alias="estimatedDuration")
+    
+    model_config = {"populate_by_name": True}  # Allow both snake_case and camelCase
 
 
 class CompletionRecord(BaseModel):
@@ -175,13 +177,13 @@ class PlanStep(BaseModel):
     execution_record: Optional[ToolExecutionRecord] = None
 
     # For USER_ACTION steps: The card shown to the user
-    user_action_card: Optional[UserActionCard] = None
+    user_action_card: Optional[Union[UserActionCard, Dict[str, Any]]] = None
 
     # For ALL steps: How it was completed
     completion_record: Optional[CompletionRecord] = None
 
     # Audit trail: All events that happened
-    history: List[StepEvent] = Field(default_factory=list)
+    history: List[Union[StepEvent, Dict[str, Any]]] = Field(default_factory=list)
 
 
 class Plan(BaseModel):

@@ -20,11 +20,24 @@ ACTION_TYPE_CONFIG = {
     "upload": {"icon": "cloud_upload", "color": "primary", "label": "UPLOAD DOCUMENT"},
 }
 
+# Step type colors (matches plan_widget.py)
+STEP_TYPE_COLORS = {
+    'PRM': '#2563eb',  # blue-600 - Permit
+    'INS': '#16a34a',  # green-600 - Inspection
+    'TRD': '#ea580c',  # orange-600 - Trade
+    'APP': '#9333ea',  # purple-600 - Application
+    'PCK': '#0891b2',  # cyan-600 - Pickup
+    'ENR': '#db2777',  # pink-600 - Enroll
+    'DOC': '#ca8a04',  # yellow-600 - Document
+    'PAY': '#dc2626',  # red-600 - Payment
+}
+
 
 def render_inline_action_card(
     action_card: UserActionCard,
     on_complete: Optional[Callable[[str, str], Awaitable[None]]] = None,
     on_help: Optional[Callable[[], Awaitable[None]]] = None,
+    initially_expanded: bool = True,
 ) -> ui.card:
     """Render an action card inline in the chat.
     
@@ -32,7 +45,8 @@ def render_inline_action_card(
         action_card: The UserActionCard model with all action details.
         on_complete: Async callback when user clicks "Mark Complete". 
                      Receives (step_id, user_message).
-        on_help: Async callback when user clicks "Need Help".
+        on_help: Async callback when user clicks "Need Help" (deprecated).
+        initially_expanded: Whether the card starts expanded (True for chat, False for plan panel).
         
     Returns:
         The NiceGUI card element.
@@ -42,116 +56,144 @@ def render_inline_action_card(
         {"icon": "bolt", "color": "warning", "label": "ACTION"}
     )
     
-    with ui.card().classes('w-full border-2 border-orange-400 bg-orange-50 my-3') as card:
-        # Header with bolt icon and step ID
-        with ui.row().classes('items-center gap-2 w-full'):
+    # Track expanded/collapsed state
+    is_expanded = {'value': initially_expanded}
+    
+    # Get step type color from step_id (e.g., TRD-1 -> TRD -> orange)
+    step_type_prefix = action_card.step_id.split('-')[0] if '-' in action_card.step_id else None
+    step_color = STEP_TYPE_COLORS.get(step_type_prefix, '#6b7280')  # default to gray
+    
+    with ui.card().classes('w-full border-2 my-3').style('border-color: #eab308; background-color: #fefce8;') as card:
+        # Header with bolt icon and step ID - always visible
+        with ui.row().classes('items-center gap-2 w-full cursor-pointer') as header_row:
             ui.icon('bolt', color='warning').classes('text-xl')
-            ui.label('ACTION NEEDED').classes('font-bold text-orange-700')
+            ui.label('ACTION NEEDED').classes('font-extrabold').style('color: #ca8a04;')
             ui.element('div').classes('flex-grow')
-            ui.badge(f'Step: {action_card.step_id}', color='grey').props('outline')
+            ui.badge(f'Step: {action_card.step_id}').props('outline').style(f'border-color: {step_color} !important; color: {step_color} !important; font-weight: 600;')
         
-        ui.separator().classes('my-2')
+        # Container for collapsible content
+        content_container = ui.column().classes('w-full')
+        content_container.set_visibility(is_expanded['value'])
         
-        # Action type header with icon
-        with ui.row().classes('items-center gap-2'):
-            ui.icon(config["icon"], color=config["color"]).classes('text-2xl')
+        with content_container:
+            ui.separator().classes('my-2')
             
-            # Build action label based on type
-            if action_card.card_type == "phone_call" and action_card.contact_phone:
-                action_label = f"{config['label']} to {action_card.contact_phone}"
-            elif action_card.card_type == "email" and action_card.contact_email:
-                action_label = f"{config['label']} to {action_card.contact_email}"
-            elif action_card.card_type == "in_person" and action_card.contact_name:
-                action_label = f"VISIT {action_card.contact_name}"
-            else:
-                action_label = config["label"]
+            # Action type header with icon
+            with ui.row().classes('items-center gap-2'):
+                ui.icon(config["icon"], color=config["color"]).classes('text-2xl')
+                
+                # Build action label based on type
+                if action_card.card_type == "phone_call" and action_card.contact_phone:
+                    action_label = f"{config['label']} to {action_card.contact_phone}"
+                elif action_card.card_type == "email" and action_card.contact_email:
+                    action_label = f"{config['label']} to {action_card.contact_email}"
+                elif action_card.card_type == "in_person" and action_card.contact_name:
+                    action_label = f"VISIT {action_card.contact_name}"
+                else:
+                    action_label = config["label"]
+                
+                ui.label(action_label).classes('font-semibold text-lg')
+                
+                if action_card.contact_name and action_card.card_type in ["phone_call", "email"]:
+                    ui.label(f"({action_card.contact_name})").classes('text-gray-500')
             
-            ui.label(action_label).classes('font-semibold text-lg')
+            # Title
+            ui.label(action_card.title).classes('text-base font-medium mt-2')
             
-            if action_card.contact_name and action_card.card_type in ["phone_call", "email"]:
-                ui.label(f"({action_card.contact_name})").classes('text-gray-500')
-        
-        # Title
-        ui.label(action_card.title).classes('text-base font-medium mt-2')
-        
-        # Instructions
-        if action_card.instructions:
-            ui.markdown(action_card.instructions).classes('text-sm text-gray-700 mt-1')
-        
-        # Phone script (collapsible)
-        if action_card.phone_script:
-            with ui.expansion('📝 Phone Script', icon='description').classes('w-full mt-3 bg-white'):
-                with ui.card().classes('bg-gray-50 p-3 w-full'):
-                    ui.label(action_card.phone_script).classes(
-                        'font-mono text-sm whitespace-pre-wrap'
-                    )
-                    ui.button(
-                        'Copy Script', 
-                        icon='content_copy',
-                        on_click=lambda: ui.notify('Script copied to clipboard!')
-                    ).props('flat size=sm').classes('mt-2')
-        
-        # Email draft (collapsible)
-        if action_card.email_draft:
-            with ui.expansion('📧 Email Draft', icon='email').classes('w-full mt-3 bg-white'):
-                with ui.card().classes('bg-gray-50 p-3 w-full'):
-                    ui.markdown(action_card.email_draft).classes('text-sm')
-                    ui.button(
-                        'Copy Draft',
-                        icon='content_copy',
-                        on_click=lambda: ui.notify('Email draft copied to clipboard!')
-                    ).props('flat size=sm').classes('mt-2')
-        
-        # Checklist
-        if action_card.checklist:
-            with ui.column().classes('mt-3 gap-1'):
-                ui.label('✓ Checklist:').classes('font-medium text-sm')
-                for item in action_card.checklist:
-                    with ui.row().classes('items-center gap-2 ml-2'):
-                        ui.icon('check_box_outline_blank', size='xs').classes('text-gray-400')
-                        ui.label(item).classes('text-sm')
-        
-        # Action URL (for online actions)
-        if action_card.action_url:
-            with ui.row().classes('mt-3 items-center gap-2'):
-                ui.icon('link', size='sm').classes('text-blue-500')
-                ui.link(
-                    'Open Portal →', 
-                    action_card.action_url, 
-                    new_tab=True
-                ).classes('text-blue-600 text-sm font-medium')
-        
-        # Estimated duration
-        if action_card.estimated_duration:
-            with ui.row().classes('items-center gap-2 mt-3 text-sm text-gray-600'):
-                ui.icon('schedule', size='xs')
-                ui.label(f'Estimated: {action_card.estimated_duration}')
-        
-        ui.separator().classes('mt-4 mb-2')
-        
-        # Action buttons
-        with ui.row().classes('w-full justify-end gap-2'):
-            if on_help:
-                ui.button(
-                    'Need Help',
-                    icon='help_outline',
-                    on_click=on_help
-                ).props('flat color=grey')
+            # Instructions
+            if action_card.instructions:
+                ui.markdown(action_card.instructions).classes('text-sm text-gray-700 mt-1')
             
-            if on_complete:
-                async def show_complete_dialog():
-                    dialog = create_mark_complete_dialog(
-                        step_id=action_card.step_id,
-                        step_title=action_card.title,
-                        on_complete=on_complete
-                    )
-                    dialog.open()
+            # Phone script (collapsible)
+            if action_card.phone_script:
+                with ui.expansion('📝 Phone Script', icon='description').classes('w-full mt-3 bg-white'):
+                    with ui.card().classes('bg-gray-50 p-3 w-full'):
+                        ui.label(action_card.phone_script).classes(
+                            'font-mono text-sm whitespace-pre-wrap'
+                        )
+                        ui.button(
+                            'Copy Script', 
+                            icon='content_copy',
+                            on_click=lambda: ui.notify('Script copied to clipboard!')
+                        ).props('flat size=sm').classes('mt-2')
+            
+            # Email draft (collapsible)
+            if action_card.email_draft:
+                with ui.expansion('📧 Email Draft', icon='email').classes('w-full mt-3 bg-white'):
+                    with ui.card().classes('bg-gray-50 p-3 w-full'):
+                        ui.markdown(action_card.email_draft).classes('text-sm')
+                        ui.button(
+                            'Copy Draft',
+                            icon='content_copy',
+                            on_click=lambda: ui.notify('Email draft copied to clipboard!')
+                        ).props('flat size=sm').classes('mt-2')
+            
+            # Checklist
+            if action_card.checklist:
+                with ui.column().classes('mt-3 gap-1'):
+                    ui.label('✓ Checklist:').classes('font-medium text-sm')
+                    for item in action_card.checklist:
+                        with ui.row().classes('items-center gap-2 ml-2'):
+                            ui.icon('check_box_outline_blank', size='xs').classes('text-gray-400')
+                            ui.label(item).classes('text-sm')
+            
+            # Action URL (for online actions)
+            if action_card.action_url:
+                with ui.row().classes('mt-3 items-center gap-2'):
+                    ui.icon('link', size='sm').classes('text-blue-500')
+                    ui.link(
+                        'Open Portal →', 
+                        action_card.action_url, 
+                        new_tab=True
+                    ).classes('text-blue-600 text-sm font-medium')
+            
+            # Estimated duration
+            if action_card.estimated_duration:
+                with ui.row().classes('items-center gap-2 mt-3 text-sm text-gray-600'):
+                    ui.icon('schedule', size='xs')
+                    ui.label(f'Estimated: {action_card.estimated_duration}')
+            
+            ui.separator().classes('mt-4 mb-2')
+            
+            # Action buttons
+            with ui.row().classes('w-full justify-end gap-2'):
+                def toggle_collapse():
+                    is_expanded['value'] = not is_expanded['value']
+                    if is_expanded['value']:
+                        content_container.set_visibility(True)
+                    else:
+                        content_container.set_visibility(False)
                 
                 ui.button(
-                    'Mark Complete',
-                    icon='check_circle',
-                    on_click=show_complete_dialog
-                ).props('unelevated color=positive')
+                    'Close',
+                    icon='close',
+                    on_click=toggle_collapse
+                ).props('flat color=grey')
+                
+                if on_complete:
+                    async def show_complete_dialog():
+                        dialog = create_mark_complete_dialog(
+                            step_id=action_card.step_id,
+                            step_title=action_card.title,
+                            on_complete=on_complete
+                        )
+                        dialog.open()
+                    
+                    ui.button(
+                        'Mark Complete',
+                        icon='check_circle',
+                        on_click=show_complete_dialog
+                    ).props('unelevated color=positive')
+        
+        # Make header clickable to re-expand
+        def toggle_expand():
+            is_expanded['value'] = not is_expanded['value']
+            if is_expanded['value']:
+                content_container.set_visibility(True)
+            else:
+                content_container.set_visibility(False)
+        
+        header_row.on('click', toggle_expand)
     
     return card
 

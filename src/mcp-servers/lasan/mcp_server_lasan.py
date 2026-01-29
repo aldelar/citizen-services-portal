@@ -26,7 +26,7 @@ async def queryKB(
     top: int = 5,
 ) -> str:
     """
-    Search LASAN knowledge base for disposal guidelines, recycling info.
+    Search LASAN (Los Angeles Bureau of Sanitation) knowledge base for disposal guidelines, recycling info.
 
     Args:
         query: Natural language query

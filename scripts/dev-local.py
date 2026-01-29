@@ -120,7 +120,7 @@ def get_csp_agent_config(azd_env: dict[str, str]) -> ServiceConfig:
             "MCP_CSP_URL": "http://localhost:8004/mcp",
             # Azure OpenAI from azd
             "AZURE_OPENAI_ENDPOINT": azd_env.get("AZURE_OPENAI_ENDPOINT", ""),
-            "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME": "gpt-4.1",
+            "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME": azd_env.get("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME", "gpt-4.1"),
             # Azure AI Foundry project (required for agent runtime)
             "AZURE_AI_PROJECT_ENDPOINT": azd_env.get("AZURE_AI_PROJECT_ENDPOINT", ""),
             "AGENT_PROJECT_RESOURCE_ID": azd_env.get("AZURE_AI_PROJECT_ID", ""),

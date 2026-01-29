@@ -29,6 +29,9 @@ from models.project import (
 from components.plan_widget import plan_widget
 from components.inline_action_card import render_inline_action_card, create_mark_complete_dialog
 
+# Feature flags
+AUTO_RESUME_ON_PROJECT_LOAD = False  # Set to True to automatically ask agent to review project on load
+
 
 def format_relative_time(dt: datetime | None) -> str:
     """Format a datetime as a human-readable relative time string."""
@@ -103,6 +106,9 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
         # Handle estimated duration (in days)
         est_duration = step_data.get("estimated_duration_days") or step_data.get("estimatedDurationDays")
         
+        # Handle user_action_card (could be camelCase in Cosmos)
+        user_action_card = step_data.get("user_action_card") or step_data.get("userActionCard")
+        
         step = PlanStep(
             id=step_data.get("id", f"S{len(steps)+1}"),
             title=step_data.get("title", "Untitled Step"),
@@ -113,6 +119,7 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
             result=result,
             step_type=step_type,
             estimated_duration_days=est_duration,
+            user_action_card=user_action_card,
         )
         steps.append(step)
     
@@ -395,7 +402,7 @@ async def main_page(request: Request):
         await refresh_ui()
         
         # If returning to a project with a plan, automatically ask the agent to review status
-        if is_returning_to_project:
+        if is_returning_to_project and AUTO_RESUME_ON_PROJECT_LOAD:
             await send_auto_resume_message()
     
     async def send_auto_resume_message():
@@ -555,6 +562,7 @@ async def main_page(request: Request):
         plan_widget(
             selected_project,
             on_view_action=scroll_to_action_card,
+            on_complete=mark_step_complete,
         )
     
     async def reload_and_update_selected_project():
@@ -664,6 +672,11 @@ async def main_page(request: Request):
                                     'Cancel Project',
                                     on_click=lambda p=project: confirm_cancel_dialog(p.id)
                                 )
+                                ui.separator()
+                                ui.menu_item(
+                                    'Delete Project',
+                                    on_click=lambda p=project: confirm_delete_dialog(p.id)
+                                ).props('icon=delete').classes('text-red-600')
                     
                     with ui.row().classes('items-center gap-2 w-full'):
                         ui.icon(icon, color=color)
@@ -724,11 +737,49 @@ async def main_page(request: Request):
         
         with ui.dialog() as dialog, ui.card():
             ui.label('Mark as Complete?').classes('text-lg font-bold')
-            ui.label('Mark this project as complete? You will no longer be able to send messages.')
-            ui.label('This action cannot be undone.').classes('text-orange-600 font-semibold mt-2')
+            ui.label('Are you sure you want to mark this project as complete? You will no longer be able to send messages.')
             with ui.row().classes('w-full justify-end gap-2 mt-4'):
                 ui.button('Cancel', on_click=dialog.close).props('flat')
                 ui.button('Mark Complete', on_click=do_complete).props('color=positive')
+        dialog.open()
+    
+    def confirm_delete_dialog(project_id: str):
+        """Show confirmation dialog for deleting a project."""
+        async def do_delete():
+            nonlocal projects, selected_project_id, selected_project, messages
+            
+            # Close dialog first
+            dialog.close()
+            
+            # Show deleting notification
+            ui.notify('Deleting project...', type='info')
+            
+            # Perform deletion
+            success = await project_service.delete_project(project_id, user_id)
+            
+            if success:
+                # Remove from local projects list
+                projects = [p for p in projects if p.id != project_id]
+                
+                # If deleted project was selected, clear selection
+                if selected_project_id == project_id:
+                    selected_project_id = None
+                    selected_project = None
+                    messages = []
+                
+                # Refresh UI
+                await refresh_ui()
+                ui.notify('Project deleted successfully', type='positive')
+            else:
+                ui.notify('Failed to delete project', type='negative')
+        
+        with ui.dialog() as dialog, ui.card():
+            ui.label('Delete Project?').classes('text-lg font-bold')
+            ui.label('This will permanently delete the project and all its messages.')
+            ui.label('This action cannot be undone.').classes('text-red-600 font-semibold mt-2')
+            with ui.row().classes('w-full justify-end gap-2 mt-4'):
+                ui.button('Cancel', on_click=dialog.close).props('flat')
+                ui.button('Delete', on_click=do_delete).props('color=negative')
         dialog.open()
     
     async def save_title_edit(project_id: str, new_title: str):
