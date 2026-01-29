@@ -260,7 +260,28 @@ async def main_page(request: Request):
         .chat-markdown code { background: rgba(0,0,0,0.1); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
         .chat-markdown pre { background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 5px; overflow-x: auto; }
         .chat-markdown strong { font-weight: 600; }
-        .projects-panel { width: 300px; min-width: 300px; height: 100% !important; }
+        .projects-panel { 
+            width: 300px; 
+            min-width: 200px; 
+            max-width: 20vw;
+            height: 100% !important;
+            position: relative;
+        }
+        .projects-resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 100;
+            transition: background 0.2s;
+        }
+        .projects-resize-handle:hover,
+        .projects-resize-handle.dragging {
+            background: rgba(59, 130, 246, 0.5);
+        }
         .main-content { 
             height: 100% !important; 
             max-height: 100% !important;
@@ -635,12 +656,12 @@ async def main_page(request: Request):
                 # Determine status icon and color
                 status_icons = {
                     ProjectStatus.ACTIVE: 'sync',
-                    ProjectStatus.COMPLETED: 'check_circle',
+                    ProjectStatus.COMPLETED: 'lock',
                     ProjectStatus.CANCELLED: 'cancel',
                 }
                 status_colors = {
                     ProjectStatus.ACTIVE: 'primary',
-                    ProjectStatus.COMPLETED: 'positive',
+                    ProjectStatus.COMPLETED: 'dark',
                     ProjectStatus.CANCELLED: 'grey',
                 }
                 icon = status_icons.get(project.status, 'folder')
@@ -660,19 +681,26 @@ async def main_page(request: Request):
                 with ui.card().classes(card_classes) as card:
                     card.on('click', lambda p=project: select_project(p.id))
                     
-                    # Add context menu for active projects only
+                    # Add context menu - active projects have Archive, completed/cancelled have Delete only
                     if project.status == ProjectStatus.ACTIVE:
                         with card:
                             with ui.menu().props('context-menu'):
                                 ui.menu_item(
-                                    'Mark as Complete',
+                                    'Archive',
                                     on_click=lambda p=project: confirm_complete_dialog(p.id)
-                                )
+                                ).props('icon=lock')
                                 ui.menu_item(
                                     'Cancel Project',
                                     on_click=lambda p=project: confirm_cancel_dialog(p.id)
                                 )
                                 ui.separator()
+                                ui.menu_item(
+                                    'Delete Project',
+                                    on_click=lambda p=project: confirm_delete_dialog(p.id)
+                                ).props('icon=delete').classes('text-red-600')
+                    elif project.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+                        with card:
+                            with ui.menu().props('context-menu'):
                                 ui.menu_item(
                                     'Delete Project',
                                     on_click=lambda p=project: confirm_delete_dialog(p.id)
@@ -698,8 +726,10 @@ async def main_page(request: Request):
                             if total_steps > 0:
                                 step_progress = completed_steps / total_steps
                                 progress_pct = int(step_progress * 100)
+                                # Use green color for 100% complete projects
+                                progress_color = 'positive' if progress_pct == 100 else color
                                 with ui.row().classes('items-center gap-2 w-full mt-1'):
-                                    ui.linear_progress(value=step_progress, show_value=False).props(f'color={color}').classes('flex-grow')
+                                    ui.linear_progress(value=step_progress, show_value=False).props(f'color={progress_color}').classes('flex-grow')
                                     ui.label(f'{progress_pct}%').classes('text-xs text-gray-500')
                             
                             # Show relative time based on updated_at
@@ -736,11 +766,11 @@ async def main_page(request: Request):
             dialog.close()
         
         with ui.dialog() as dialog, ui.card():
-            ui.label('Mark as Complete?').classes('text-lg font-bold')
-            ui.label('Are you sure you want to mark this project as complete? You will no longer be able to send messages.')
+            ui.label('Archive Project?').classes('text-lg font-bold')
+            ui.label('Are you sure you want to archive this project? It will be locked and you will no longer be able to send messages.')
             with ui.row().classes('w-full justify-end gap-2 mt-4'):
                 ui.button('Cancel', on_click=dialog.close).props('flat')
-                ui.button('Mark Complete', on_click=do_complete).props('color=positive')
+                ui.button('Archive', on_click=do_complete).props('color=positive icon=lock')
         dialog.open()
     
     def confirm_delete_dialog(project_id: str):
@@ -1501,6 +1531,8 @@ async def main_page(request: Request):
     with ui.row().classes('w-full main-content'):
         # Left panel - Projects list
         with ui.column().classes('projects-panel h-full bg-gray-100 border-r'):
+            # Resize handle for projects panel
+            ui.html('<div class="projects-resize-handle" id="projects-resize-handle"></div>', sanitize=False)
             # Projects header
             with ui.row().classes('w-full items-center p-4 border-b bg-white'):
                 ui.label('PROJECTS').classes('text-sm font-bold text-gray-500 flex-grow')
@@ -1559,43 +1591,78 @@ async def main_page(request: Request):
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() {
-            const handle = document.getElementById('plan-resize-handle');
-            const panel = document.querySelector('.plan-panel');
-            if (!handle || !panel) return;
+            // Plan panel resize
+            const planHandle = document.getElementById('plan-resize-handle');
+            const planPanel = document.querySelector('.plan-panel');
+            if (planHandle && planPanel) {
+                let isDragging = false;
+                let startX, startWidth;
+                
+                planHandle.addEventListener('mousedown', function(e) {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startWidth = planPanel.offsetWidth;
+                    planHandle.classList.add('dragging');
+                    document.body.style.cursor = 'col-resize';
+                    document.body.style.userSelect = 'none';
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    const diff = startX - e.clientX;
+                    const projectsPanel = document.querySelector('.projects-panel');
+                    const projectsWidth = projectsPanel ? projectsPanel.offsetWidth : 300;
+                    const availableWidth = window.innerWidth - projectsWidth;
+                    const maxWidth = availableWidth * 0.8;
+                    const newWidth = Math.min(Math.max(startWidth + diff, 200), maxWidth);
+                    planPanel.style.width = newWidth + 'px';
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    if (isDragging) {
+                        isDragging = false;
+                        planHandle.classList.remove('dragging');
+                        document.body.style.cursor = '';
+                        document.body.style.userSelect = '';
+                    }
+                });
+            }
             
-            let isDragging = false;
-            let startX, startWidth;
-            
-            handle.addEventListener('mousedown', function(e) {
-                isDragging = true;
-                startX = e.clientX;
-                startWidth = panel.offsetWidth;
-                handle.classList.add('dragging');
-                document.body.style.cursor = 'col-resize';
-                document.body.style.userSelect = 'none';
-                e.preventDefault();
-            });
-            
-            document.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                const diff = startX - e.clientX;
-                // Calculate max width: 80% of (viewport - projects panel), leaving 20% for chat
-                const projectsPanel = document.querySelector('.projects-panel');
-                const projectsWidth = projectsPanel ? projectsPanel.offsetWidth : 300;
-                const availableWidth = window.innerWidth - projectsWidth;
-                const maxWidth = availableWidth * 0.8;
-                const newWidth = Math.min(Math.max(startWidth + diff, 200), maxWidth);
-                panel.style.width = newWidth + 'px';
-            });
-            
-            document.addEventListener('mouseup', function() {
-                if (isDragging) {
-                    isDragging = false;
-                    handle.classList.remove('dragging');
-                    document.body.style.cursor = '';
-                    document.body.style.userSelect = '';
-                }
-            });
+            // Projects panel resize
+            const projectsHandle = document.getElementById('projects-resize-handle');
+            const projectsPanel = document.querySelector('.projects-panel');
+            if (projectsHandle && projectsPanel) {
+                let isDragging = false;
+                let startX, startWidth;
+                
+                projectsHandle.addEventListener('mousedown', function(e) {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startWidth = projectsPanel.offsetWidth;
+                    projectsHandle.classList.add('dragging');
+                    document.body.style.cursor = 'col-resize';
+                    document.body.style.userSelect = 'none';
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    const diff = e.clientX - startX;
+                    const maxWidth = window.innerWidth * 0.2; // 20% of viewport
+                    const newWidth = Math.min(Math.max(startWidth + diff, 200), maxWidth);
+                    projectsPanel.style.width = newWidth + 'px';
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    if (isDragging) {
+                        isDragging = false;
+                        projectsHandle.classList.remove('dragging');
+                        document.body.style.cursor = '';
+                        document.body.style.userSelect = '';
+                    }
+                });
+            }
         }, 500);
     });
     </script>

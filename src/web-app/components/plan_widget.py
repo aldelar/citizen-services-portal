@@ -1,7 +1,7 @@
 """Plan widget component for the Citizen Services Portal."""
 
 from nicegui import ui
-from models.project import Project, PlanStep, StepStatus, ActionType
+from models.project import Project, PlanStep, StepStatus, ActionType, ProjectStatus
 from typing import Optional, Callable, Awaitable
 
 
@@ -253,7 +253,9 @@ def plan_widget(
             # Progress summary
             with ui.row().classes('w-full items-center px-4 py-2 gap-2'):
                 ui.label('Progress:').classes('text-sm text-gray-500')
-                ui.linear_progress(value=progress, show_value=False).classes('flex-grow')
+                # Use green progress bar for 100% progress
+                progress_color = 'positive' if progress >= 1.0 else 'primary'
+                ui.linear_progress(value=progress, show_value=False).props(f'color={progress_color}').classes('flex-grow')
                 ui.label(f'{completed}/{total} steps').classes('text-xs text-gray-500')
             
             ui.separator()
