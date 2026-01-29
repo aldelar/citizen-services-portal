@@ -65,17 +65,11 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
     Handles differences between Cosmos and UI plan/step models.
     """
     if not plan_data:
-        print("[DEBUG] convert_plan_from_cosmos: No plan data")
         return None
-    
-    print(f"[DEBUG] convert_plan_from_cosmos: Got plan data with keys: {plan_data.keys()}")
     
     steps_data = plan_data.get("steps", [])
     if not steps_data:
-        print("[DEBUG] convert_plan_from_cosmos: No steps in plan")
         return None
-    
-    print(f"[DEBUG] convert_plan_from_cosmos: Converting {len(steps_data)} steps")
     
     steps = []
     for step_data in steps_data:
@@ -122,13 +116,11 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
         )
         steps.append(step)
     
-    plan = Plan(
+    return Plan(
         id=plan_data.get("id", "plan-1"),
         status=plan_data.get("status", "active"),
         steps=steps,
     )
-    print(f"[DEBUG] convert_plan_from_cosmos: Created plan with {len(plan.steps)} steps")
-    return plan
 
 
 def convert_to_ui_project(project_data: dict) -> Project:

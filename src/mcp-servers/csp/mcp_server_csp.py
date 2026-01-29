@@ -192,7 +192,13 @@ async def plan_update_step(
     Returns:
         Updated step with confirmation
     """
-    logger.info(f"[CSP] 🔧 plan.updateStep(project_id=\"{project_id}\", step_id=\"{step_id}\", status=\"{status}\")")
+    # Log all parameters for debugging
+    params = [f'project_id="{project_id}"', f'step_id="{step_id}"', f'status="{status}"']
+    if result:
+        params.append(f'result={result}')
+    if notes:
+        params.append(f'notes="{notes}"')
+    logger.info(f"[CSP] 🔧 plan.updateStep({', '.join(params)})")
 
     step_result = await tools.plan_updateStep(
         project_id=project_id,

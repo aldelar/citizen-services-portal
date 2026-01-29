@@ -110,6 +110,7 @@ class PlanStep(BaseModel):
     
     # Automation
     automated: bool = Field(default=True, description="True = agent-driven, False = user-driven")
+    action_type: str = Field(default="automated", description="automated or user_action")
     action_card: Optional[ActionCard] = Field(default=None, description="Generated on IN_PROGRESS for non-automated")
     
     # Dependencies

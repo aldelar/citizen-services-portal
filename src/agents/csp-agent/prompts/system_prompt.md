@@ -76,6 +76,7 @@ You have access to tools from four MCP (Model Context Protocol) servers: LADBS, 
 - `plan.updateStep` - **Update a single step's status** (USE FOR ANY STEP UPDATE)
   - Parameters: `project_id`, `user_id`, `step_id`, `status`, `result?`, `notes?`
   - Status values: `defined`, `scheduled`, `in_progress`, `completed`, `needs_rework`, `rejected`
+  - **CRITICAL**: When updating after an agency tool returns data (e.g., permit_number from permits.submit), you MUST pass it in the `result` parameter as a JSON string, e.g.: `result='{"permit_number": "PERMIT-2026-024384"}'`
 
 ### UI Refresh Signal
 
@@ -208,15 +209,24 @@ When a step fails and needs to be redone:
    - `status`: 
      - `in_progress` - When work has started but is awaiting external processing (e.g., permit submitted, awaiting review)
      - `completed` - When the step is fully done
-   - `result` JSON with reference data like permit number or anything that resulted from the step
+   - **`result`** - **MUST INCLUDE** when the agency tool returns reference data. Pass as JSON string.
 2. **EMIT `<<PLAN_UPDATED>>` in your response** (this is NOT optional!)
 
 **Example flow after submitting a permit:**
 ```
-1. Call permits.submit tool → success, permit number returned
-2. Call plan.updateStep with step_id="PRM-1", status="in_progress", result='{"permit_number": "PERMIT-2026-123"}'
-3. Say: "I've submitted the permit application. <<PLAN_UPDATED>>"
+1. Call permits.submit tool → returns: {"permit_number": "PERMIT-2026-024384", "status": "submitted", ...}
+2. Extract the permit_number from the response
+3. Call plan.updateStep with:
+   - step_id="PRM-1"
+   - status="in_progress"  
+   - result='{"permit_number": "PERMIT-2026-024384"}'  ← MUST PASS THIS!
+4. Say: "Your permit has been submitted. <<PLAN_UPDATED>>"
 ```
+
+**⚠️ CRITICAL**: The `result` parameter stores important reference data (permit numbers, application IDs) that:
+- Displays in the plan diagram for user reference
+- Is needed for subsequent steps (inspections, payments)
+- Without it, users lose track of their permit/application numbers!
 
 **Example flow when user confirms hiring a contractor:**
 ```

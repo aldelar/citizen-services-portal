@@ -162,7 +162,7 @@ class PlanStep(BaseModel):
     agency: str  # LADBS, LADWP, LASAN, or any agency
     status: StepStatus
     step_type: Optional[str] = None  # PRM, INS, TRD, APP, SCH, ENR, DOC, PAY
-    action_type: ActionType = ActionType.AUTOMATED  # automated, user_action, or information
+    action_type: ActionType = ActionType.AUTOMATED  # automated or user_action
     depends_on: List[str] = Field(default_factory=list)  # IDs of prerequisite steps
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

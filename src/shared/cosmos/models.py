@@ -243,7 +243,7 @@ class PlanStep(CamelCaseModel):
     agency: Optional[str] = None  # Changed from Agency enum to string for flexibility
     status: StepStatus = StepStatus.DEFINED
     step_type: Optional[str] = None  # PRM, INS, TRD, APP, PCK, ENR, DOC, PAY
-    action_type: Optional[str] = "automated"  # automated, user_action, or information
+    action_type: Optional[str] = "automated"  # automated or user_action
     order: Optional[int] = None  # Made optional for flexibility
     estimated_duration_days: Optional[float] = None  # Can be fractional days
     user_tasks: List[UserTask] = Field(default_factory=list)
@@ -252,6 +252,7 @@ class PlanStep(CamelCaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     notes: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None  # Outcome data (permit numbers, application IDs, etc.)
 
     # ========== Enhanced Plan Tracking Fields ==========
     # For AUTOMATED steps: Record of tool execution
