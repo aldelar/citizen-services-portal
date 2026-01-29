@@ -15,7 +15,7 @@ MCP_SERVERS = {
     "LADBS": "https://aldelar-csp-mcp-ladbs.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
     "LADWP": "https://aldelar-csp-mcp-ladwp.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
     "LASAN": "https://aldelar-csp-mcp-lasan.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
-    "Reporting": "https://aldelar-csp-mcp-reporting.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
+    "CSP": "https://aldelar-csp-mcp-csp.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
 }
 
 AZURE_OPENAI_ENDPOINT = "https://aldelar-csp-foundry.cognitiveservices.azure.com/"

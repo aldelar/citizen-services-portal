@@ -57,6 +57,6 @@ __all__ = [
     "Message",
     "ToolCall",
     "TokenUsage",
-    # Models - Reporting
+    # Models - Step Completion
     "StepCompletion",
 ]

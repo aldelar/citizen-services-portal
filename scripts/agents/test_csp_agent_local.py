@@ -42,9 +42,9 @@ MCP_SERVERS = {
         "MCP_LASAN_URL",
         "https://aldelar-csp-mcp-lasan.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
     ),
-    "Reporting": os.environ.get(
-        "MCP_REPORTING_URL",
-        "https://aldelar-csp-mcp-reporting.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
+    "CSP": os.environ.get(
+        "MCP_CSP_URL",
+        "https://aldelar-csp-mcp-csp.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp",
     ),
 }
 

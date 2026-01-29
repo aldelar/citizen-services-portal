@@ -4,19 +4,30 @@ This is the main entry point for the NiceGUI web application.
 Run with: uv run python main.py
 """
 
+import warnings
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import uuid4
+import asyncio
 import json
 import re
 from nicegui import ui, app
+from starlette.requests import Request
+
+# Suppress Pydantic serialization warnings for plan dicts (handled by manual conversion)
+warnings.filterwarnings("ignore", message=".*PydanticSerializationUnexpectedValue.*Plan.*")
+
 from config import settings
 from services.auth_service import get_current_user
 from services.agent_service import get_agent_service
 from services.project_service import get_project_service, generate_project_title
 from services.user_service import get_user_service
-from models.project import Project, ProjectStatus, Plan, PlanStep, StepStatus, ActionType, Reference
+from models.project import (
+    Project, ProjectStatus, Plan, PlanStep, StepStatus, ActionType, Reference,
+    UserActionCard, StepEvent, CompletionRecord
+)
 from components.plan_widget import plan_widget
+from components.inline_action_card import render_inline_action_card, create_mark_complete_dialog
 
 
 def format_relative_time(dt: datetime | None) -> str:
@@ -69,13 +80,13 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
     steps = []
     for step_data in steps_data:
         # Handle status - could be string or dict
-        status_val = step_data.get("status", "not_started")
+        status_val = step_data.get("status", "defined")
         if isinstance(status_val, dict):
-            status_val = status_val.get("value", "not_started")
+            status_val = status_val.get("value", "defined")
         try:
             status = StepStatus(status_val)
         except ValueError:
-            status = StepStatus.NOT_STARTED
+            status = StepStatus.DEFINED
         
         # Handle action_type - default to automated if not present
         action_type_val = step_data.get("action_type", step_data.get("actionType", "automated"))
@@ -89,6 +100,15 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
         # Handle dependencies vs depends_on (Cosmos uses 'dependencies')
         depends_on = step_data.get("depends_on", step_data.get("dependencies", step_data.get("dependsOn", [])))
         
+        # Handle result (could be a dict with permit numbers, etc.)
+        result = step_data.get("result")
+        
+        # Handle step_type (3-letter code like PRM, INS, TRD)
+        step_type = step_data.get("step_type", step_data.get("stepType"))
+        
+        # Handle estimated duration (in days)
+        est_duration = step_data.get("estimated_duration_days") or step_data.get("estimatedDurationDays")
+        
         step = PlanStep(
             id=step_data.get("id", f"S{len(steps)+1}"),
             title=step_data.get("title", "Untitled Step"),
@@ -96,16 +116,18 @@ def convert_plan_from_cosmos(plan_data: dict | None) -> Plan | None:
             status=status,
             action_type=action_type,
             depends_on=depends_on,
+            result=result,
+            step_type=step_type,
+            estimated_duration_days=est_duration,
         )
         steps.append(step)
     
     plan = Plan(
         id=plan_data.get("id", "plan-1"),
-        title=plan_data.get("title", "Project Plan"),
         status=plan_data.get("status", "active"),
         steps=steps,
     )
-    print(f"[DEBUG] convert_plan_from_cosmos: Created plan '{plan.title}' with {len(plan.steps)} steps")
+    print(f"[DEBUG] convert_plan_from_cosmos: Created plan with {len(plan.steps)} steps")
     return plan
 
 
@@ -130,7 +152,7 @@ def convert_to_ui_project(project_data: dict) -> Project:
 
 
 @ui.page('/')
-async def main_page():
+async def main_page(request: Request):
     """Main application page with three-panel layout."""
     # Get services
     agent_service = get_agent_service()
@@ -306,6 +328,56 @@ async def main_page():
         messages = await project_service.get_messages(project_id)
         return messages
     
+    async def mark_step_complete(step_id: str, user_message: str):
+        """Mark a step as complete with user-provided message.
+        
+        This updates the step status to COMPLETED, stores the completion record,
+        and notifies the agent of the completion.
+        """
+        if not selected_project_id:
+            ui.notify('No project selected', type='warning')
+            return
+        
+        try:
+            # Update the step in CosmosDB
+            await project_service.complete_step(
+                project_id=selected_project_id,
+                user_id=user_id,
+                step_id=step_id,
+                user_message=user_message
+            )
+            
+            print(f"[DEBUG] Step {step_id} marked as complete with message: {user_message}")
+            
+            # Reload project to get updated plan
+            await reload_and_update_selected_project()
+            
+            # Refresh the plan panel
+            plan_container.clear()
+            with plan_container:
+                render_plan_panel()
+            
+            # Add a message to chat informing that step was completed
+            completion_msg = f"I've completed step {step_id}."
+            if user_message:
+                completion_msg += f" Notes: {user_message}"
+            
+            # Add to chat as user message
+            messages.append({"role": "user", "content": completion_msg})
+            await project_service.save_message(selected_project_id, "user", completion_msg)
+            
+            # Refresh chat area
+            chat_area.clear()
+            with chat_area:
+                render_messages()
+            
+            # Trigger agent to acknowledge and suggest next steps
+            # (This will be handled by the user's next interaction or auto-resume)
+            
+        except Exception as e:
+            print(f"[DEBUG] Error marking step complete: {e}")
+            ui.notify(f'Error completing step: {e}', type='negative')
+    
     async def select_project(project_id: str):
         """Handle project selection."""
         nonlocal selected_project_id, selected_project, messages, is_returning_to_project
@@ -348,8 +420,8 @@ async def main_page():
                 response_label = ui.markdown('⏳ *reviewing your project...*').classes('chat-markdown')
         
         try:
-            # Build messages with context (includes the returning user system message)
-            agent_messages = build_agent_messages()
+            # Build conversation messages and system instructions separately
+            agent_messages = build_agent_context()
             
             # Clear the returning-to-project flag after sending
             is_returning_to_project = False
@@ -363,6 +435,7 @@ async def main_page():
             async for chunk in agent_service.send_message_stream(
                 message=resume_prompt,
                 messages=agent_messages,
+                instructions=None,
             ):
                 response_text += chunk
                 chunk_count += 1
@@ -371,7 +444,10 @@ async def main_page():
                     await ui.run_javascript('void(0)')
             
             # Check for plan updates and references
-            display_text, plan_data = extract_plan_from_response(response_text)
+            # First check for new-style <<PLAN_UPDATED>> signal
+            display_text, plan_signal_found = extract_plan_updated_signal(response_text)
+            # Also check for legacy json:plan blocks (backward compatibility)
+            display_text, plan_data = extract_plan_from_response(display_text)
             display_text, references = extract_references_from_response(display_text)
             
             if display_text:
@@ -386,7 +462,17 @@ async def main_page():
                 refs_for_save = [r.model_dump() for r in references] if references else None
                 await project_service.save_message(selected_project_id, "assistant", display_text, references=refs_for_save)
                 
-                if plan_data:
+                # Handle plan updates - prefer signal-based refresh, fall back to legacy parsing
+                if plan_signal_found:
+                    # New approach: plan was updated via CSP MCP tools, just refresh from backend
+                    print(f"[DEBUG] Refreshing plan from backend for project: {selected_project_id}")
+                    await reload_and_update_selected_project()
+                    plan_container.clear()
+                    with plan_container:
+                        render_plan_panel()
+                    ui.notify('Plan updated!', type='positive')
+                elif plan_data:
+                    # Legacy: agent embedded plan in response (deprecated path)
                     cosmos_plan_dict = convert_plan_to_cosmos_dict(plan_data)
                     await project_service.update_project(selected_project_id, user_id, {"plan": cosmos_plan_dict})
                     await reload_and_update_selected_project()
@@ -415,28 +501,9 @@ async def main_page():
             projects.insert(0, new_project)
             # Resort to ensure proper ordering
             projects.sort(key=lambda p: p.updated_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-            selected_project_id = new_project.id
-            selected_project = new_project
-            messages = []  # New project has no messages
             
-            # Add system message with user context if user has profile info
-            if user and user.name:
-                user_info_lines = [f"- Name: {user.name}"]
-                if user.email:
-                    user_info_lines.append(f"- Email: {user.email}")
-                if user.phone:
-                    user_info_lines.append(f"- Phone: {user.phone}")
-                if user.address:
-                    user_info_lines.append(f"- Address: {user.address}")
-                
-                system_content = "You are assisting this User:\n" + "\n".join(user_info_lines)
-                system_content += "\n\nPlease use this information when helping them with city services."
-                
-                await project_service.save_message(new_project.id, "system", system_content)
-                messages.append({"role": "system", "content": system_content})
-            
-            # Refresh the UI
-            await refresh_ui()
+            # Navigate to page with project ID in query param for clean state
+            ui.navigate.to(f'/?project={new_project.id}')
     
     async def refresh_ui():
         """Refresh the entire UI."""
@@ -479,9 +546,24 @@ async def main_page():
         with plan_container:
             render_plan_panel()
     
+    async def scroll_to_action_card():
+        """Scroll chat to show action cards that need attention."""
+        # Find the first action card in chat and scroll to it
+        await ui.run_javascript('''
+            setTimeout(() => {
+                const actionCards = document.querySelectorAll('.border-orange-400');
+                if (actionCards.length > 0) {
+                    actionCards[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        ''')
+    
     def render_plan_panel():
         """Render the plan panel content."""
-        plan_widget(selected_project)
+        plan_widget(
+            selected_project,
+            on_view_action=scroll_to_action_card,
+        )
     
     async def reload_and_update_selected_project():
         """Reload projects from database and update the selected project reference."""
@@ -672,6 +754,9 @@ async def main_page():
         updated_project_data = await project_service.update_project(project_id, user_id, {'title': new_title})
         
         if updated_project_data:
+            # Notify first before any UI refresh (context must be valid)
+            ui.notify('Title updated', type='positive')
+            
             # Reload projects to get updated data and sorting
             await load_projects()
             
@@ -684,7 +769,6 @@ async def main_page():
             
             # Refresh the UI
             await refresh_ui()
-            ui.notify('Title updated', type='positive')
             return True
         
         return False
@@ -710,15 +794,26 @@ async def main_page():
                         title_input.style('display: block')
                         title_input.run_method('focus')
                     
+                    # Guard to prevent double-execution from Enter + blur events
+                    edit_in_progress = {'value': False}
+                    
                     async def finish_edit():
-                        new_title = title_input.value
-                        if new_title and new_title.strip() and new_title != selected_project.title:
-                            await save_title_edit(selected_project.id, new_title)
-                        else:
-                            # Revert to original and show display
-                            title_input.set_value(selected_project.title)
-                            title_input.style('display: none')
-                            title_display.style('display: flex')
+                        # Prevent double execution (Enter key causes blur which could fire again)
+                        if edit_in_progress['value']:
+                            return
+                        edit_in_progress['value'] = True
+                        
+                        try:
+                            new_title = title_input.value
+                            if new_title and new_title.strip() and new_title != selected_project.title:
+                                await save_title_edit(selected_project.id, new_title)
+                            else:
+                                # Revert to original and show display
+                                title_input.set_value(selected_project.title)
+                                title_input.style('display: none')
+                                title_display.style('display: flex')
+                        finally:
+                            edit_in_progress['value'] = False
                     
                     def cancel_edit():
                         title_input.set_value(selected_project.title)
@@ -772,11 +867,22 @@ async def main_page():
             
             is_user = role == "user"
             
+            # For assistant messages, check for action cards and clean up json blocks
+            display_content = content
+            action_card = None
+            if not is_user:
+                # Extract plan blocks (replace with indicator)
+                display_content, _ = extract_plan_from_response(display_content)
+                # Extract references blocks
+                display_content, _ = extract_references_from_response(display_content)
+                # Extract action card blocks
+                display_content, action_card = extract_action_card_from_response(display_content)
+            
             with ui.chat_message(
                 name='You' if is_user else 'Agent',
                 sent=is_user,
             ).props('bg-color=light-blue-2' if not is_user else '') as chat_msg:
-                ui.markdown(content).classes('chat-markdown')
+                ui.markdown(display_content).classes('chat-markdown')
                 
                 # Render references for assistant messages if any
                 if not is_user and refs_data:
@@ -790,96 +896,71 @@ async def main_page():
                     ) for r in refs_data if isinstance(r, dict)]
                     if refs:
                         render_references_row(refs)
+                
+                # Render action card if found in this message
+                if action_card:
+                    async def handle_step_complete(step_id: str, user_message: str):
+                        await mark_step_complete(step_id, user_message)
+                    
+                    async def handle_help_request():
+                        if message_input:
+                            message_input.value = f"I need help with step {action_card.step_id}: {action_card.title}"
+                    
+                    render_inline_action_card(
+                        action_card=action_card,
+                        on_complete=handle_step_complete,
+                        on_help=handle_help_request
+                    )
     
-    def build_agent_messages() -> list[dict]:
-        """Build the full message list to send to the agent.
+    def build_agent_context() -> list[dict]:
+        """Build conversation messages with explicit system context.
         
-        This includes:
-        - Full chat history (user/assistant messages from Cosmos)
-        - System message with user info (if set)
-        - System message with current plan (if any)
-        - System message about returning user (if applicable)
+        The Responses API expects a messages array. We send:
+        - system message with runtime context (user info, project ID, etc.)
+        - alternating user/assistant history
         
-        System messages are appended at the end and are NOT saved to Cosmos.
-        References are stripped from messages - they are for display only.
+        Returns:
+            list: Structured messages for the Responses API
         """
-        # Copy messages but strip out references (they shouldn't be in agent context)
-        agent_messages = [
-            {"role": msg.get("role"), "content": msg.get("content")}
-            for msg in messages
-            if msg.get("role") and msg.get("content")
-        ]
+        message_items: list[dict] = []
         
-        # Add user info system message if user has profile with actual name
+        # Build system context message
+        context_parts = []
+        
         if user and user.name:
-            user_info_lines = [f"- Name: {user.name}"]
+            user_info = f"User: {user.name}"
             if user.email:
-                user_info_lines.append(f"- Email: {user.email}")
+                user_info += f", Email: {user.email}"
             if user.phone:
-                user_info_lines.append(f"- Phone: {user.phone}")
+                user_info += f", Phone: {user.phone}"
             if user.address:
-                user_info_lines.append(f"- Address: {user.address}")
-            
-            user_context = "User Information:\n" + "\n".join(user_info_lines)
-            agent_messages.append({"role": "system", "content": user_context})
+                user_info += f", Address: {user.address}"
+            context_parts.append(user_info)
         
-        # Add current plan system message if project has a plan
-        if selected_project and selected_project.plan and selected_project.plan.steps:
-            plan_dict = {
-                "id": selected_project.plan.id,
-                "title": selected_project.plan.title,
-                "status": selected_project.plan.status,
-                "steps": [
-                    {
-                        "id": step.id,
-                        "title": step.title,
-                        "agency": step.agency,
-                        "status": step.status.value if hasattr(step.status, 'value') else step.status,
-                        "action_type": step.action_type.value if hasattr(step.action_type, 'value') else (step.action_type or 'automated'),
-                        "depends_on": step.depends_on,
-                    }
-                    for step in selected_project.plan.steps
-                ]
-            }
-            plan_context = f"Current Project Plan:\n```json\n{json.dumps(plan_dict, indent=2)}\n```"
-            agent_messages.append({"role": "system", "content": plan_context})
+        if selected_project_id:
+            context_parts.append(f"project_id: {selected_project_id}")
+            context_parts.append(f"user_id: {user_id}")
         
-        # Add returning user context if user just came back to this project
         if is_returning_to_project and selected_project:
             last_activity = selected_project.updated_at
-            if last_activity:
-                last_activity_str = format_relative_time(last_activity)
-            else:
-                last_activity_str = "unknown"
-            
-            # Build status summary
-            status_summary = []
-            if selected_project.plan and selected_project.plan.steps:
-                completed = sum(1 for s in selected_project.plan.steps if s.status == StepStatus.COMPLETED)
-                user_action_pending = sum(1 for s in selected_project.plan.steps 
-                    if s.status == StepStatus.AWAITING_USER or 
-                    (hasattr(s, 'action_type') and s.action_type and 
-                     (s.action_type == ActionType.USER_ACTION or s.action_type == 'user_action') and 
-                     s.status != StepStatus.COMPLETED))
-                total = len(selected_project.plan.steps)
-                status_summary.append(f"- Plan progress: {completed}/{total} steps completed")
-                if user_action_pending > 0:
-                    status_summary.append(f"- {user_action_pending} step(s) require user action")
-            
-            returning_context = f"""[SYSTEM - User Return Notification]
-User just returned to check on this project. Last activity was {last_activity_str}.
-
-{chr(10).join(status_summary) if status_summary else 'No plan established yet.'}
-
-Please:
-1. Review the current plan status and summarize progress
-2. If there are user_action steps that were assigned, ask about their status
-3. Propose next steps to continue the project
-4. If automated steps are ready (dependencies met), offer to proceed with them"""
-            
-            agent_messages.append({"role": "system", "content": returning_context})
+            last_activity_str = format_relative_time(last_activity) if last_activity else "unknown"
+            context_parts.append(f"User just returned to this project. Last activity: {last_activity_str}.")
+            context_parts.append("Use plan.get to check current status and suggest next steps.")
         
-        return agent_messages
+        if context_parts:
+            message_items.append({
+                "role": "system",
+                "content": "\n".join(context_parts)
+            })
+        
+        # Append conversation history (user/assistant)
+        message_items.extend([
+            {"role": msg.get("role"), "content": msg.get("content")}
+            for msg in messages
+            if msg.get("role") in ("user", "assistant") and msg.get("content")
+        ])
+        
+        return message_items
     
     def convert_plan_dict_to_model(plan_dict: dict) -> Plan:
         """Convert a plan dictionary to a Plan model.
@@ -889,11 +970,11 @@ Please:
         steps = []
         for step_dict in plan_dict.get('steps', []):
             # Convert status string to StepStatus enum
-            status_str = step_dict.get('status', 'not_started')
+            status_str = step_dict.get('status', 'defined')
             try:
                 status = StepStatus(status_str)
             except ValueError:
-                status = StepStatus.NOT_STARTED
+                status = StepStatus.DEFINED
             
             # Convert action_type string to ActionType enum
             action_type_str = step_dict.get('action_type', 'automated')
@@ -908,14 +989,16 @@ Please:
                 agency=step_dict.get('agency', 'Unknown'),
                 status=status,
                 action_type=action_type,
-                depends_on=step_dict.get('depends_on', []),
+                depends_on=step_dict.get('depends_on', step_dict.get('dependsOn', [])),
+                result=step_dict.get('result'),
+                step_type=step_dict.get('step_type', step_dict.get('stepType')),
+                estimated_duration_days=step_dict.get('estimated_duration_days') or step_dict.get('estimatedDurationDays'),
             )
             print(f"[DEBUG convert_plan_dict_to_model] Step {step.id}: depends_on={step.depends_on}")
             steps.append(step)
         
         return Plan(
             id=plan_dict.get('id', str(uuid4())[:8]),
-            title=plan_dict.get('title', 'Project Plan'),
             status=plan_dict.get('status', 'active'),
             steps=steps,
         )
@@ -955,6 +1038,9 @@ Please:
     def extract_plan_from_response(response_text: str) -> tuple[str, Plan | None]:
         """Extract plan JSON from response and return cleaned text + Plan model.
         
+        DEPRECATED: This function handles legacy json:plan blocks for backward compatibility.
+        New behavior uses <<PLAN_UPDATED:project_id>> signals instead.
+        
         Looks for ```json:plan ... ``` blocks in the response.
         If found, extracts the JSON, converts to Plan model, and replaces the block with a card placeholder.
         """
@@ -962,6 +1048,7 @@ Please:
         match = re.search(pattern, response_text)
         
         if match:
+            print("[DEPRECATED] Agent still using json:plan block - should use CSP MCP tools instead")
             try:
                 raw_json = match.group(1)
                 print(f"[DEBUG extract_plan_from_response] Raw JSON from agent:\n{raw_json[:500]}...")
@@ -982,6 +1069,23 @@ Please:
                 pass
         
         return response_text, None
+    
+    def extract_plan_updated_signal(response_text: str) -> tuple[str, bool]:
+        """Extract plan update signal from response.
+        
+        Looks for <<PLAN_UPDATED>> pattern.
+        Returns (cleaned_text, signal_found).
+        """
+        pattern = r'<<PLAN_UPDATED>>'
+        match = re.search(pattern, response_text)
+        
+        if match:
+            print(f"[DEBUG] Plan updated signal detected")
+            # Replace the signal with a visual indicator
+            cleaned_text = re.sub(pattern, '\n\n📋 *Plan updated*\n\n', response_text)
+            return cleaned_text.strip(), True
+        
+        return response_text, False
     
     def extract_references_from_response(response_text: str) -> tuple[str, list[Reference]]:
         """Extract references JSON from response and return cleaned text + Reference list.
@@ -1022,6 +1126,61 @@ Please:
                 pass
         
         return response_text, []
+    
+    def extract_action_card_from_response(response_text: str) -> tuple[str, UserActionCard | None]:
+        """Extract action card JSON from response and return cleaned text + UserActionCard.
+        
+        Looks for ```json:action ... ``` blocks in the response.
+        If found:
+        1. Extracts the JSON
+        2. Converts to UserActionCard model
+        3. Replaces the block with a placeholder (will be rendered as card component)
+        4. Returns step_id so the step can be updated to SCHEDULED
+        """
+        pattern = r'```json:action\s*([\s\S]*?)```'
+        match = re.search(pattern, response_text)
+        
+        print(f"[DEBUG extract_action_card] Looking for action card in response (len={len(response_text)})")
+        print(f"[DEBUG extract_action_card] Match found: {match is not None}")
+        
+        if match:
+            try:
+                raw_json = match.group(1)
+                print(f"[DEBUG extract_action_card] Raw JSON: {raw_json[:300]}...")
+                action_json = json.loads(raw_json)
+                
+                # Validate required fields
+                if not action_json.get('step_id'):
+                    print("[DEBUG extract_action_card] Missing step_id in action card")
+                    return response_text, None
+                
+                action_card = UserActionCard(
+                    step_id=action_json.get('step_id'),
+                    card_type=action_json.get('card_type', 'phone_call'),
+                    title=action_json.get('title', 'Action Required'),
+                    instructions=action_json.get('instructions', ''),
+                    phone_script=action_json.get('phone_script'),
+                    email_draft=action_json.get('email_draft'),
+                    form_data=action_json.get('form_data'),
+                    checklist=action_json.get('checklist', []),
+                    contact_name=action_json.get('contact_name'),
+                    contact_phone=action_json.get('contact_phone'),
+                    contact_email=action_json.get('contact_email'),
+                    action_url=action_json.get('action_url'),
+                    estimated_duration=action_json.get('estimated_duration'),
+                )
+                
+                print(f"[DEBUG extract_action_card] Created action card for step {action_card.step_id}")
+                
+                # Remove the JSON block from the response (card will be rendered separately)
+                cleaned_text = re.sub(pattern, '', response_text).strip()
+                return cleaned_text, action_card
+                
+            except (json.JSONDecodeError, Exception) as e:
+                print(f"[DEBUG extract_action_card] Error parsing action card JSON: {e}")
+                pass
+        
+        return response_text, None
     
     def create_reference_dialog(ref: Reference, ref_num: int):
         """Create a dialog to show reference details."""
@@ -1139,8 +1298,8 @@ Please:
         
         try:
             # Call agent with streaming
-            # Build messages with context (user info, current plan) appended
-            agent_messages = build_agent_messages()
+            # Build conversation messages and system instructions separately
+            agent_messages = build_agent_context()
             
             # Clear the returning-to-project flag after first message
             # This ensures the returning user context is only sent once
@@ -1151,7 +1310,8 @@ Please:
             
             async for chunk in agent_service.send_message_stream(
                 message=user_msg,
-                messages=agent_messages,  # Includes history + context system messages
+                messages=agent_messages,
+                instructions=None,
             ):
                 response_text += chunk
                 chunk_count += 1
@@ -1161,10 +1321,16 @@ Please:
                     await ui.run_javascript('void(0)')
             
             # Check for plan updates in the response
-            display_text, plan_data = extract_plan_from_response(response_text)
+            # First check for new-style <<PLAN_UPDATED>> signal
+            display_text, plan_signal_found = extract_plan_updated_signal(response_text)
+            # Also check for legacy json:plan blocks (backward compatibility)
+            display_text, plan_data = extract_plan_from_response(display_text)
             
             # Check for references in the response
             display_text, references = extract_references_from_response(display_text)
+            
+            # Check for action cards in the response
+            display_text, action_card = extract_action_card_from_response(display_text)
             
             # Final update with cleaned text (plan JSON replaced with visual indicator)
             if display_text:
@@ -1175,6 +1341,44 @@ Please:
                     with agent_msg:
                         render_references_row(references)
                 
+                # Render inline action card if any
+                if action_card:
+                    with agent_msg:
+                        # Define the completion handler
+                        async def handle_step_complete(step_id: str, user_message: str):
+                            """Handle when user marks a step as complete."""
+                            await mark_step_complete(step_id, user_message)
+                        
+                        async def handle_help_request():
+                            """Handle when user needs help with an action."""
+                            # Add a message to the chat asking for help
+                            message_input.value = f"I need help with step {action_card.step_id}: {action_card.title}"
+                            await send_message()
+                        
+                        render_inline_action_card(
+                            action_card=action_card,
+                            on_complete=handle_step_complete,
+                            on_help=handle_help_request
+                        )
+                    
+                    # Update the step status to SCHEDULED and store the action card
+                    try:
+                        await project_service.update_step_with_action_card(
+                            project_id=selected_project_id,
+                            user_id=user_id,
+                            step_id=action_card.step_id,
+                            action_card=action_card
+                        )
+                        print(f"[DEBUG] Updated step {action_card.step_id} to SCHEDULED with action card")
+                        
+                        # Refresh the plan panel to show updated status
+                        await reload_and_update_selected_project()
+                        plan_container.clear()
+                        with plan_container:
+                            render_plan_panel()
+                    except Exception as e:
+                        print(f"[DEBUG] Error updating step with action card: {e}")
+                
                 # Save the CLEANED text (without JSON plan block) to messages
                 # The plan is saved separately in the project, no need to keep JSON in history
                 # References are saved with the message but NOT included in agent context
@@ -1182,8 +1386,18 @@ Please:
                 refs_for_save = [r.model_dump() for r in references] if references else None
                 await project_service.save_message(selected_project_id, "assistant", display_text, references=refs_for_save)
                 
-                # If plan was extracted, save it to the project and refresh
-                if plan_data:
+                # Handle plan updates - prefer signal-based refresh, fall back to legacy parsing
+                if plan_signal_found:
+                    # New approach: plan was updated via CSP MCP tools, just refresh from backend
+                    print(f"[DEBUG] Plan update signal detected - refreshing from backend for project: {selected_project_id}")
+                    await reload_and_update_selected_project()
+                    plan_container.clear()
+                    with plan_container:
+                        render_plan_panel()
+                    ui.notify('Plan updated!', type='positive')
+                elif plan_data:
+                    # Legacy: agent embedded plan in response (deprecated path)
+                    print(f"[DEPRECATED] Plan extracted from json:plan block - should use CSP MCP tools")
                     print(f"[DEBUG] Plan extracted with {len(plan_data.steps)} steps: {plan_data.title}")
                     # Convert UI Plan model to Cosmos-compatible dict format
                     cosmos_plan_dict = convert_plan_to_cosmos_dict(plan_data)
@@ -1228,6 +1442,17 @@ Please:
     
     # Load initial data
     await load_projects()
+    
+    # Check for project ID in URL query parameter (after create_new_project redirects)
+    query_project_id = request.query_params.get('project')
+    if query_project_id:
+        # Find and select the project
+        for p in projects:
+            if p.id == query_project_id:
+                selected_project_id = query_project_id
+                selected_project = p
+                messages = await project_service.get_messages(query_project_id)
+                break
     
     # Main layout - three panel design
     with ui.row().classes('w-full main-content'):

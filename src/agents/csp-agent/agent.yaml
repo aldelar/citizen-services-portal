@@ -5,7 +5,7 @@ name: csp-agent
 description: |
     Citizen Services Portal Agent - A unified AI assistant for City of Los Angeles 
     government services. Connects to LADBS (Building & Safety), LADWP (Water & Power), 
-    LASAN (Sanitation), and Reporting MCP servers to provide intelligent citizen services 
+    LASAN (Sanitation), and CSP MCP servers to provide intelligent citizen services 
     with multi-agency coordination.
 metadata:
     authors:
@@ -33,13 +33,6 @@ environment_variables:
       value: ${MCP_LADWP_URL}  # From Bicep output
     - name: MCP_LASAN_URL
       value: ${MCP_LASAN_URL}  # From Bicep output
-    - name: MCP_REPORTING_URL
-      value: ${MCP_REPORTING_URL}  # From Bicep output
-    # Thread persistence (Cosmos DB)
-    - name: AGENT_COSMOS_ENDPOINT
-      value: ${COSMOS_ENDPOINT}
-    - name: AGENT_COSMOS_DATABASE
-      value: citizen-services
-    - name: AGENT_COSMOS_THREADS_CONTAINER
-      value: threads
+    - name: MCP_CSP_URL
+      value: ${MCP_CSP_URL}  # From Bicep output - plan lifecycle & analytics
 

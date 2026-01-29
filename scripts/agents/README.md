@@ -77,7 +77,7 @@ The scripts use the following environment variables (with defaults for the deplo
 MCP_LADBS_URL=https://aldelar-csp-mcp-ladbs.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp
 MCP_LADWP_URL=https://aldelar-csp-mcp-ladwp.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp
 MCP_LASAN_URL=https://aldelar-csp-mcp-lasan.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp
-MCP_REPORTING_URL=https://aldelar-csp-mcp-reporting.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp
+MCP_CSP_URL=https://aldelar-csp-mcp-csp.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io/mcp
 
 # Azure OpenAI
 AZURE_OPENAI_ENDPOINT=https://aldelar-csp-foundry.cognitiveservices.azure.com/
@@ -104,10 +104,10 @@ az login
 | LADBS | ✓ Healthy | 6 tools |
 | LADWP | ✓ Healthy | 9 tools |
 | LASAN | ✓ Healthy | 4 tools |
-| Reporting | ✓ Healthy | 2 tools |
+| CSP | ✓ Healthy | 4 tools |
 
-### Available Tools (21 total)
+### Available Tools (23 total)
 - **LADBS**: queryKB, permits_search, permits_submit, permits_getStatus, inspections_scheduled, inspections_schedule
 - **LADWP**: queryKB, account_show, plans_list, tou_enroll, interconnection_submit, interconnection_getStatus, rebates_filed, rebates_apply, rebates_getStatus
 - **LASAN**: queryKB, pickup_scheduled, pickup_schedule, pickup_getEligibility
-- **Reporting**: steps_logCompleted, steps_getAverageDuration
+- **CSP**: plan_create, plan_get, plan_update, plan_updateStep

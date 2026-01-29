@@ -3,9 +3,10 @@
 Clear all data from CosmosDB containers.
 
 Usage:
-    python scripts/clear-cosmos-data.py [--confirm] [--containers CONTAINERS]
+    python scripts/clear-cosmos-data.py [--confirm] [--database DATABASE] [--containers CONTAINERS]
 
 Without --confirm, shows what would be deleted. With --confirm, performs deletion.
+Use --database to specify which database (default: csp).
 Use --containers to specify which containers to clear (comma-separated).
 """
 
@@ -19,14 +20,27 @@ from azure.cosmos import exceptions
 
 # Default values - override with environment variables if needed
 COSMOS_ENDPOINT = "https://aldelar-csp-cosmos.documents.azure.com:443/"
-DATABASE_NAME = "citizen-services"
 
-# Containers and their partition key paths
-ALL_CONTAINERS = {
-    "users": "/id",
-    "projects": "/userId",
-    "threads": "/id",
-    "messages": "/projectId",
+# Database configurations: containers and their partition key paths
+DATABASES = {
+    "csp": {
+        "users": "/id",
+        "projects": "/userId",
+        "messages": "/projectId",
+        "step_completions": "/projectId",
+    },
+    "ladbs": {
+        "permits": "/userId",
+        "inspections": "/permitId",
+    },
+    "ladwp": {
+        "interconnections": "/userId",
+        "rebates": "/userId",
+        "tou_enrollments": "/userId",
+    },
+    "lasan": {
+        "pickups": "/userId",
+    },
 }
 
 
@@ -67,24 +81,32 @@ async def delete_items(container, partition_key_path: str, dry_run: bool = True)
     return deleted, errors
 
 
-async def main(confirm: bool = False, containers: list[str] | None = None):
+async def main(confirm: bool = False, database: str = "csp", containers: list[str] | None = None):
     """Main function to clear all containers."""
+    # Validate database
+    if database not in DATABASES:
+        print(f"❌ Invalid database: {database}")
+        print(f"   Valid databases: {', '.join(DATABASES.keys())}")
+        return
+    
+    all_containers = DATABASES[database]
+    
     # Determine which containers to clear
     if containers:
-        target_containers = {k: v for k, v in ALL_CONTAINERS.items() if k in containers}
-        invalid = set(containers) - set(ALL_CONTAINERS.keys())
+        target_containers = {k: v for k, v in all_containers.items() if k in containers}
+        invalid = set(containers) - set(all_containers.keys())
         if invalid:
             print(f"❌ Invalid container names: {', '.join(invalid)}")
-            print(f"   Valid containers: {', '.join(ALL_CONTAINERS.keys())}")
+            print(f"   Valid containers for {database}: {', '.join(all_containers.keys())}")
             return
     else:
-        target_containers = ALL_CONTAINERS
+        target_containers = all_containers
     
     print("=" * 60)
     print("🗑️  CosmosDB Data Cleaner")
     print("=" * 60)
     print(f"\nEndpoint: {COSMOS_ENDPOINT}")
-    print(f"Database: {DATABASE_NAME}")
+    print(f"Database: {database}")
     print(f"Containers: {', '.join(target_containers.keys())}")
     print(f"Mode: {'DELETE (confirmed)' if confirm else 'DRY RUN'}")
     print()
@@ -93,7 +115,7 @@ async def main(confirm: bool = False, containers: list[str] | None = None):
     client = CosmosClient(COSMOS_ENDPOINT, credential=credential)
     
     try:
-        db = client.get_database_client(DATABASE_NAME)
+        db = client.get_database_client(database)
         
         for container_name, partition_key_path in target_containers.items():
             print(f"\n📦 Container: {container_name}")
@@ -145,11 +167,17 @@ if __name__ == "__main__":
         help="Actually perform the deletion (without this flag, shows what would be deleted)"
     )
     parser.add_argument(
+        "--database",
+        type=str,
+        default="csp",
+        help=f"Database to clear (default: csp). Valid: {', '.join(DATABASES.keys())}"
+    )
+    parser.add_argument(
         "--containers",
         type=str,
-        help=f"Comma-separated list of containers to clear (default: all). Valid: {', '.join(ALL_CONTAINERS.keys())}"
+        help="Comma-separated list of containers to clear (default: all in database)"
     )
     args = parser.parse_args()
     
     containers = args.containers.split(",") if args.containers else None
-    asyncio.run(main(confirm=args.confirm, containers=containers))
+    asyncio.run(main(confirm=args.confirm, database=args.database, containers=containers))

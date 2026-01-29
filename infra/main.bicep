@@ -22,6 +22,9 @@ param location string
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
+@description('Developer IP address for Cosmos DB firewall (for local development)')
+param developerIpAddress string = ''
+
 // Tags for all resources
 var tags = {
   'azd-env-name': environmentName
@@ -142,6 +145,7 @@ module cosmosDb './core/data/cosmos-db.bicep' = {
     cosmosDbAccountName: 'aldelar-csp-cosmos'
     enableServerless: true
     defaultConsistencyLevel: 'Session'
+    developerIpAddress: developerIpAddress
   }
 }
 
@@ -536,33 +540,32 @@ module mcpLasanRbac './core/security/mcp-server-rbac.bicep' = {
   }
 }
 
-// Reporting MCP Server
-module mcpReporting './app/mcp-reporting.bicep' = {
-  name: 'mcp-reporting-deployment'
+// CSP MCP Server (Plan Lifecycle & Analytics)
+module mcpCsp './app/mcp-csp.bicep' = {
+  name: 'mcp-csp-deployment'
   scope: rg
   params: {
     location: location
     tags: tags
-    containerAppName: 'aldelar-csp-mcp-reporting'
+    containerAppName: 'aldelar-csp-mcp-csp'
     containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
     containerRegistryName: containerRegistry.outputs.name
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // Placeholder - azd will update
     identityId: managedIdentity.outputs.identityId
     identityClientId: managedIdentity.outputs.clientId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
-    cosmosDbAccountName: cosmosDb.outputs.name
     cosmosEndpoint: cosmosDb.outputs.endpoint
     enableAuthentication: false  // Disabled - see technical-specs/mcp-authentication.md for details
     appClientId: ''
   }
 }
 
-// Grant Foundry Project identity access to Reporting MCP server
-module mcpReportingRbac './core/security/mcp-server-rbac.bicep' = {
-  name: 'mcp-reporting-rbac-deployment'
+// Grant Foundry Project identity access to CSP MCP server
+module mcpCspRbac './core/security/mcp-server-rbac.bicep' = {
+  name: 'mcp-csp-rbac-deployment'
   scope: rg
   params: {
-    containerAppId: mcpReporting.outputs.id
+    containerAppId: mcpCsp.outputs.id
     principalIds: [
       foundryProject.outputs.principalId
     ]
@@ -589,7 +592,7 @@ module cspAgent './app/csp-agent.bicep' = {
     mcpLadbsUrl: mcpLadbs.outputs.uri
     mcpLadwpUrl: mcpLadwp.outputs.uri
     mcpLasanUrl: mcpLasan.outputs.uri
-    mcpReportingUrl: mcpReporting.outputs.uri
+    mcpCspUrl: mcpCsp.outputs.uri
     agentProjectResourceId: foundryProject.outputs.id
     agentProjectEndpoint: 'https://${foundry.outputs.name}.services.ai.azure.com/api/projects/${foundryProject.outputs.name}'
     external: true
@@ -611,12 +614,12 @@ module webApp './app/webapp.bicep' = {
     identityClientId: managedIdentity.outputs.clientId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     cosmosEndpoint: cosmosDb.outputs.endpoint
-    cosmosDatabase: 'citizen-services'
+    cosmosDatabase: 'csp'
     cspAgentUrl: cspAgent.outputs.uri
     mcpLadbsUrl: mcpLadbs.outputs.uri
     mcpLadwpUrl: mcpLadwp.outputs.uri
     mcpLasanUrl: mcpLasan.outputs.uri
-    mcpReportingUrl: mcpReporting.outputs.uri
+    mcpCspUrl: mcpCsp.outputs.uri
     enableAuthentication: false
     appClientId: ''
     appClientSecret: ''
@@ -754,14 +757,14 @@ output mcpLasanUri string = mcpLasan.outputs.uri
 @description('LASAN MCP Server Scope URI for Microsoft Entra authentication')
 output mcpLasanScopeUri string = 'https://${mcpLasan.outputs.fqdn}'
 
-@description('Reporting MCP Server FQDN')
-output mcpReportingFqdn string = mcpReporting.outputs.fqdn
+@description('CSP MCP Server FQDN')
+output mcpCspFqdn string = mcpCsp.outputs.fqdn
 
-@description('Reporting MCP Server URI')
-output mcpReportingUri string = mcpReporting.outputs.uri
+@description('CSP MCP Server URI')
+output mcpCspUri string = mcpCsp.outputs.uri
 
-@description('Reporting MCP Server Scope URI for Microsoft Entra authentication')
-output mcpReportingScopeUri string = 'https://${mcpReporting.outputs.fqdn}'
+@description('CSP MCP Server Scope URI for Microsoft Entra authentication')
+output mcpCspScopeUri string = 'https://${mcpCsp.outputs.fqdn}'
 
 // MCP Server URLs with /mcp path for agent configuration
 @description('LADBS MCP Server URL for agent configuration')
@@ -773,5 +776,5 @@ output MCP_LADWP_URL string = '${mcpLadwp.outputs.uri}/mcp'
 @description('LASAN MCP Server URL for agent configuration')
 output MCP_LASAN_URL string = '${mcpLasan.outputs.uri}/mcp'
 
-@description('Reporting MCP Server URL for agent configuration')
-output MCP_REPORTING_URL string = '${mcpReporting.outputs.uri}/mcp'
+@description('CSP MCP Server URL for agent configuration')
+output MCP_CSP_URL string = '${mcpCsp.outputs.uri}/mcp'

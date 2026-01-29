@@ -1,5 +1,14 @@
-"""Agent service for communicating with the CSP Agent."""
+"""Agent service for communicating with the CSP Agent.
 
+Uses the OpenAI Responses API format for structured multi-turn conversations.
+The agent is served via agent_framework.devui which exposes a /v1/responses endpoint.
+
+IMPORTANT: The agent framework works best with string-based input format.
+This service converts all messages and context into a single formatted string before sending
+to the agent. See _build_input_string() for the conversion logic.
+"""
+
+import json
 import httpx
 from typing import Optional
 from config import settings
@@ -7,10 +16,13 @@ from azure.identity.aio import DefaultAzureCredential
 
 
 class AgentService:
-    """Service for interacting with the CSP Agent."""
+    """Service for interacting with the CSP Agent via Responses API.
     
-    # Responses API version aligned with spec
-    API_VERSION = "2025-11-15-preview"
+    Uses string input format for best compatibility with agent framework.
+    """
+    
+    # Default agent name - used to construct entity_id for devui server
+    DEFAULT_AGENT_NAME = "csp-agent"
     
     def __init__(self, base_url: Optional[str] = None, use_auth: bool | None = None):
         """Initialize the agent service.
@@ -23,6 +35,7 @@ class AgentService:
         self.timeout = 120.0  # Agent responses can take time (longer for multi-tool calls)
         self.use_auth = settings.CSP_AGENT_USE_AUTH if use_auth is None else use_auth
         self._credential = None
+        self._entity_id: str | None = None  # Cached entity_id from devui server
     
     async def _get_auth_token(self) -> Optional[str]:
         """Get AAD access token for AI Foundry."""
@@ -36,22 +49,101 @@ class AgentService:
         return token.token
     
     def _build_url(self, path: str) -> str:
-        """Build full URL with api-version query parameter."""
-        separator = "&" if "?" in path else "?"
-        return f"{self.base_url}{path}{separator}api-version={self.API_VERSION}"
+        """Build full URL for the devui server."""
+        return f"{self.base_url}/v1{path}"
+    
+    async def _get_entity_id(self) -> str:
+        """Get the entity_id for the csp-agent from the devui server.
+        
+        The devui server assigns dynamic entity IDs. We need to query /v1/entities
+        to find the correct ID for our agent.
+        """
+        if self._entity_id:
+            return self._entity_id
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{self.base_url}/v1/entities")
+            response.raise_for_status()
+            data = response.json()
+            
+            # Find the csp-agent entity
+            for entity in data.get("entities", []):
+                if entity.get("name") == self.DEFAULT_AGENT_NAME:
+                    self._entity_id = entity["id"]
+                    return self._entity_id
+            
+            # Fallback: use first agent entity if available
+            for entity in data.get("entities", []):
+                if entity.get("type") == "agent":
+                    self._entity_id = entity["id"]
+                    return self._entity_id
+            
+            raise ValueError(f"No agent entity found at {self.base_url}/v1/entities")
+    
+    def _build_input_string(self, messages: list[dict], instructions: str | None = None) -> str:
+        """Build a single input string for the Responses API.
+        
+        This method converts all messages (system, user, assistant) into a single
+        formatted string with [Context] blocks for system messages.
+        
+        Args:
+            messages: List of messages with 'role' and 'content' keys.
+            instructions: Optional context (user info, project ID, etc.)
+            
+        Returns:
+            A single string containing the full conversation context.
+        """
+        parts = []
+        
+        # Collect all system context
+        system_context_parts = []
+        if instructions:
+            system_context_parts.append(instructions)
+        
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content", "")
+            if role == "system" and content:
+                system_context_parts.append(content)
+        
+        # Add system context at the beginning wrapped in [Context] tags
+        if system_context_parts:
+            parts.append("[Context]")
+            parts.extend(system_context_parts)
+            parts.append("[/Context]")
+            parts.append("")  # blank line
+        
+        # Add conversation history as "Role: content" format
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content", "")
+            
+            if not role or not content:
+                continue
+            
+            if role == "system":
+                continue  # Already handled above
+            elif role == "user":
+                parts.append(f"User: {content}")
+            elif role == "assistant":
+                parts.append(f"Assistant: {content}")
+        
+        return "\n".join(parts)
     
     async def send_message(
         self,
         message: str,
         messages: list[dict] | None = None,
+        instructions: str | None = None,
         stream: bool = False,
     ) -> tuple[str, Optional[str]]:
         """Send a message to the CSP Agent and get a response.
         
         Args:
-            message: The user's message.
+            message: The user's message (used if messages is None).
             messages: Optional list of previous messages for context.
                       Each message should have 'role' and 'content' keys.
+            instructions: Optional system/developer instructions for context (embedded in input).
             stream: Whether to stream the response (not yet implemented).
             
         Returns:
@@ -60,14 +152,22 @@ class AgentService:
         Raises:
             Exception: If the agent fails to respond.
         """
-        payload = {
-            "stream": stream,
-        }
-        
+        # Build input string from messages
         if messages:
-            payload["input"] = self._build_input_text(messages)
+            input_string = self._build_input_string(messages, instructions)
         else:
-            payload["input"] = message
+            input_string = self._build_input_string([{"role": "user", "content": message}], instructions)
+        
+        # Get entity_id for the devui server
+        entity_id = await self._get_entity_id()
+        
+        payload = {
+            "input": input_string,
+            "stream": stream,
+            "metadata": {
+                "entity_id": entity_id
+            }
+        }
         
         # Build headers with auth token if needed
         headers = {"Content-Type": "application/json"}
@@ -124,39 +224,41 @@ class AgentService:
                     return val
         
         # Fallback: return JSON for debugging
-        import json
         return f"[Raw response]: {json.dumps(data, indent=2)[:500]}"
     
     async def send_message_stream(
         self,
         message: str,
         messages: list[dict] | None = None,
+        instructions: str | None = None,
     ):
         """Send a message and stream the response.
         
         Args:
-            message: The current user message.
+            message: The current user message (used if messages is None).
             messages: Optional list of previous messages for context.
                       Each message should have 'role' and 'content' keys.
+            instructions: Optional system/developer instructions for context (embedded in input).
         
         Yields:
             str: Chunks of the response text.
         """
-        import json
-        
-        # Build input with conversation history if provided
+        # Build input string from messages
         if messages:
-            # Format as array of messages for Responses API
-            # The messages list should already include the current user message
-            payload = {
-                "input": self._build_input_text(messages),
-                "stream": True,
-            }
+            input_string = self._build_input_string(messages, instructions)
         else:
-            payload = {
-                "input": message,
-                "stream": True,
+            input_string = self._build_input_string([{"role": "user", "content": message}], instructions)
+        
+        # Get entity_id for the devui server
+        entity_id = await self._get_entity_id()
+        
+        payload = {
+            "input": input_string,
+            "stream": True,
+            "metadata": {
+                "entity_id": entity_id
             }
+        }
         
         # Build headers with auth token if needed
         headers = {"Content-Type": "application/json"}
@@ -220,118 +322,6 @@ class AgentService:
                     # Don't process final buffer - it would duplicate content
                     pass
 
-    def _build_input_text(self, messages: list[dict]) -> str:
-        """Flatten message history into a single input string.
-        
-        Messages are structured as:
-        - Regular conversation (user/assistant) comes first
-        - System messages (user context, current plan) are appended at the end
-        """
-        conversation_lines = []
-        system_lines = []
-        
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            if not role or not content:
-                continue
-            
-            if role == "system":
-                system_lines.append(content)
-            elif role == "user":
-                conversation_lines.append(f"User: {content}")
-            else:
-                conversation_lines.append(f"Assistant: {content}")
-        
-        lines = ["Conversation so far:"]
-        lines.extend(conversation_lines)
-        
-        # Add system context at the end
-        if system_lines:
-            lines.append("\n--- Context ---")
-            lines.extend(system_lines)
-        
-        # Add plan update instructions
-        lines.append("""
---- Instructions ---
-BEFORE creating a plan, use queryKB tools to research requirements, fees, and processes. Do this automatically - don't make "research" a plan step.
-
-When you create or update a project plan, include the plan as a JSON code block with the identifier 'json:plan'.
-
-CRITICAL: Every step MUST have a "depends_on" array. Think carefully about what must complete BEFORE each step can start.
-- First steps have depends_on: []
-- Most steps depend on at least one prior step
-- Use step IDs (e.g., "P1", "U1") to reference dependencies
-
-Format:
-```json:plan
-{
-  "id": "plan-id",
-  "title": "Plan Title",
-  "status": "active",
-  "steps": [
-    {
-      "id": "P1",
-      "title": "Submit electrical permit application",
-      "agency": "LADBS",
-      "status": "not_started",
-      "action_type": "automated",
-      "depends_on": []
-    },
-    {
-      "id": "P2",
-      "title": "Hire licensed electrician",
-      "agency": "LADBS",
-      "status": "not_started",
-      "action_type": "user_action",
-      "depends_on": []
-    },
-    {
-      "id": "U1",
-      "title": "Request LADWP service upgrade",
-      "agency": "LADWP",
-      "status": "not_started",
-      "action_type": "user_action",
-      "depends_on": ["P1"]
-    },
-    {
-      "id": "I1",
-      "title": "Schedule and pass LADBS inspection",
-      "agency": "LADBS",
-      "status": "not_started",
-      "action_type": "user_action",
-      "depends_on": ["P2", "U1"]
-    },
-    {
-      "id": "F1",
-      "title": "LADWP finalizes service connection",
-      "agency": "LADWP",
-      "status": "not_started",
-      "action_type": "information",
-      "depends_on": ["I1"]
-    }
-  ]
-}
-```
-
-action_type values:
-- "automated" = Agent can execute directly via tools (🤖)
-- "user_action" = User must take action like call, email, visit (👤)  
-- "information" = Waiting period or external process (ℹ️)
-
-Dependency logic for above example:
-- P1 (submit permit) → no dependencies, can start immediately
-- P2 (hire electrician) → no dependencies, can run parallel to P1
-- U1 (utility request) → depends on P1 (permit must be submitted first)
-- I1 (inspection) → depends on P2 AND U1 (work done + utility ready)
-- F1 (finalize) → depends on I1 (inspection must pass)
-
-DO NOT include "research" steps - you do research automatically using queryKB before presenting the plan.
-Update the plan whenever there's new information that affects scope, steps, dependencies, or when a step status changes.
-Respond to the latest user message using the context above.""")
-        
-        return "\n".join(lines)
-    
     def _extract_conversation_id(self, data: dict) -> str | None:
         """Extract conversation ID from streaming event.
         

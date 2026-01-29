@@ -59,7 +59,7 @@ def chat_panel(
                 # Show user action card if there's a pending action
                 if project.plan and project.plan.steps:
                     for step in project.plan.steps:
-                        if step.status == StepStatus.AWAITING_USER and step.user_task:
+                        if step.status == StepStatus.SCHEDULED and step.user_task:
                             with ui.element('div').classes('w-full max-w-lg mt-4'):
                                 user_action_card(step.user_task)
                             break  # Only show first pending action

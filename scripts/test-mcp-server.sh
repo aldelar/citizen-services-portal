@@ -41,7 +41,7 @@ declare -A MCP_HOSTS=(
     ["ladbs"]="aldelar-csp-mcp-ladbs.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io"
     ["ladwp"]="aldelar-csp-mcp-ladwp.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io"
     ["lasan"]="aldelar-csp-mcp-lasan.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io"
-    ["reporting"]="aldelar-csp-mcp-reporting.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io"
+    ["csp"]="aldelar-csp-mcp-csp.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io"
 )
 
 # Database names for each server
@@ -49,7 +49,7 @@ declare -A COSMOS_DATABASES=(
     ["ladbs"]="ladbs"
     ["ladwp"]="ladwp"
     ["lasan"]="lasan"
-    ["reporting"]="reporting"
+    ["csp"]="csp"
 )
 
 # Search index names
@@ -57,7 +57,7 @@ declare -A SEARCH_INDEXES=(
     ["ladbs"]="ladbs-kb"
     ["ladwp"]="ladwp-kb"
     ["lasan"]="lasan-kb"
-    ["reporting"]=""
+    ["csp"]=""
 )
 
 # ==============================================================================
@@ -224,7 +224,7 @@ run_deployed_tests() {
 usage() {
     echo "Usage: $0 <server-name> [--unit|--integration|--deployed|--all]"
     echo ""
-    echo "Available servers: ladbs, ladwp, lasan, reporting"
+    echo "Available servers: ladbs, ladwp, lasan, csp"
     echo ""
     echo "Options:"
     echo "  --unit         Run unit tests only"
@@ -249,7 +249,7 @@ main() {
     # Validate server name
     if [ ! -d "$PROJECT_ROOT/src/mcp-servers/$server" ]; then
         print_error "Unknown server: $server"
-        echo "Available servers: ladbs, ladwp, lasan, reporting"
+        echo "Available servers: ladbs, ladwp, lasan, csp"
         exit 1
     fi
     

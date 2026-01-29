@@ -65,8 +65,8 @@ param mcpLadwpUrl string = ''
 @description('MCP LASAN URL')
 param mcpLasanUrl string = ''
 
-@description('MCP Reporting URL')
-param mcpReportingUrl string = ''
+@description('MCP CSP URL for plan lifecycle and analytics')
+param mcpCspUrl string = ''
 
 @description('Azure AI Foundry project resource ID')
 param agentProjectResourceId string = ''
@@ -188,10 +188,10 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
                 value: mcpLasanUrl
               }
             ] : [],
-            !empty(mcpReportingUrl) ? [
+            !empty(mcpCspUrl) ? [
               {
-                name: 'MCP_REPORTING_URL'
-                value: mcpReportingUrl
+                name: 'MCP_CSP_URL'
+                value: mcpCspUrl
               }
             ] : []
           )

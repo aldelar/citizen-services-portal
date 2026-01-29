@@ -18,11 +18,12 @@ class ProjectStatus(str, Enum):
 class StepStatus(str, Enum):
     """Plan step status enumeration."""
 
-    NOT_STARTED = "not_started"
+    DEFINED = "defined"
+    SCHEDULED = "scheduled"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
-    BLOCKED = "blocked"
-    CANCELLED = "cancelled"
+    NEEDS_REWORK = "needs_rework"
+    REJECTED = "rejected"
 
 
 class Agency(str, Enum):
@@ -57,7 +58,7 @@ class StepType(str, Enum):
     INS = "INS"  # Inspection - city inspections including final sign-off
     TRD = "TRD"  # Trade - hire professionals + physical work phases
     APP = "APP"  # Application - non-permit applications
-    SCH = "SCH"  # Schedule - book appointments/pickups
+    PCK = "PCK"  # Pickup - schedule pickups/drop-offs (LASAN)
     ENR = "ENR"  # Enroll - sign up for programs/plans
     DOC = "DOC"  # Document - gather documents/materials
     PAY = "PAY"  # Payment - pay fees/deposits
@@ -69,10 +70,12 @@ class CamelCaseModel(BaseModel):
 
     model_config = ConfigDict(
         populate_by_name=True,
+        from_attributes=True,  # Allow creating models from arbitrary objects
         alias_generator=lambda field_name: "".join(
             word.capitalize() if i > 0 else word
             for i, word in enumerate(field_name.split("_"))
         ),
+        ser_json_timedelta='iso8601',  # Serialize timedelta as ISO 8601
     )
 
 
@@ -131,6 +134,106 @@ class UserTask(CamelCaseModel):
     estimated_duration: Optional[str] = None
 
 
+# ============================================================================
+# Enhanced Plan Tracking Models (per proposal 9-proposal-enhanced-plan-tracking.md)
+# ============================================================================
+
+
+class ActionCardType(str, Enum):
+    """Types of user action cards."""
+
+    PHONE_CALL = "phone_call"
+    EMAIL = "email"
+    FORM_SUBMISSION = "form_submission"
+    IN_PERSON = "in_person"
+    UPLOAD = "upload"
+
+
+class StepEventType(str, Enum):
+    """Types of events in a step's history."""
+
+    CREATED = "created"  # Step was added to plan
+    STATUS_CHANGED = "status_changed"  # Status transition
+    TOOL_EXECUTED = "tool_executed"  # Automated tool ran
+    CARD_ASSIGNED = "card_assigned"  # User action card was assigned
+    USER_NOTIFIED = "user_notified"  # User was reminded
+    USER_COMPLETED = "user_completed"  # User marked as done
+    AGENT_VERIFIED = "agent_verified"  # Agent verified completion
+    BLOCKED = "blocked"  # Step was blocked
+    UNBLOCKED = "unblocked"  # Block was resolved
+    NOTE_ADDED = "note_added"  # Note was added
+    RETRY_REQUESTED = "retry_requested"  # User/agent requested retry
+
+
+class ToolExecutionRecord(CamelCaseModel):
+    """Record of an automated tool execution."""
+
+    tool_name: str  # e.g., "ladbs.submit_permit"
+    request_id: Optional[str] = None  # ID returned by the tool (e.g., "REQ-2026-001234")
+    reference_number: Optional[str] = None  # Business reference (permit #, application #)
+    reference_url: Optional[str] = None  # Deep link to view the request/record
+    executed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    input_summary: Optional[Dict[str, Any]] = None  # Key inputs (sanitized)
+    output_summary: Optional[Dict[str, Any]] = None  # Key outputs (sanitized)
+    success: bool = True
+    error_message: Optional[str] = None  # If failed
+
+
+class UserActionCard(CamelCaseModel):
+    """The action card shown to the user for a user-driven step."""
+
+    step_id: str  # Required - links to plan step
+    card_type: str  # phone_call, email, form_submission, in_person, upload
+    title: str  # Short title for the card
+    instructions: str  # Full markdown instructions
+
+    # Prepared materials (agent-generated helpers)
+    phone_script: Optional[str] = None  # Script for phone calls
+    email_draft: Optional[str] = None  # Pre-drafted email content
+    form_data: Optional[Dict[str, Any]] = None  # Pre-filled form fields
+    checklist: List[str] = Field(default_factory=list)  # Steps to complete
+
+    # Contact/action info
+    contact_name: Optional[str] = None  # "LA Building & Safety"
+    contact_phone: Optional[str] = None  # "(213) 555-1234"
+    contact_email: Optional[str] = None  # "permits@lacity.org"
+    action_url: Optional[str] = None  # Portal URL if online action
+
+    # Timing
+    assigned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    due_by: Optional[datetime] = None  # Deadline if applicable
+    estimated_duration: Optional[str] = None  # "15 minutes", "1-2 business days"
+
+
+class CompletionRecord(CamelCaseModel):
+    """Record of step completion - works for both automated and user-driven steps."""
+
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_by: str  # "agent" or "user:<user_id>"
+
+    # For user-driven steps
+    user_message: Optional[str] = None  # What the user reported ("Done! Confirmation #123")
+    user_provided_data: Optional[Dict[str, Any]] = None  # Structured data from user
+
+    # For automated steps (redundant with execution_record but explicit)
+    tool_result: Optional[Dict[str, Any]] = None
+
+    # Verification (optional)
+    verified_by: Optional[str] = None  # "agent" if agent verified completion
+    verification_notes: Optional[str] = None
+
+
+class StepEvent(CamelCaseModel):
+    """A single event in a step's history."""
+
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    event_type: str  # See StepEventType
+    actor: str  # "agent", "user:<id>", "system"
+    summary: str  # Human-readable description
+    details: Optional[Dict[str, Any]] = None  # Event-specific data
+    message_id: Optional[str] = None  # Link to chat message that triggered this
+
+
 class PlanStep(CamelCaseModel):
     """Plan step within a project."""
 
@@ -138,11 +241,11 @@ class PlanStep(CamelCaseModel):
     title: str
     description: Optional[str] = None  # Made optional for flexibility
     agency: Optional[str] = None  # Changed from Agency enum to string for flexibility
-    status: StepStatus = StepStatus.NOT_STARTED
-    step_type: Optional[str] = None  # PRM, INS, TRD, APP, SCH, ENR, DOC, PAY
+    status: StepStatus = StepStatus.DEFINED
+    step_type: Optional[str] = None  # PRM, INS, TRD, APP, PCK, ENR, DOC, PAY
     action_type: Optional[str] = "automated"  # automated, user_action, or information
     order: Optional[int] = None  # Made optional for flexibility
-    estimated_duration_days: Optional[int] = None
+    estimated_duration_days: Optional[float] = None  # Can be fractional days
     user_tasks: List[UserTask] = Field(default_factory=list)
     dependencies: List[str] = Field(default_factory=list)
     depends_on: List[str] = Field(default_factory=list)  # Alias for dependencies
@@ -150,12 +253,24 @@ class PlanStep(CamelCaseModel):
     completed_at: Optional[datetime] = None
     notes: Optional[str] = None
 
+    # ========== Enhanced Plan Tracking Fields ==========
+    # For AUTOMATED steps: Record of tool execution
+    execution_record: Optional[ToolExecutionRecord] = None
+
+    # For USER_ACTION steps: The card shown to the user
+    user_action_card: Optional[UserActionCard] = None
+
+    # For ALL steps: How it was completed
+    completion_record: Optional[CompletionRecord] = None
+
+    # Audit trail: All events that happened
+    history: List[StepEvent] = Field(default_factory=list)
+
 
 class Plan(CamelCaseModel):
     """Project plan containing steps."""
 
     id: Optional[str] = None
-    title: Optional[str] = None
     status: Optional[str] = "active"
     steps: List[PlanStep] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

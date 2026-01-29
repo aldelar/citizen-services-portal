@@ -239,3 +239,23 @@ We want to focus on quality and simplcity to get a first cut out the door and te
 Let's keep things simple, to do a first cut and test it out.
 
 Add to the comments section any additional prompt guidance for the agent.
+
+
+=== refactoring MCP Reporting to MCP CSP Assistance =====
+
+Let's work on a new PRD under /docs/10-refactoring-mcp-reporting-to-mcp-csp.md
+
+This doc will outline the work required to accomplish the following:
+- MCP Reporting -> MCP CSP, a more generic MCP service to track/operate the portal services operations
+
+We will be controlling va MCP CSP:
+- create/update of Project Plans, so that an agent can directly modify a plan via MCP tool instead of outputting special plan details into the chat to be intercepted by the UI (as done now). Instead the agent can update a plan when needed, and then add a note in the chat (special signal), that will trigger the web portal to reload the project component. Operations will be: create_plan(project_id), update_plan(project_id), update_plan_step(project_id, step_id)
+- the previous 'reporting' tool functionality, becomes: A) tracking of a step change, and mostly caring about when it completes, to be able to record the time it took to complete a step of type X, so the reporting functionality will operate via update_plan_step() which will track using the existing reporting collection the time it took to complete a specific step type. We also need to keep providing the functionality to get on demand the average time it takes to complete step of type X, when the agent creates a plan, the plan is looked at, and iterated over for each step type, to query the reporting table to understand average time taken for step type and it adds on that information to the step metadata. the agent, when creating the plan does not fill in that metadata, it is done by the service layer on plan creation, or plan update, when new steps are added and have that information empty.
+
+Let's make sure the step schemas all have the following:
+ -- average time to complete step -> agent doesn't set that on creation or plan update, the service layer of the MCP CSP tool does it by querying its database
+ - start date (date/time when step goes to 'in progress'
+ - end date (date/time when step goes to 'completed'
+ A step has the following statuses: Defined, In-Progress, Completed
+
+ let's start with that, do not go crazy on details but think through the rerquirements and propose something clean, we will iterate on that and then go next level of details once we agree on all principles and validate how this would all work

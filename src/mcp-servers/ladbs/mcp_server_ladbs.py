@@ -2,11 +2,16 @@
 
 import asyncio
 import json
+import logging
 from typing import List, Optional
 
 from fastmcp import FastMCP
 
 from src.tools import LADBSTools
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
 mcp = FastMCP("LADBS")
@@ -30,7 +35,9 @@ async def queryKB(
     Returns:
         KnowledgeResult with matching document chunks
     """
+    logger.info(f"[LADBS] 🔧 queryKB(query=\"{query[:50]}...\", top={top})")
     result = await tools.queryKB(query=query, top=top)
+    logger.info(f"[LADBS]    ↳ returned {result.get('total_results', 0)} results")
     return json.dumps(result, indent=2)
 
 
@@ -49,12 +56,15 @@ async def permits_search(
     Returns:
         PermitSearchResult with matching permits
     """
+    logger.info(f"[LADBS] 🔧 permits_search(address=\"{address}\", permit_number=\"{permit_number}\")")
     result = await tools.permits_search(address=address, permit_number=permit_number)
+    logger.info(f"[LADBS]    ↳ returned {len(result.get('permits', []))} permits")
     return json.dumps(result, indent=2)
 
 
 @mcp.tool(title="Submit Permit Application")
 async def permits_submit(
+    user_id: str,
     permit_type: str,
     address: str,
     applicant_name: str,
@@ -69,6 +79,7 @@ async def permits_submit(
     Submit a new permit application.
 
     Args:
+        user_id: User ID (required for creating permit in CosmosDB)
         permit_type: Type of permit (electrical, mechanical, building, plumbing)
         address: Property address
         applicant_name: Applicant's name
@@ -82,7 +93,9 @@ async def permits_submit(
     Returns:
         PermitSubmitResult with permit number and next steps
     """
+    logger.info(f"[LADBS] 🔧 permits_submit(type=\"{permit_type}\", address=\"{address}\", user_id=\"{user_id}\")")
     result = await tools.permits_submit(
+        user_id=user_id,
         permit_type=permit_type,
         address=address,
         applicant_name=applicant_name,
@@ -93,6 +106,7 @@ async def permits_submit(
         documents=documents,
         contractor_license=contractor_license,
     )
+    logger.info(f"[LADBS]    ↳ created permit {result.get('permit_number', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -109,7 +123,9 @@ async def permits_getStatus(
     Returns:
         Permit with current status and next steps
     """
+    logger.info(f"[LADBS] 🔧 permits_getStatus(permit_number=\"{permit_number}\")")
     result = await tools.permits_getStatus(permit_number=permit_number)
+    logger.info(f"[LADBS]    ↳ status: {result.get('status', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -128,7 +144,9 @@ async def inspections_scheduled(
     Returns:
         InspectionListResult with scheduled inspections
     """
+    logger.info(f"[LADBS] 🔧 inspections_scheduled(permit=\"{permit_number}\", address=\"{address}\")")
     result = await tools.inspections_scheduled(permit_number=permit_number, address=address)
+    logger.info(f"[LADBS]    ↳ returned {len(result.get('inspections', []))} inspections")
     return json.dumps(result, indent=2)
 
 
@@ -153,6 +171,7 @@ async def inspections_schedule(
     Returns:
         UserActionResponse with phone script and checklist
     """
+    logger.info(f"[LADBS] 🔧 inspections_schedule(permit=\"{permit_number}\", type=\"{inspection_type}\")")
     result = await tools.inspections_schedule(
         permit_number=permit_number,
         inspection_type=inspection_type,
@@ -160,10 +179,12 @@ async def inspections_schedule(
         contact_name=contact_name,
         contact_phone=contact_phone,
     )
+    logger.info(f"[LADBS]    ↳ prepared user action: {result.get('action_type', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", "8000"))
-    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port))
+    # Use streamable-http transport for compatibility with agent-framework MCPStreamableHTTPTool
+    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port, transport="streamable-http"))

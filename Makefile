@@ -18,6 +18,7 @@ help:
 	@echo "Development:"
 	@echo "  make dev          - Start all services (MCP + Agent + Web)"
 	@echo "  make dev-mcp      - Start only MCP servers"
+	@echo "  make dev-agent    - Start only CSP Agent (expects MCP on 8001-8004)"
 	@echo "  make dev-web      - Start only the web application"
 	@echo ""
 	@echo "Docker Development (production-like):"
@@ -40,13 +41,19 @@ help:
 	@echo "  make test-ladbs        - Run full LADBS test suite"
 	@echo "  make test-ladwp        - Run full LADWP test suite"
 	@echo "  make test-lasan        - Run full LASAN test suite"
-	@echo "  make test-reporting    - Run full Reporting test suite"
+	@echo "  make test-csp          - Run full CSP test suite"
 	@echo "  make test-web          - Run web app tests"
 	@echo ""
+	@echo "Data Management:"
+	@echo "  make cosmos-csp-clear-projects  - Clear CSP projects/messages (keeps users)"
+	@echo "  make cosmos-csp-clear-users     - Clear CSP users only"
+	@echo "  make cosmos-csp-clear           - Clear ALL CSP data"
+	@echo "  make cosmos-ladbs-clear         - Clear all LADBS data"
+	@echo "  make cosmos-ladwp-clear         - Clear all LADWP data"
+	@echo "  make cosmos-lasan-clear         - Clear all LASAN data"
+	@echo "  make cosmos-dry                 - Dry run (show what would be deleted)"
+	@echo ""
 	@echo "Utilities:"
-	@echo "  make cosmos-clear         - Delete all CosmosDB data (projects, threads, messages)"
-	@echo "  make cosmos-clear-dry     - Show what CosmosDB data would be deleted (dry run)"
-	@echo "  make cosmos-clear-projects - Delete only projects and messages"
 	@echo "  make clean                - Clean up virtual environments and caches"
 	@echo "  make sync                 - Sync all dependencies"
 	@echo ""
@@ -66,6 +73,25 @@ dev-web:
 dev-mcp:
 	@echo "📡 Starting MCP servers only..."
 	cd scripts && uv run python dev-local.py --mcp-only
+
+dev-agent:
+	@echo "🤖 Starting CSP Agent only..."
+	@echo "   Expects MCP servers running on ports 8001-8004"
+	@echo "   Agent will be available at http://localhost:8088"
+	@bash -c '\
+		set -a && \
+		eval "$$(azd env get-values)" && \
+		set +a && \
+		export MCP_LADBS_URL=http://localhost:8001/mcp && \
+		export MCP_LADWP_URL=http://localhost:8002/mcp && \
+		export MCP_LASAN_URL=http://localhost:8003/mcp && \
+		export MCP_CSP_URL=http://localhost:8004/mcp && \
+		export AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=gpt-4.1 && \
+		export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 && \
+		export OTEL_SERVICE_NAME=csp-agent && \
+		export LOCAL_DEV=true && \
+		cd src/agents/csp-agent && \
+		uv run python main.py'
 
 # ============================================================================
 # Observability - Aspire Dashboard for OpenTelemetry traces
@@ -160,8 +186,8 @@ test-ladwp:
 test-lasan:
 	@./scripts/test-mcp-server.sh lasan --all
 
-test-reporting:
-	@./scripts/test-mcp-server.sh reporting --all
+test-csp:
+	@./scripts/test-mcp-server.sh csp --all
 
 test-web:
 	@echo "🧪 Running web app tests..."
@@ -185,17 +211,36 @@ rbac:
 # Data Management
 # ============================================================================
 
-cosmos-clear:
-	@echo "🗑️  Clearing CosmosDB data (CONFIRMED - deleting all data)..."
-	cd scripts && uv run python clear-cosmos-data.py --confirm
+# CSP Database
+cosmos-csp-clear-projects:
+	@echo "🗑️  Clearing CSP projects/messages (keeping users)..."
+	cd scripts && uv run python clear-cosmos-data.py --confirm --database csp --containers projects,messages
 
-cosmos-clear-dry:
-	@echo "🗑️  Clearing CosmosDB data (dry run)..."
-	cd scripts && uv run python clear-cosmos-data.py
+cosmos-csp-clear-users:
+	@echo "🗑️  Clearing CSP users..."
+	cd scripts && uv run python clear-cosmos-data.py --confirm --database csp --containers users
 
-cosmos-clear-projects:
-	@echo "🗑️  Clearing projects and messages from CosmosDB..."
-	cd scripts && uv run python clear-cosmos-data.py --confirm --containers projects,messages
+cosmos-csp-clear:
+	@echo "🗑️  Clearing ALL CSP data..."
+	cd scripts && uv run python clear-cosmos-data.py --confirm --database csp
+
+# Agency Databases
+cosmos-ladbs-clear:
+	@echo "🗑️  Clearing LADBS data..."
+	cd scripts && uv run python clear-cosmos-data.py --confirm --database ladbs
+
+cosmos-ladwp-clear:
+	@echo "🗑️  Clearing LADWP data..."
+	cd scripts && uv run python clear-cosmos-data.py --confirm --database ladwp
+
+cosmos-lasan-clear:
+	@echo "🗑️  Clearing LASAN data..."
+	cd scripts && uv run python clear-cosmos-data.py --confirm --database lasan
+
+# Dry run (defaults to csp)
+cosmos-dry:
+	@echo "🗑️  Dry run - showing what would be deleted..."
+	cd scripts && uv run python clear-cosmos-data.py --database csp
 
 # ============================================================================
 # Utilities
@@ -206,7 +251,7 @@ sync:
 	cd src/mcp-servers/ladbs && uv sync
 	cd src/mcp-servers/ladwp && uv sync
 	cd src/mcp-servers/lasan && uv sync
-	cd src/mcp-servers/reporting && uv sync
+	cd src/mcp-servers/csp && uv sync
 	cd src/web-app && uv sync
 
 clean:

@@ -36,7 +36,7 @@ async def get_cosmos_client() -> CosmosClient:
 
 async def get_database() -> DatabaseProxy:
     """
-    Get the database proxy for the citizen-services database.
+    Get the database proxy for the CSP database.
 
     Returns:
         DatabaseProxy: The database proxy instance.
@@ -45,7 +45,7 @@ async def get_database() -> DatabaseProxy:
         ValueError: If COSMOS_DATABASE environment variable is not set.
     """
     client = await get_cosmos_client()
-    database_name = os.environ.get("COSMOS_DATABASE", "citizen-services")
+    database_name = os.environ.get("COSMOS_DATABASE", "csp")
     return client.get_database_client(database_name)
 
 

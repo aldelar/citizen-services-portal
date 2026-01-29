@@ -71,7 +71,7 @@ MOCK_PLAN_STEPS = [
         id="I1",
         title="Schedule Inspection",
         agency="LADBS",
-        status=StepStatus.AWAITING_USER,
+        status=StepStatus.SCHEDULED,
         depends_on=["P1", "P2", "P3"],
         user_task=UserTask(
             type=UserTaskType.PHONE_CALL,
@@ -97,7 +97,7 @@ MOCK_PLAN_STEPS = [
         id="F1",
         title="Final Inspection",
         agency="LADBS",
-        status=StepStatus.BLOCKED,
+        status=StepStatus.DEFINED,
         depends_on=["I1"],
     ),
 ]
@@ -116,7 +116,6 @@ MOCK_PROJECTS = [
         updated_at=datetime.now() - timedelta(hours=2),
         plan=Plan(
             id="plan-001",
-            title="Home Renovation - Solar & Heat Pumps",
             status="active",
             steps=MOCK_PLAN_STEPS,
         ),
@@ -132,7 +131,6 @@ MOCK_PROJECTS = [
         updated_at=datetime.now() - timedelta(days=1),
         plan=Plan(
             id="plan-002",
-            title="Bulk Pickup Request",
             status="completed",
             steps=[],
         ),
