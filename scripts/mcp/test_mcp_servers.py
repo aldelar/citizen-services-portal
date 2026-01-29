@@ -34,7 +34,7 @@ MCP_SERVER_CONFIGS = {
     "LADBS": "MCP_LADBS_URL",
     "LADWP": "MCP_LADWP_URL",
     "LASAN": "MCP_LASAN_URL",
-    "Reporting": "MCP_REPORTING_URL",
+    "CSP": "MCP_CSP_URL",
 }
 
 
@@ -96,7 +96,7 @@ LOCAL_MCP_SERVERS = {
     "LADBS": "http://localhost:8001/mcp",
     "LADWP": "http://localhost:8002/mcp",
     "LASAN": "http://localhost:8003/mcp",
-    "Reporting": "http://localhost:8004/mcp",
+    "CSP": "http://localhost:8004/mcp",
 }
 
 
@@ -235,7 +235,7 @@ def main():
     parser.add_argument(
         "--server",
         type=str,
-        choices=["ladbs", "ladwp", "lasan", "reporting"],
+        choices=["ladbs", "ladwp", "lasan", "csp"],
         help="Test only a specific server",
     )
     parser.add_argument(
@@ -258,15 +258,13 @@ def main():
         if not servers:
             print("Error: No Azure MCP server URLs configured.")
             print("Please set the following environment variables:")
-            print("  MCP_LADBS_URL, MCP_LADWP_URL, MCP_LASAN_URL, MCP_REPORTING_URL")
+            print("  MCP_LADBS_URL, MCP_LADWP_URL, MCP_LASAN_URL, MCP_CSP_URL")
             print("\nAlternatively, use --local to test local servers.")
             sys.exit(1)
 
     # Filter to specific server if requested
     if args.server:
         server_key = args.server.upper()
-        if server_key == "REPORTING":
-            server_key = "Reporting"
         if server_key not in servers:
             print(f"Error: Server '{args.server}' not configured.")
             print(f"Available servers: {', '.join(servers.keys())}")

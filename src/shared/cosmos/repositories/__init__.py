@@ -2,12 +2,12 @@
 
 from .messages import MessageRepository
 from .projects import ProjectRepository
-from .reporting import ReportingRepository
+from .step_completions import StepCompletionRepository
 from .users import UserRepository
 
 __all__ = [
     "UserRepository",
     "ProjectRepository",
     "MessageRepository",
-    "ReportingRepository",
+    "StepCompletionRepository",
 ]

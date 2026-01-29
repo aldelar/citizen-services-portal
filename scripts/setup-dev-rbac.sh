@@ -73,7 +73,7 @@ COSMOS_DATA_READER="00000000-0000-0000-0000-000000000001"
 COSMOS_DATA_CONTRIBUTOR="00000000-0000-0000-0000-000000000002"
 
 # Database scope (all databases in the account)
-SCOPE="/dbs/citizen-services"
+SCOPE="/dbs/csp"
 
 echo ""
 echo -e "${BLUE}Assigning CosmosDB data plane roles...${NC}"

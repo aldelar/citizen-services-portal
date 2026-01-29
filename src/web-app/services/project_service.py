@@ -332,6 +332,183 @@ class ProjectService:
             Updated project dictionary or None if update failed.
         """
         return await self.update_project(project_id, user_id, {})
+    
+    async def update_step_with_action_card(
+        self,
+        project_id: str,
+        user_id: str,
+        step_id: str,
+        action_card,  # UserActionCard from web-app models
+    ) -> Optional[dict]:
+        """Update a step with an action card and set status to scheduled.
+        
+        Args:
+            project_id: The project ID.
+            user_id: The user ID (partition key).
+            step_id: The ID of the step to update.
+            action_card: The UserActionCard with action details.
+            
+        Returns:
+            Updated project dictionary or None if update failed.
+        """
+        if not await self._check_cosmos_available():
+            # Update in-memory storage
+            if project_id in _in_memory_projects:
+                project = _in_memory_projects[project_id]
+                if project.get("plan") and project["plan"].get("steps"):
+                    for step in project["plan"]["steps"]:
+                        if step.get("id") == step_id:
+                            step["status"] = "scheduled"
+                            step["user_action_card"] = action_card.model_dump() if hasattr(action_card, 'model_dump') else action_card
+                            step["started_at"] = datetime.now(timezone.utc).isoformat()
+                            # Add history event
+                            if "history" not in step:
+                                step["history"] = []
+                            step["history"].append({
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "event_type": "card_assigned",
+                                "actor": "agent",
+                                "summary": f"Action card assigned: {action_card.title}",
+                            })
+                            break
+                project["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return project
+            return None
+        
+        try:
+            from cosmos.models import StepStatus
+            
+            # Prepare the action card data
+            action_card_data = action_card.model_dump() if hasattr(action_card, 'model_dump') else action_card
+            
+            # Prepare history event
+            history_event = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "event_type": "card_assigned",
+                "actor": "agent",
+                "summary": f"Action card assigned: {action_card.title}",
+            }
+            
+            # Get current project and step
+            project = await self._project_repo.get_project(project_id, user_id)
+            if not project or not project.plan or not project.plan.steps:
+                logger.error(f"Project {project_id} has no plan or steps")
+                return None
+            
+            # Find and update the step
+            for step in project.plan.steps:
+                if step.id == step_id:
+                    step.status = StepStatus.SCHEDULED
+                    step.user_action_card = action_card_data
+                    step.started_at = datetime.now(timezone.utc)
+                    if step.history is None:
+                        step.history = []
+                    step.history.append(history_event)
+                    break
+            
+            # Update project
+            project.updated_at = datetime.now(timezone.utc)
+            updated = await self._project_repo.update_project(project)
+            return updated.model_dump()
+            
+        except Exception as e:
+            logger.error(f"Error updating step with action card: {e}")
+            return None
+    
+    async def complete_step(
+        self,
+        project_id: str,
+        user_id: str,
+        step_id: str,
+        user_message: str = "",
+    ) -> Optional[dict]:
+        """Mark a step as complete with user-provided notes.
+        
+        Args:
+            project_id: The project ID.
+            user_id: The user ID (partition key).
+            step_id: The ID of the step to complete.
+            user_message: Optional message from user about completion.
+            
+        Returns:
+            Updated project dictionary or None if update failed.
+        """
+        if not await self._check_cosmos_available():
+            # Update in-memory storage
+            if project_id in _in_memory_projects:
+                project = _in_memory_projects[project_id]
+                if project.get("plan") and project["plan"].get("steps"):
+                    for step in project["plan"]["steps"]:
+                        if step.get("id") == step_id:
+                            step["status"] = "completed"
+                            step["completed_at"] = datetime.now(timezone.utc).isoformat()
+                            step["completion_record"] = {
+                                "completed_at": datetime.now(timezone.utc).isoformat(),
+                                "completed_by": f"user:{user_id}",
+                                "user_message": user_message,
+                            }
+                            # Add history event
+                            if "history" not in step:
+                                step["history"] = []
+                            step["history"].append({
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "event_type": "user_completed",
+                                "actor": f"user:{user_id}",
+                                "summary": "User marked step as complete",
+                                "details": {"user_message": user_message} if user_message else None,
+                            })
+                            break
+                    
+                    # Update summary counts
+                    completed = sum(1 for s in project["plan"]["steps"] if s.get("status") == "completed")
+                    project["summary"]["completed_steps"] = completed
+                    
+                project["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return project
+            return None
+        
+        try:
+            from cosmos.models import StepStatus
+            
+            # Get current project
+            project = await self._project_repo.get_project(project_id, user_id)
+            if not project or not project.plan or not project.plan.steps:
+                logger.error(f"Project {project_id} has no plan or steps")
+                return None
+            
+            # Find and update the step
+            for step in project.plan.steps:
+                if step.id == step_id:
+                    step.status = StepStatus.COMPLETED
+                    step.completed_at = datetime.now(timezone.utc)
+                    step.completion_record = {
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "completed_by": f"user:{user_id}",
+                        "user_message": user_message,
+                    }
+                    if step.history is None:
+                        step.history = []
+                    step.history.append({
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "event_type": "user_completed",
+                        "actor": f"user:{user_id}",
+                        "summary": "User marked step as complete",
+                        "details": {"user_message": user_message} if user_message else None,
+                    })
+                    break
+            
+            # Update summary counts
+            completed = sum(1 for s in project.plan.steps if s.status == StepStatus.COMPLETED)
+            project.summary.completed_steps = completed
+            
+            # Update project
+            project.updated_at = datetime.now(timezone.utc)
+            updated = await self._project_repo.update_project(project)
+            return updated.model_dump()
+            
+        except Exception as e:
+            logger.error(f"Error completing step: {e}")
+            return None
 
 
 # Singleton instance

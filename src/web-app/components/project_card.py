@@ -37,11 +37,11 @@ def get_project_status_info(project: Project) -> tuple[str, str, str]:
     Returns:
         Tuple of (icon_name, color, status_label)
     """
-    # Check for pending user actions
+    # Check for pending user actions (scheduled = awaiting user action)
     has_action = False
     if project.plan and project.plan.steps:
         has_action = any(
-            step.status == StepStatus.AWAITING_USER 
+            step.status == StepStatus.SCHEDULED 
             for step in project.plan.steps
         )
     

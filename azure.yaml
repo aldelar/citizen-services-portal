@@ -39,8 +39,8 @@ services:
         docker:
             path: ./Dockerfile
             context: ../../..
-    mcp-reporting:
-        project: ./src/mcp-servers/reporting
+    mcp-csp:
+        project: ./src/mcp-servers/csp
         host: containerapp
         language: python
         docker:
@@ -81,4 +81,13 @@ hooks:
                   echo "Set AZURE_PRINCIPAL_ID to $PRINCIPAL_ID"
                 else
                   echo "Warning: Could not get user principal ID. RBAC assignment will be skipped."
+                fi
+
+                # Automatically set developer IP for Cosmos DB firewall
+                DEV_IP=$(curl -s https://ifconfig.me 2>/dev/null || echo "")
+                if [ -n "$DEV_IP" ]; then
+                  azd env set DEVELOPER_IP_ADDRESS "$DEV_IP"
+                  echo "Set DEVELOPER_IP_ADDRESS to $DEV_IP"
+                else
+                  echo "Warning: Could not detect developer IP. Cosmos DB firewall will not include dev IP."
                 fi

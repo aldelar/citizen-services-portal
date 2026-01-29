@@ -29,7 +29,7 @@ class Settings:
     
     # CosmosDB settings
     COSMOS_ENDPOINT: str = os.getenv('COSMOS_ENDPOINT', '')
-    COSMOS_DATABASE: str = os.getenv('COSMOS_DATABASE', 'citizen-services')
+    COSMOS_DATABASE: str = os.getenv('COSMOS_DATABASE', 'csp')
     
     @property
     def cosmos_enabled(self) -> bool:

@@ -13,25 +13,24 @@ import json
 def agent_service():
     """Create an AgentService instance without authentication."""
     from services.agent_service import AgentService
-    return AgentService(base_url="https://test.example.com", use_auth=False)
+    service = AgentService(base_url="https://test.example.com", use_auth=False)
+    # Pre-set entity_id to avoid needing to mock the entities endpoint
+    service._entity_id = "agent_test_csp-agent_123"
+    return service
 
 
 @pytest.mark.asyncio
-async def test_build_url_adds_api_version(agent_service):
-    """Test that _build_url correctly adds api-version query parameter."""
+async def test_build_url_uses_v1_prefix(agent_service):
+    """Test that _build_url correctly adds /v1 prefix."""
     url = agent_service._build_url("/responses")
-    assert "api-version=2025-11-15-preview" in url
-    assert url.startswith("https://test.example.com/responses?")
+    assert url == "https://test.example.com/v1/responses"
 
 
 @pytest.mark.asyncio
-async def test_build_url_handles_existing_query(agent_service):
-    """Test that _build_url handles existing query parameters."""
-    url = agent_service._build_url("/responses?foo=bar")
-    assert "api-version=2025-11-15-preview" in url
-    assert "foo=bar" in url
-    assert url.count("?") == 1
-    assert "&api-version=" in url
+async def test_build_url_entities_endpoint(agent_service):
+    """Test that _build_url works for entities endpoint."""
+    url = agent_service._build_url("/entities")
+    assert url == "https://test.example.com/v1/entities"
 
 
 @pytest.mark.asyncio
@@ -41,7 +40,6 @@ async def test_send_message_constructs_correct_payload(agent_service):
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "output": [{"content": [{"text": "Test response"}]}],
-        "conversation": {"id": "test-conv-123"}
     }
     
     with patch("httpx.AsyncClient") as mock_client:
@@ -53,15 +51,17 @@ async def test_send_message_constructs_correct_payload(agent_service):
         call_args = mock_client.return_value.__aenter__.return_value.post.call_args
         assert call_args is not None
         
-        # Check URL
+        # Check URL uses /v1/responses
         url = call_args[0][0]
-        assert "api-version=2025-11-15-preview" in url
+        assert "/v1/responses" in url
         
-        # Check payload
+        # Check payload uses string input format and includes metadata
         payload = call_args[1]["json"]
-        assert payload["input"] == "Hello"
+        assert isinstance(payload["input"], str)
+        assert "Hello" in payload["input"]
         assert payload["stream"] is False
-        assert "conversation" not in payload
+        assert "metadata" in payload
+        assert payload["metadata"]["entity_id"] == "agent_test_csp-agent_123"
 
 
 @pytest.mark.asyncio
@@ -71,7 +71,6 @@ async def test_send_message_includes_history(agent_service):
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "output": [{"content": [{"text": "Follow-up response"}]}],
-        "conversation": {"id": "test-conv-123"}
     }
     
     with patch("httpx.AsyncClient") as mock_client:
@@ -84,13 +83,15 @@ async def test_send_message_includes_history(agent_service):
         ]
         result_text, conv_id = await agent_service.send_message("Follow-up", messages=history)
         
-        # Check payload includes message history
+        # Check payload includes message history as formatted string
         call_args = mock_client.return_value.__aenter__.return_value.post.call_args
         payload = call_args[1]["json"]
-        assert "conversation" not in payload
         assert isinstance(payload["input"], str)
-        assert "Conversation so far:" in payload["input"]
         assert "User: Hi" in payload["input"]
+        assert "Assistant: Hello" in payload["input"]
+        assert "User: Follow-up" in payload["input"]
+        # Check entity_id is included
+        assert payload["metadata"]["entity_id"] == "agent_test_csp-agent_123"
 
 
 @pytest.mark.asyncio

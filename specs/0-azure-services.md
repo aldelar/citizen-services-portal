@@ -6,7 +6,7 @@
 | Container App | `aldelar-csp-mcp-ladbs` | North Central US | LADBS MCP Server |
 | Container App | `aldelar-csp-mcp-ladwp` | North Central US | LADWP MCP Server |
 | Container App | `aldelar-csp-mcp-lasan` | North Central US | LASAN MCP Server |
-| Container App | `aldelar-csp-mcp-reporting` | North Central US | Reporting MCP Server |
+| Container App | `aldelar-csp-mcp-csp` | North Central US | CSP MCP Server (plans, analytics) |
 | Container Apps Environment | `aldelar-csp-cae` | North Central US | Hosts all Container Apps |
 | Container Registry | `aldelarcspcr` | North Central US | aldelarcspcr.azurecr.io |
 | AI Foundry | `aldelar-csp-foundry` | North Central US | Main AI hub with OpenAI models |

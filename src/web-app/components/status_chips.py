@@ -6,19 +6,18 @@ from models.project import StepStatus
 
 # Status configuration: (label, color, icon)
 STATUS_CONFIGS = {
-    StepStatus.NOT_STARTED: ('Not Started', 'grey', 'radio_button_unchecked'),
-    StepStatus.BLOCKED: ('Blocked', 'grey', 'lock'),
-    StepStatus.READY: ('Ready', 'primary', 'play_arrow'),
+    StepStatus.DEFINED: ('Not Started', 'grey', 'radio_button_unchecked'),
+    StepStatus.SCHEDULED: ('Scheduled', 'primary', 'schedule'),
     StepStatus.IN_PROGRESS: ('In Progress', 'primary', 'pending'),
-    StepStatus.AWAITING_USER: ('Action Needed', 'warning', 'bolt'),
     StepStatus.COMPLETED: ('Completed', 'positive', 'check_circle'),
-    'not_started': ('Not Started', 'grey', 'radio_button_unchecked'),
-    'blocked': ('Blocked', 'grey', 'lock'),
-    'ready': ('Ready', 'primary', 'play_arrow'),
+    StepStatus.NEEDS_REWORK: ('Needs Rework', 'warning', 'refresh'),
+    StepStatus.REJECTED: ('Rejected', 'negative', 'cancel'),
+    'defined': ('Not Started', 'grey', 'radio_button_unchecked'),
+    'scheduled': ('Scheduled', 'primary', 'schedule'),
     'in_progress': ('In Progress', 'primary', 'pending'),
-    'awaiting_user': ('Action Needed', 'warning', 'bolt'),
     'completed': ('Completed', 'positive', 'check_circle'),
-    'failed': ('Failed', 'negative', 'error'),
+    'needs_rework': ('Needs Rework', 'warning', 'refresh'),
+    'rejected': ('Rejected', 'negative', 'cancel'),
 }
 
 

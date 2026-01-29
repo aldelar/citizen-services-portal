@@ -11,8 +11,8 @@ The Citizen Services Portal uses a multi-database architecture where each major 
 ### Databases Overview
 
 | Database | Owner | Purpose |
-|----------|-------|---------|
-| `citizen-services` | Agent Orchestrator | User profiles, projects, messages, step completions |
+|----------|-------|--------|
+| `csp` | CSP Agent / Web App | User profiles, projects, messages, step completions |
 | `ladbs` | LADBS MCP Server | Permit applications, inspection records |
 | `ladwp` | LADWP MCP Server | Interconnection applications, rebates, TOU enrollments |
 | `lasan` | LASAN MCP Server | Pickup requests and status |
@@ -70,7 +70,7 @@ The Citizen Services Portal uses Azure Cosmos DB with the NoSQL API to store:
 
 | Property | Value |
 |----------|-------|
-| **Database Name** | `citizen-services` |
+| **Database Name** | `csp` |
 | **Throughput** | Serverless (automatic) |
 
 ---
@@ -84,7 +84,7 @@ The Citizen Services Portal uses Azure Cosmos DB with the NoSQL API to store:
 | `users` | `/id` | User profiles | None |
 | `projects` | `/userId` | Projects with inline plans | None |
 | `messages` | `/projectId` | Conversation history | Optional (365 days for completed projects) |
-| `step_completions` | `/toolName` | Anonymized step timing for reporting | 180 days |
+| `step_completions` | `/stepType` | Step timing analytics for plan duration estimates | 180 days |
 
 ---
 
@@ -518,23 +518,25 @@ For completed projects, messages can be retained for a defined period:
 
 ## Container: `step_completions`
 
-Stores anonymized step completion records for reporting. Used by the Reporting MCP Server.
+Stores step completion records for analytics. Used by the CSP MCP Server to calculate average step durations.
 
 ### Partition Strategy
 
-- **Partition Key:** `/toolName`
-- **Rationale:** Queries aggregate by tool type; co-locates all completions for a given tool
+- **Partition Key:** `/stepType`
+- **Rationale:** Queries aggregate by step type; co-locates all completions for efficient duration calculations
 
 ### Schema
 
 ```json
 {
-  "id": "completion-uuid",
-  "toolName": "permits.submit",
-  "city": "Los Angeles",
-  "startedAt": "2026-01-15T10:00:00Z",
+  "id": "uuid",
+  "completionId": "COMP-abc12345",
+  "stepType": "permits.submit",
+  "chainStartedAt": "2026-01-15T10:00:00Z",
   "completedAt": "2026-01-28T14:30:00Z",
   "durationDays": 13.2,
+  "attempts": 1,
+  "loggedAt": "2026-01-28T14:30:00Z",
   "ttl": 15552000
 }
 ```
@@ -544,16 +546,17 @@ Stores anonymized step completion records for reporting. Used by the Reporting M
 ```python
 from pydantic import BaseModel
 from datetime import datetime
+from src.models import StepType
 
 class StepCompletion(BaseModel):
-    """Anonymized step completion record for reporting."""
+    """Step completion record for analytics."""
     id: str
-    tool_name: str                     # Partition key, normalized MCP tool name
-    city: str                          # Geographic filter
-    started_at: datetime
-    completed_at: datetime
-    duration_days: float               # Calculated: (completed_at - started_at).days
-    ttl: int = 15552000                # 180 days in seconds
+    step_type: StepType               # Partition key
+    chain_started_at: datetime        # When the step chain began
+    completed_at: datetime            # When the final attempt completed
+    duration_days: float              # Total elapsed time
+    attempts: int = 1                 # Number of attempts (rework count)
+    logged_at: datetime               # When this record was created
 ```
 
 ### Normalized Tool Names

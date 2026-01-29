@@ -56,7 +56,7 @@ The Web Application is the citizen-facing frontend for the Citizen Services Port
 │                                                                                             │
 │        ┌───────────────────────────┐            ┌───────────────────────────┐              │
 │        │     Azure AI Search       │            │        Cosmos DB          │              │
-│        │     (Knowledge Base)      │            │    (citizen-services)     │              │
+│        │     (Knowledge Base)      │            │           (csp)           │              │
 │        └───────────────────────────┘            └───────────────────────────┘              │
 │                                                                                             │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -295,7 +295,7 @@ AGENT_URL=http://localhost:8090
 
 # CosmosDB (use Azure - no local emulator needed for dev)
 COSMOS_ENDPOINT=https://<your-cosmos-account>.documents.azure.com:443/
-COSMOS_DATABASE=citizen-services
+COSMOS_DATABASE=csp
 
 # Azure AI Search (always Azure - no local option)
 AZURE_SEARCH_ENDPOINT=https://<your-search>.search.windows.net
@@ -645,7 +645,7 @@ open $(azd env get-value SERVICE_WEBAPP_URI)
 | `MOCK_USER_ID` | No | `local-dev-user` | Mock user ID for local dev |
 | `MOCK_USER_EMAIL` | No | `dev@example.com` | Mock email for local dev |
 | `COSMOS_ENDPOINT` | Yes | - | CosmosDB account endpoint |
-| `COSMOS_DATABASE` | No | `citizen-services` | CosmosDB database name |
+| `COSMOS_DATABASE` | No | `csp` | CosmosDB database name |
 | `MCP_LADBS_URL` | Yes | - | LADBS MCP server URL |
 | `MCP_LADWP_URL` | Yes | - | LADWP MCP server URL |
 | `MCP_LASAN_URL` | Yes | - | LASAN MCP server URL |
@@ -681,7 +681,7 @@ class Settings(BaseSettings):
     
     # Backend services
     cosmos_endpoint: str
-    cosmos_database: str = "citizen-services"
+    cosmos_database: str = "csp"
     
     mcp_ladbs_url: str
     mcp_ladwp_url: str

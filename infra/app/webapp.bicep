@@ -54,7 +54,7 @@ param applicationInsightsConnectionString string = ''
 param cosmosEndpoint string = ''
 
 @description('CosmosDB database name')
-param cosmosDatabase string = 'citizen-services'
+param cosmosDatabase string = 'csp'
 
 @description('CSP Agent endpoint URL')
 param cspAgentUrl string = ''
@@ -68,8 +68,8 @@ param mcpLadwpUrl string = ''
 @description('LASAN MCP Server URL')
 param mcpLasanUrl string = ''
 
-@description('Reporting MCP Server URL')
-param mcpReportingUrl string = ''
+@description('CSP MCP Server URL for plan lifecycle and analytics')
+param mcpCspUrl string = ''
 
 @description('Microsoft Entra tenant ID for authentication')
 param tenantId string = tenant().tenantId
@@ -212,10 +212,10 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
                 value: mcpLasanUrl
               }
             ] : [],
-            !empty(mcpReportingUrl) ? [
+            !empty(mcpCspUrl) ? [
               {
-                name: 'MCP_REPORTING_URL'
-                value: mcpReportingUrl
+                name: 'MCP_CSP_URL'
+                value: mcpCspUrl
               }
             ] : [],
             // Managed Identity for Azure SDK authentication

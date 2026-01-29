@@ -3,7 +3,7 @@
 Local Development Orchestrator for Citizen Services Portal.
 
 Starts all services locally for rapid development:
-- MCP Servers (LADBS, LADWP, LASAN, Reporting)
+- MCP Servers (LADBS, LADWP, LASAN, CSP)
 - CSP Agent (uses Azure OpenAI, local MCP servers)
 - Web Application
 
@@ -95,9 +95,9 @@ MCP_SERVERS = [
         health_endpoint="/health",
     ),
     ServiceConfig(
-        name="mcp-reporting",
-        path=PROJECT_ROOT / "src" / "mcp-servers" / "reporting",
-        command=["uv", "run", "python", "mcp_server_reporting.py"],
+        name="mcp-csp",
+        path=PROJECT_ROOT / "src" / "mcp-servers" / "csp",
+        command=["uv", "run", "python", "mcp_server_csp.py"],
         port=8004,
         env={"PORT": "8004"},
         health_endpoint="/health",
@@ -113,22 +113,17 @@ def get_csp_agent_config(azd_env: dict[str, str]) -> ServiceConfig:
         command=["uv", "run", "python", "main.py"],
         port=8088,  # Agent framework default port
         env={
-            # Use local MCP servers
-            "MCP_LADBS_URL": "http://localhost:8001",
-            "MCP_LADWP_URL": "http://localhost:8002",
-            "MCP_LASAN_URL": "http://localhost:8003",
-            "MCP_REPORTING_URL": "http://localhost:8004",
+            # Use local MCP servers (streamable-http transport)
+            "MCP_LADBS_URL": "http://localhost:8001/mcp",
+            "MCP_LADWP_URL": "http://localhost:8002/mcp",
+            "MCP_LASAN_URL": "http://localhost:8003/mcp",
+            "MCP_CSP_URL": "http://localhost:8004/mcp",
             # Azure OpenAI from azd
             "AZURE_OPENAI_ENDPOINT": azd_env.get("AZURE_OPENAI_ENDPOINT", ""),
             "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME": "gpt-4.1",
             # Azure AI Foundry project (required for agent runtime)
             "AZURE_AI_PROJECT_ENDPOINT": azd_env.get("AZURE_AI_PROJECT_ENDPOINT", ""),
             "AGENT_PROJECT_RESOURCE_ID": azd_env.get("AZURE_AI_PROJECT_ID", ""),
-            # CosmosDB for agent thread/message persistence
-            "AGENT_COSMOS_ENDPOINT": azd_env.get("cosmosDbEndpoint", ""),
-            "AGENT_COSMOS_DATABASE": "citizen-services",
-            "AGENT_COSMOS_THREADS_CONTAINER": "threads",  # Thread persistence (conversation history)
-            "AGENT_COSMOS_CONTAINER": "messages",  # DEPRECATED: kept for backwards compatibility
             # Application Insights (optional but expected)
             "APPLICATIONINSIGHTS_CONNECTION_STRING": azd_env.get("applicationInsightsConnectionString", ""),
             # OpenTelemetry for local tracing with Aspire Dashboard
@@ -139,22 +134,27 @@ def get_csp_agent_config(azd_env: dict[str, str]) -> ServiceConfig:
             "OTEL_SERVICE_NAME": "csp-agent",
         },
         health_endpoint="/health",
-        depends_on=["mcp-ladbs", "mcp-ladwp", "mcp-lasan", "mcp-reporting"],
+        depends_on=["mcp-ladbs", "mcp-ladwp", "mcp-lasan", "mcp-csp"],
     )
 
 
-WEB_APP = ServiceConfig(
-    name="web-app",
-    path=PROJECT_ROOT / "src" / "web-app",
-    command=["uv", "run", "python", "main.py"],
-    port=8080,
-    env={
-        "DEBUG": "true",
-        "USE_MOCK_AUTH": "true",
-        "CSP_AGENT_URL": "http://localhost:8088",
-    },
-    health_endpoint="/",
-)
+def get_web_app_config(azd_env: dict[str, str]) -> ServiceConfig:
+    """Create Web App config with Azure credentials from azd."""
+    return ServiceConfig(
+        name="web-app",
+        path=PROJECT_ROOT / "src" / "web-app",
+        command=["uv", "run", "python", "main.py"],
+        port=8080,
+        env={
+            "DEBUG": "true",
+            "USE_MOCK_AUTH": "true",
+            "CSP_AGENT_URL": "http://localhost:8088",
+            # CosmosDB for user/project persistence
+            "COSMOS_ENDPOINT": azd_env.get("cosmosDbEndpoint", ""),
+            "COSMOS_DATABASE": "csp",
+        },
+        health_endpoint="/",
+    )
 
 
 class ServiceManager:
@@ -243,19 +243,19 @@ class ServiceManager:
             print(f"   ❌ csp-agent failed to start on port {agent_config.port}")
             return False
 
-    def start_web_app(self) -> bool:
+    def start_web_app(self, web_app_config: ServiceConfig) -> bool:
         """Start the web application."""
         print("\n" + "=" * 60)
         print("🌐 Starting Web Application")
         print("=" * 60)
         
-        self.start_service(WEB_APP)
+        self.start_service(web_app_config)
         
-        if self.wait_for_port(WEB_APP.port, timeout=30):
-            print(f"   ✅ web-app ready on port {WEB_APP.port}")
+        if self.wait_for_port(web_app_config.port, timeout=30):
+            print(f"   ✅ web-app ready on port {web_app_config.port}")
             return True
         else:
-            print(f"   ❌ web-app failed to start on port {WEB_APP.port}")
+            print(f"   ❌ web-app failed to start on port {web_app_config.port}")
             return False
 
     def stream_logs(self):
@@ -357,6 +357,9 @@ def main():
     # Create agent config with Azure credentials
     agent_config = get_csp_agent_config(azd_env)
     
+    # Create web app config with Azure credentials
+    web_app_config = get_web_app_config(azd_env)
+    
     manager = ServiceManager()
     
     # Handle Ctrl+C gracefully
@@ -374,7 +377,7 @@ def main():
     try:
         if args.web_only:
             # Only start web app
-            manager.start_web_app()
+            manager.start_web_app(web_app_config)
         elif args.mcp_only:
             # Only start MCP servers
             manager.start_mcp_servers()
@@ -382,7 +385,7 @@ def main():
             # Default: Start everything (MCP + Agent + Web)
             manager.start_mcp_servers()
             manager.start_agent(agent_config)
-            manager.start_web_app()
+            manager.start_web_app(web_app_config)
         
         print("\n" + "=" * 60)
         print("✨ All services started!")
@@ -395,8 +398,8 @@ def main():
                 print("   • LADWP MCP:     http://localhost:8002")
             elif "mcp-lasan" in name:
                 print("   • LASAN MCP:     http://localhost:8003")
-            elif "mcp-reporting" in name:
-                print("   • Reporting MCP: http://localhost:8004")
+            elif "mcp-csp" in name:
+                print("   • CSP MCP:       http://localhost:8004")
             elif "csp-agent" in name:
                 print("   • CSP Agent:     http://localhost:8088")
             elif "web-app" in name:

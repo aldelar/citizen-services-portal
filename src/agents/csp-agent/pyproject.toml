@@ -5,10 +5,12 @@ description = "Citizen Services Portal Agent - AI assistant for LA city services
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "azure-ai-agentserver-agentframework==1.0.0b9",
-    "agent-framework",
+    "agent-framework>=1.0.0b260128",
     "azure-identity",
     "azure-cosmos",  # For CosmosDB-backed chat message store
+    # FastAPI server
+    "fastapi",
+    "uvicorn[standard]",
     # OpenTelemetry exporters for observability
     "azure-monitor-opentelemetry",          # For Application Insights
     "opentelemetry-exporter-otlp-proto-grpc",  # For Aspire Dashboard / OTLP

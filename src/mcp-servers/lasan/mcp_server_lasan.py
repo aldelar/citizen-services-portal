@@ -2,11 +2,16 @@
 
 import asyncio
 import json
+import logging
 from typing import List
 
 from fastmcp import FastMCP
 
 from src.tools import LASANTools
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
 mcp = FastMCP("LASAN")
@@ -30,7 +35,9 @@ async def queryKB(
     Returns:
         KnowledgeResult with matching document chunks
     """
+    logger.info(f"[LASAN] 🔧 queryKB(query=\"{query[:50]}...\", top={top})")
     result = await tools.queryKB(query=query, top=top)
+    logger.info(f"[LASAN]    ↳ returned {result.get('total_results', 0)} results")
     return json.dumps(result, indent=2)
 
 
@@ -47,7 +54,9 @@ async def pickup_scheduled(
     Returns:
         PickupScheduledResult with scheduled pickups
     """
+    logger.info(f"[LASAN] 🔧 pickup_scheduled(address=\"{address}\")")
     result = await tools.pickup_scheduled(address=address)
+    logger.info(f"[LASAN]    ↳ returned {len(result.get('pickups', []))} pickups")
     return json.dumps(result, indent=2)
 
 
@@ -72,6 +81,7 @@ async def pickup_schedule(
     Returns:
         UserActionResponse with phone script and checklist
     """
+    logger.info(f"[LASAN] 🔧 pickup_schedule(address=\"{address}\", type=\"{pickup_type}\", items={len(items)})")
     result = await tools.pickup_schedule(
         address=address,
         pickup_type=pickup_type,
@@ -79,6 +89,7 @@ async def pickup_schedule(
         contact_name=contact_name,
         contact_phone=contact_phone,
     )
+    logger.info(f"[LASAN]    ↳ prepared user action: {result.get('action_type', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -97,11 +108,14 @@ async def pickup_getEligibility(
     Returns:
         EligibilityResult with eligible/ineligible items and alternatives
     """
+    logger.info(f"[LASAN] 🔧 pickup_getEligibility(address=\"{address}\", items={item_types})")
     result = await tools.pickup_getEligibility(address=address, item_types=item_types)
+    logger.info(f"[LASAN]    ↳ eligible: {len(result.get('eligible', []))}, ineligible: {len(result.get('ineligible', []))}")
     return json.dumps(result, indent=2)
 
 
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", "8000"))
-    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port))
+    # Use streamable-http transport for compatibility with agent-framework MCPStreamableHTTPTool
+    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port, transport="streamable-http"))

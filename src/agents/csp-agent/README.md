@@ -82,7 +82,7 @@ export AZURE_OPENAI_CHAT_DEPLOYMENT_NAME="gpt-4o-mini"
 export MCP_LADBS_URL="http://localhost:8001"   # or deployed URL
 export MCP_LADWP_URL="http://localhost:8002"   # or deployed URL
 export MCP_LASAN_URL="http://localhost:8003"   # or deployed URL
-export MCP_REPORTING_URL="http://localhost:8004"  # or deployed URL
+export MCP_CSP_URL="http://localhost:8004"  # or deployed URL
 ```
 
 ### Install Dependencies
@@ -132,7 +132,7 @@ cd src/agents/csp-agent
 export MCP_LADBS_URL=$(azd env get-value SERVICE_MCP_LADBS_URI)
 export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
 export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
-export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
+export MCP_CSP_URL=$(azd env get-value SERVICE_MCP_CSP_URI)
 
 # Build and deploy
 azd ai agent build
@@ -193,7 +193,7 @@ Verify MCP server URLs are accessible:
 curl -I $MCP_LADBS_URL
 curl -I $MCP_LADWP_URL
 curl -I $MCP_LASAN_URL
-curl -I $MCP_REPORTING_URL
+curl -I $MCP_CSP_URL
 ```
 
 ### Missing Environment Variables

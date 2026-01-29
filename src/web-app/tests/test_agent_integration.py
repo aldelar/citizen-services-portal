@@ -143,14 +143,14 @@ async def test_authentication_token_included():
 
 @pytest.mark.asyncio
 @pytest.mark.integration  
-async def test_url_construction_with_api_version():
-    """Test that URLs are constructed with correct api-version."""
+async def test_url_construction_with_v1_prefix():
+    """Test that URLs are constructed with /v1 prefix."""
     from services.agent_service import AgentService
     service = AgentService(base_url=AGENT_URL, use_auth=True)
     
     url = service._build_url("/responses")
     
-    assert "api-version=2025-11-15-preview" in url
+    assert "/v1/responses" in url
     assert url.startswith(AGENT_URL)
 
 

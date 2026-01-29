@@ -2,11 +2,16 @@
 
 import asyncio
 import json
+import logging
 from typing import List, Optional
 
 from fastmcp import FastMCP
 
 from src.tools import LADWPTools
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
 mcp = FastMCP("LADWP")
@@ -30,7 +35,9 @@ async def queryKB(
     Returns:
         KnowledgeResult with matching document chunks
     """
+    logger.info(f"[LADWP] 🔧 queryKB(query=\"{query[:50]}...\", top={top})")
     result = await tools.queryKB(query=query, top=top)
+    logger.info(f"[LADWP]    ↳ returned {result.get('total_results', 0)} results")
     return json.dumps(result, indent=2)
 
 
@@ -47,7 +54,9 @@ async def account_show(
     Returns:
         Account information with rate plan, meter type, and pending requests
     """
+    logger.info(f"[LADWP] 🔧 account_show(account=\"{account_number}\")")
     result = await tools.account_show(account_number=account_number)
+    logger.info(f"[LADWP]    ↳ account status: {result.get('status', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -64,7 +73,9 @@ async def plans_list(
     Returns:
         PlansListResult with available plans and recommendation
     """
+    logger.info(f"[LADWP] 🔧 plans_list(account=\"{account_number}\")")
     result = await tools.plans_list(account_number=account_number)
+    logger.info(f"[LADWP]    ↳ returned {len(result.get('available_plans', []))} plans")
     return json.dumps(result, indent=2)
 
 
@@ -83,7 +94,9 @@ async def tou_enroll(
     Returns:
         TOUEnrollmentResult with confirmation and effective date
     """
+    logger.info(f"[LADWP] 🔧 tou_enroll(account=\"{account_number}\", plan=\"{rate_plan}\")")
     result = await tools.tou_enroll(account_number=account_number, rate_plan=rate_plan)
+    logger.info(f"[LADWP]    ↳ enrollment: {result.get('confirmation_number', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -114,6 +127,7 @@ async def interconnection_submit(
     Returns:
         UserActionResponse with email draft and checklist
     """
+    logger.info(f"[LADWP] 🔧 interconnection_submit(address=\"{address}\", size={system_size_kw}kW)")
     result = await tools.interconnection_submit(
         address=address,
         system_size_kw=system_size_kw,
@@ -124,6 +138,7 @@ async def interconnection_submit(
         panels=panels,
         battery=battery,
     )
+    logger.info(f"[LADWP]    ↳ prepared user action: {result.get('action_type', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -142,7 +157,9 @@ async def interconnection_getStatus(
     Returns:
         Interconnection status with next steps
     """
+    logger.info(f"[LADWP] 🔧 interconnection_getStatus(app_id=\"{application_id}\", address=\"{address}\")")
     result = await tools.interconnection_getStatus(application_id=application_id, address=address)
+    logger.info(f"[LADWP]    ↳ status: {result.get('status', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -159,7 +176,9 @@ async def rebates_filed(
     Returns:
         RebatesFiledResult with all applications and their status
     """
+    logger.info(f"[LADWP] 🔧 rebates_filed(account=\"{account_number}\")")
     result = await tools.rebates_filed(account_number=account_number)
+    logger.info(f"[LADWP]    ↳ returned {len(result.get('applications', []))} rebates")
     return json.dumps(result, indent=2)
 
 
@@ -188,6 +207,7 @@ async def rebates_apply(
     Returns:
         RebateApplyResult with application ID and estimated rebate
     """
+    logger.info(f"[LADWP] 🔧 rebates_apply(account=\"{account_number}\", type=\"{equipment_type}\")")
     result = await tools.rebates_apply(
         account_number=account_number,
         equipment_type=equipment_type,
@@ -197,6 +217,7 @@ async def rebates_apply(
         ahri_certificate=ahri_certificate,
         ladbs_permit_number=ladbs_permit_number,
     )
+    logger.info(f"[LADWP]    ↳ application: {result.get('application_id', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
@@ -213,11 +234,14 @@ async def rebates_getStatus(
     Returns:
         RebateApplication with detailed status
     """
+    logger.info(f"[LADWP] 🔧 rebates_getStatus(app_id=\"{application_id}\")")
     result = await tools.rebates_getStatus(application_id=application_id)
+    logger.info(f"[LADWP]    ↳ status: {result.get('status', 'N/A')}")
     return json.dumps(result, indent=2)
 
 
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", "8000"))
-    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port))
+    # Use streamable-http transport for compatibility with agent-framework MCPStreamableHTTPTool
+    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port, transport="streamable-http"))

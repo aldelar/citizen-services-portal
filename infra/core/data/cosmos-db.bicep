@@ -25,6 +25,9 @@ param defaultConsistencyLevel string = 'Session'
 @description('Enable automatic failover')
 param enableAutomaticFailover bool = false
 
+@description('Developer IP address for firewall (for local development)')
+param developerIpAddress string = ''
+
 resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   name: cosmosDbAccountName
   location: location
@@ -54,6 +57,20 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
     enableMultipleWriteLocations: false
     publicNetworkAccess: 'Enabled'
     networkAclBypass: 'AzureServices'
+    // 0.0.0.0 = Accept connections from within Azure datacenters (required for Container Apps)
+    // Developer IP is added for local development access
+    ipRules: concat(
+      [
+        {
+          ipAddressOrRange: '0.0.0.0'
+        }
+      ],
+      !empty(developerIpAddress) ? [
+        {
+          ipAddressOrRange: developerIpAddress
+        }
+      ] : []
+    )
     disableKeyBasedMetadataWriteAccess: false
     enableFreeTier: false
   }
@@ -71,13 +88,13 @@ output endpoint string = cosmosDbAccount.properties.documentEndpoint
 @description('The principal ID of the Cosmos DB account')
 output principalId string = cosmosDbAccount.identity.principalId
 
-// Database resource
+// Database resource - consolidated CSP database
 resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
   parent: cosmosDbAccount
-  name: 'citizen-services'
+  name: 'csp'
   properties: {
     resource: {
-      id: 'citizen-services'
+      id: 'csp'
     }
   }
 }
@@ -181,8 +198,7 @@ resource projectsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   }
 }
 
-// Messages container (DEPRECATED: messages now stored in threads container via agent thread_repository)
-// Kept for backwards compatibility during migration
+// Messages container - stores chat messages for each project
 resource messagesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
   parent: database
   name: 'messages'
@@ -225,7 +241,7 @@ resource messagesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   }
 }
 
-// Step completions container with TTL
+// Step completions container - analytics for plan step timing
 resource stepCompletionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
   parent: database
   name: 'step_completions'
@@ -234,7 +250,7 @@ resource stepCompletionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlData
       id: 'step_completions'
       partitionKey: {
         paths: [
-          '/toolName'
+          '/stepType'
         ]
         kind: 'Hash'
       }
@@ -244,16 +260,16 @@ resource stepCompletionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlData
         indexingMode: 'consistent'
         includedPaths: [
           {
-            path: '/toolName/?'
-          }
-          {
-            path: '/city/?'
+            path: '/stepType/?'
           }
           {
             path: '/completedAt/?'
           }
           {
             path: '/durationDays/?'
+          }
+          {
+            path: '/attempts/?'
           }
         ]
         excludedPaths: [
