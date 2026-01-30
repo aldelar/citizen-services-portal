@@ -1,0 +1,1231 @@
+{
+  "statistics": {
+    "totalCompletions": 500,
+    "byStepType": {
+      "DOC-Plans": {
+        "name": "Prepare Plans & Drawings",
+        "agency": "All",
+        "count": 36,
+        "avgDuration": 8.46,
+        "minDuration": 3.32,
+        "maxDuration": 18.13,
+        "medianDuration": 8.04,
+        "avgAttempts": 1.25,
+        "successRate": 88.9
+      },
+      "INS-RoughElectrical": {
+        "name": "Rough Electrical Inspection",
+        "agency": "LADBS",
+        "count": 33,
+        "avgDuration": 6.61,
+        "minDuration": 3.11,
+        "maxDuration": 13.46,
+        "medianDuration": 6.15,
+        "avgAttempts": 1.27,
+        "successRate": 84.8
+      },
+      "PAY-Deposit": {
+        "name": "Pay Service Deposit",
+        "agency": "LADBS/LADWP",
+        "count": 9,
+        "avgDuration": 0.83,
+        "minDuration": 0.15,
+        "maxDuration": 1.28,
+        "medianDuration": 0.85,
+        "avgAttempts": 1.33,
+        "successRate": 88.9
+      },
+      "PRM-Electrical": {
+        "name": "Electrical Permit",
+        "agency": "LADBS",
+        "count": 32,
+        "avgDuration": 32.54,
+        "minDuration": 13.11,
+        "maxDuration": 65.3,
+        "medianDuration": 33.3,
+        "avgAttempts": 1.59,
+        "successRate": 71.9
+      },
+      "PAY-Permit": {
+        "name": "Pay Permit Fees",
+        "agency": "LADBS/LADWP",
+        "count": 31,
+        "avgDuration": 0.64,
+        "minDuration": 0.24,
+        "maxDuration": 1.4,
+        "medianDuration": 0.61,
+        "avgAttempts": 1.19,
+        "successRate": 90.3
+      },
+      "DOC-Specs": {
+        "name": "Gather Equipment Specs",
+        "agency": "All",
+        "count": 32,
+        "avgDuration": 1.85,
+        "minDuration": 0.64,
+        "maxDuration": 4.68,
+        "medianDuration": 1.82,
+        "avgAttempts": 1.5,
+        "successRate": 78.1
+      },
+      "INS-FinalMechanical": {
+        "name": "Final Mechanical Inspection",
+        "agency": "LADBS",
+        "count": 14,
+        "avgDuration": 8.24,
+        "minDuration": 4.96,
+        "maxDuration": 11.92,
+        "medianDuration": 8.92,
+        "avgAttempts": 1.21,
+        "successRate": 92.9
+      },
+      "TRD-HVAC": {
+        "name": "Hire & Complete HVAC Work",
+        "agency": "LADBS",
+        "count": 13,
+        "avgDuration": 23.24,
+        "minDuration": 8.9,
+        "maxDuration": 51.82,
+        "medianDuration": 20.43,
+        "avgAttempts": 1.69,
+        "successRate": 76.9
+      },
+      "PRM-Plumbing": {
+        "name": "Plumbing Permit",
+        "agency": "LADBS",
+        "count": 13,
+        "avgDuration": 18.15,
+        "minDuration": 8.2,
+        "maxDuration": 31.2,
+        "medianDuration": 16.98,
+        "avgAttempts": 1.31,
+        "successRate": 84.6
+      },
+      "PCK-Bulky": {
+        "name": "Bulky Item Pickup",
+        "agency": "LASAN",
+        "count": 40,
+        "avgDuration": 15.51,
+        "minDuration": 6.35,
+        "maxDuration": 27.3,
+        "medianDuration": 15.08,
+        "avgAttempts": 1.65,
+        "successRate": 72.5
+      },
+      "ENR-Solar": {
+        "name": "Solar Program Enrollment",
+        "agency": "LADWP",
+        "count": 15,
+        "avgDuration": 9.09,
+        "minDuration": 3.69,
+        "maxDuration": 18.69,
+        "medianDuration": 7.78,
+        "avgAttempts": 1.33,
+        "successRate": 86.7
+      },
+      "APP-Interconnection": {
+        "name": "Solar Interconnection Application",
+        "agency": "LADWP",
+        "count": 18,
+        "avgDuration": 39.64,
+        "minDuration": 20.6,
+        "maxDuration": 65.68,
+        "medianDuration": 37.59,
+        "avgAttempts": 1.28,
+        "successRate": 88.9
+      },
+      "ENR-EV": {
+        "name": "EV Charging Program",
+        "agency": "LADWP",
+        "count": 8,
+        "avgDuration": 6.67,
+        "minDuration": 3.43,
+        "maxDuration": 14.69,
+        "medianDuration": 5.48,
+        "avgAttempts": 1.38,
+        "successRate": 87.5
+      },
+      "TRD-Electrician": {
+        "name": "Hire & Complete Electrical Work",
+        "agency": "LADBS",
+        "count": 30,
+        "avgDuration": 13.14,
+        "minDuration": 3.53,
+        "maxDuration": 22.98,
+        "medianDuration": 13.73,
+        "avgAttempts": 1.23,
+        "successRate": 86.7
+      },
+      "ENR-TOU": {
+        "name": "TOU Rate Plan Enrollment",
+        "agency": "LADWP",
+        "count": 19,
+        "avgDuration": 20.08,
+        "minDuration": 9.9,
+        "maxDuration": 26.56,
+        "medianDuration": 21.79,
+        "avgAttempts": 1.11,
+        "successRate": 89.5
+      },
+      "INS-Final": {
+        "name": "Final Sign-off Inspection",
+        "agency": "LADBS",
+        "count": 23,
+        "avgDuration": 12.49,
+        "minDuration": 4.23,
+        "maxDuration": 29.18,
+        "medianDuration": 13.2,
+        "avgAttempts": 1.17,
+        "successRate": 91.3
+      },
+      "APP-Rebate": {
+        "name": "Rebate Application",
+        "agency": "LADWP",
+        "count": 18,
+        "avgDuration": 13.3,
+        "minDuration": 7.62,
+        "maxDuration": 18.81,
+        "medianDuration": 13.89,
+        "avgAttempts": 1.22,
+        "successRate": 77.8
+      },
+      "PRM-Building": {
+        "name": "Building Permit",
+        "agency": "LADBS",
+        "count": 15,
+        "avgDuration": 36.99,
+        "minDuration": 21.84,
+        "maxDuration": 52.23,
+        "medianDuration": 37.17,
+        "avgAttempts": 1.13,
+        "successRate": 93.3
+      },
+      "TRD-Plumber": {
+        "name": "Hire & Complete Plumbing Work",
+        "agency": "LADBS",
+        "count": 11,
+        "avgDuration": 8.13,
+        "minDuration": 4.35,
+        "maxDuration": 13.42,
+        "medianDuration": 8.09,
+        "avgAttempts": 1.36,
+        "successRate": 81.8
+      },
+      "PRM-Mechanical": {
+        "name": "Mechanical/HVAC Permit",
+        "agency": "LADBS",
+        "count": 16,
+        "avgDuration": 20.94,
+        "minDuration": 10.2,
+        "maxDuration": 41.16,
+        "medianDuration": 19.31,
+        "avgAttempts": 1.69,
+        "successRate": 68.8
+      },
+      "INS-FinalElectrical": {
+        "name": "Final Electrical Inspection",
+        "agency": "LADBS",
+        "count": 20,
+        "avgDuration": 11.31,
+        "minDuration": 4.8,
+        "maxDuration": 20.32,
+        "medianDuration": 11.32,
+        "avgAttempts": 1.9,
+        "successRate": 60.0
+      },
+      "PCK-Ewaste": {
+        "name": "E-Waste Collection",
+        "agency": "LASAN",
+        "count": 15,
+        "avgDuration": 8.81,
+        "minDuration": 4.67,
+        "maxDuration": 15.89,
+        "medianDuration": 8.76,
+        "avgAttempts": 1.13,
+        "successRate": 93.3
+      },
+      "PCK-Hazardous": {
+        "name": "Hazardous Waste Drop-off",
+        "agency": "LASAN",
+        "count": 9,
+        "avgDuration": 3.82,
+        "minDuration": 2.19,
+        "maxDuration": 7.2,
+        "medianDuration": 3.95,
+        "avgAttempts": 1.22,
+        "successRate": 88.9
+      },
+      "APP-ServiceUpgrade": {
+        "name": "Service Upgrade Request",
+        "agency": "LADWP",
+        "count": 18,
+        "avgDuration": 28.49,
+        "minDuration": 13.3,
+        "maxDuration": 63.68,
+        "medianDuration": 26.55,
+        "avgAttempts": 1.22,
+        "successRate": 88.9
+      },
+      "INS-RoughMechanical": {
+        "name": "Rough Mechanical Inspection",
+        "agency": "LADBS",
+        "count": 12,
+        "avgDuration": 5.46,
+        "minDuration": 3.24,
+        "maxDuration": 8.01,
+        "medianDuration": 5.99,
+        "avgAttempts": 1.0,
+        "successRate": 100.0
+      }
+    },
+    "byBaseType": {
+      "DOC": {
+        "name": "Document Preparation",
+        "count": 68,
+        "avgDuration": 5.35,
+        "minDuration": 0.64,
+        "maxDuration": 18.13,
+        "medianDuration": 4.68,
+        "avgAttempts": 1.37,
+        "successRate": 83.8
+      },
+      "INS": {
+        "name": "City Inspection",
+        "count": 102,
+        "avgDuration": 8.95,
+        "minDuration": 3.11,
+        "maxDuration": 29.18,
+        "medianDuration": 7.8,
+        "avgAttempts": 1.33,
+        "successRate": 84.3
+      },
+      "PAY": {
+        "name": "Payment Processing",
+        "count": 40,
+        "avgDuration": 0.68,
+        "minDuration": 0.15,
+        "maxDuration": 1.4,
+        "medianDuration": 0.67,
+        "avgAttempts": 1.23,
+        "successRate": 90.0
+      },
+      "PRM": {
+        "name": "Permit Application",
+        "count": 76,
+        "avgDuration": 28.52,
+        "minDuration": 8.2,
+        "maxDuration": 65.3,
+        "medianDuration": 27.41,
+        "avgAttempts": 1.47,
+        "successRate": 77.6
+      },
+      "TRD": {
+        "name": "Trade Work",
+        "count": 54,
+        "avgDuration": 14.55,
+        "minDuration": 3.53,
+        "maxDuration": 51.82,
+        "medianDuration": 12.97,
+        "avgAttempts": 1.37,
+        "successRate": 83.3
+      },
+      "PCK": {
+        "name": "Pickup Scheduling",
+        "count": 64,
+        "avgDuration": 12.3,
+        "minDuration": 2.19,
+        "maxDuration": 27.3,
+        "medianDuration": 11.53,
+        "avgAttempts": 1.47,
+        "successRate": 79.7
+      },
+      "ENR": {
+        "name": "Program Enrollment",
+        "count": 42,
+        "avgDuration": 13.6,
+        "minDuration": 3.43,
+        "maxDuration": 26.56,
+        "medianDuration": 11.05,
+        "avgAttempts": 1.24,
+        "successRate": 88.1
+      },
+      "APP": {
+        "name": "Application Submission",
+        "count": 54,
+        "avgDuration": 27.14,
+        "minDuration": 7.62,
+        "maxDuration": 65.68,
+        "medianDuration": 26.27,
+        "avgAttempts": 1.24,
+        "successRate": 85.2
+      }
+    },
+    "byAgency": {
+      "All": {
+        "count": 68,
+        "avgDuration": 5.35,
+        "minDuration": 0.64,
+        "maxDuration": 18.13,
+        "medianDuration": 4.68,
+        "avgAttempts": 1.37,
+        "successRate": 83.8
+      },
+      "LADBS": {
+        "count": 232,
+        "avgDuration": 16.66,
+        "minDuration": 3.11,
+        "maxDuration": 65.3,
+        "medianDuration": 13.2,
+        "avgAttempts": 1.39,
+        "successRate": 81.9
+      },
+      "LADBS/LADWP": {
+        "count": 40,
+        "avgDuration": 0.68,
+        "minDuration": 0.15,
+        "maxDuration": 1.4,
+        "medianDuration": 0.67,
+        "avgAttempts": 1.23,
+        "successRate": 90.0
+      },
+      "LASAN": {
+        "count": 64,
+        "avgDuration": 12.3,
+        "minDuration": 2.19,
+        "maxDuration": 27.3,
+        "medianDuration": 11.53,
+        "avgAttempts": 1.47,
+        "successRate": 79.7
+      },
+      "LADWP": {
+        "count": 96,
+        "avgDuration": 21.22,
+        "minDuration": 3.43,
+        "maxDuration": 65.68,
+        "medianDuration": 18.74,
+        "avgAttempts": 1.24,
+        "successRate": 86.5
+      }
+    }
+  },
+  "completions": [
+    {
+      "id": "COMP-00001",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 10.0,
+      "attempts": 1,
+      "chainStartedAt": "2025-11-14T23:55:47.921284",
+      "completedAt": "2025-11-25T00:00:00"
+    },
+    {
+      "id": "COMP-00002",
+      "stepType": "INS-RoughElectrical",
+      "stepName": "Rough Electrical Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 3.8,
+      "attempts": 1,
+      "chainStartedAt": "2025-09-14T04:49:51.765732",
+      "completedAt": "2025-09-18T00:00:00"
+    },
+    {
+      "id": "COMP-00003",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 10.27,
+      "attempts": 3,
+      "chainStartedAt": "2025-09-30T17:37:41.884989",
+      "completedAt": "2025-10-11T00:00:00"
+    },
+    {
+      "id": "COMP-00004",
+      "stepType": "PAY-Deposit",
+      "stepName": "Pay Service Deposit",
+      "baseType": "PAY",
+      "baseTypeName": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "durationDays": 0.85,
+      "attempts": 1,
+      "chainStartedAt": "2025-07-05T03:28:57.297242",
+      "completedAt": "2025-07-06T00:00:00"
+    },
+    {
+      "id": "COMP-00005",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 7.76,
+      "attempts": 1,
+      "chainStartedAt": "2025-11-21T05:50:28.228988",
+      "completedAt": "2025-11-29T00:00:00"
+    },
+    {
+      "id": "COMP-00006",
+      "stepType": "PRM-Electrical",
+      "stepName": "Electrical Permit",
+      "baseType": "PRM",
+      "baseTypeName": "Permit Application",
+      "agency": "LADBS",
+      "durationDays": 25.33,
+      "attempts": 1,
+      "chainStartedAt": "2025-09-18T16:03:11.179613",
+      "completedAt": "2025-10-14T00:00:00"
+    },
+    {
+      "id": "COMP-00007",
+      "stepType": "PAY-Permit",
+      "stepName": "Pay Permit Fees",
+      "baseType": "PAY",
+      "baseTypeName": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "durationDays": 0.52,
+      "attempts": 1,
+      "chainStartedAt": "2025-12-24T11:31:56.608019",
+      "completedAt": "2025-12-25T00:00:00"
+    },
+    {
+      "id": "COMP-00008",
+      "stepType": "DOC-Specs",
+      "stepName": "Gather Equipment Specs",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 2.13,
+      "attempts": 4,
+      "chainStartedAt": "2025-06-25T20:59:59.759157",
+      "completedAt": "2025-06-28T00:00:00"
+    },
+    {
+      "id": "COMP-00009",
+      "stepType": "INS-FinalMechanical",
+      "stepName": "Final Mechanical Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 9.07,
+      "attempts": 1,
+      "chainStartedAt": "2025-08-14T22:23:24.244441",
+      "completedAt": "2025-08-24T00:00:00"
+    },
+    {
+      "id": "COMP-00010",
+      "stepType": "TRD-HVAC",
+      "stepName": "Hire & Complete HVAC Work",
+      "baseType": "TRD",
+      "baseTypeName": "Trade Work",
+      "agency": "LADBS",
+      "durationDays": 11.64,
+      "attempts": 1,
+      "chainStartedAt": "2025-09-19T08:39:06.888878",
+      "completedAt": "2025-10-01T00:00:00"
+    },
+    {
+      "id": "COMP-00011",
+      "stepType": "PRM-Electrical",
+      "stepName": "Electrical Permit",
+      "baseType": "PRM",
+      "baseTypeName": "Permit Application",
+      "agency": "LADBS",
+      "durationDays": 37.58,
+      "attempts": 1,
+      "chainStartedAt": "2025-11-28T09:58:01.516655",
+      "completedAt": "2026-01-05T00:00:00"
+    },
+    {
+      "id": "COMP-00012",
+      "stepType": "PAY-Permit",
+      "stepName": "Pay Permit Fees",
+      "baseType": "PAY",
+      "baseTypeName": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "durationDays": 0.3,
+      "attempts": 1,
+      "chainStartedAt": "2026-01-24T16:51:04.710612",
+      "completedAt": "2026-01-25T00:00:00"
+    },
+    {
+      "id": "COMP-00013",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 11.07,
+      "attempts": 1,
+      "chainStartedAt": "2025-06-18T22:20:31.154803",
+      "completedAt": "2025-06-30T00:00:00"
+    },
+    {
+      "id": "COMP-00014",
+      "stepType": "PRM-Plumbing",
+      "stepName": "Plumbing Permit",
+      "baseType": "PRM",
+      "baseTypeName": "Permit Application",
+      "agency": "LADBS",
+      "durationDays": 24.32,
+      "attempts": 1,
+      "chainStartedAt": "2025-12-16T16:26:10.045523",
+      "completedAt": "2026-01-10T00:00:00"
+    },
+    {
+      "id": "COMP-00015",
+      "stepType": "PCK-Bulky",
+      "stepName": "Bulky Item Pickup",
+      "baseType": "PCK",
+      "baseTypeName": "Pickup Scheduling",
+      "agency": "LASAN",
+      "durationDays": 14.05,
+      "attempts": 1,
+      "chainStartedAt": "2025-07-02T22:48:06.189021",
+      "completedAt": "2025-07-17T00:00:00"
+    },
+    {
+      "id": "COMP-00016",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 7.72,
+      "attempts": 1,
+      "chainStartedAt": "2025-10-25T06:36:47.285180",
+      "completedAt": "2025-11-02T00:00:00"
+    },
+    {
+      "id": "COMP-00017",
+      "stepType": "ENR-Solar",
+      "stepName": "Solar Program Enrollment",
+      "baseType": "ENR",
+      "baseTypeName": "Program Enrollment",
+      "agency": "LADWP",
+      "durationDays": 7.9,
+      "attempts": 1,
+      "chainStartedAt": "2025-12-19T02:20:18.543224",
+      "completedAt": "2025-12-27T00:00:00"
+    },
+    {
+      "id": "COMP-00018",
+      "stepType": "DOC-Specs",
+      "stepName": "Gather Equipment Specs",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 2.47,
+      "attempts": 1,
+      "chainStartedAt": "2025-08-10T12:44:06.441946",
+      "completedAt": "2025-08-13T00:00:00"
+    },
+    {
+      "id": "COMP-00019",
+      "stepType": "APP-Interconnection",
+      "stepName": "Solar Interconnection Application",
+      "baseType": "APP",
+      "baseTypeName": "Application Submission",
+      "agency": "LADWP",
+      "durationDays": 37.59,
+      "attempts": 1,
+      "chainStartedAt": "2025-07-17T09:51:53.704458",
+      "completedAt": "2025-08-24T00:00:00"
+    },
+    {
+      "id": "COMP-00020",
+      "stepType": "ENR-EV",
+      "stepName": "EV Charging Program",
+      "baseType": "ENR",
+      "baseTypeName": "Program Enrollment",
+      "agency": "LADWP",
+      "durationDays": 3.43,
+      "attempts": 1,
+      "chainStartedAt": "2025-07-08T13:39:43.235585",
+      "completedAt": "2025-07-12T00:00:00"
+    },
+    {
+      "id": "COMP-00021",
+      "stepType": "INS-RoughElectrical",
+      "stepName": "Rough Electrical Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 8.09,
+      "attempts": 3,
+      "chainStartedAt": "2025-07-15T21:46:28.587337",
+      "completedAt": "2025-07-24T00:00:00"
+    },
+    {
+      "id": "COMP-00022",
+      "stepType": "TRD-Electrician",
+      "stepName": "Hire & Complete Electrical Work",
+      "baseType": "TRD",
+      "baseTypeName": "Trade Work",
+      "agency": "LADBS",
+      "durationDays": 8.65,
+      "attempts": 1,
+      "chainStartedAt": "2025-06-04T08:19:06.874468",
+      "completedAt": "2025-06-13T00:00:00"
+    },
+    {
+      "id": "COMP-00023",
+      "stepType": "PAY-Permit",
+      "stepName": "Pay Permit Fees",
+      "baseType": "PAY",
+      "baseTypeName": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "durationDays": 0.79,
+      "attempts": 1,
+      "chainStartedAt": "2026-01-19T05:05:31.426922",
+      "completedAt": "2026-01-20T00:00:00"
+    },
+    {
+      "id": "COMP-00024",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 10.1,
+      "attempts": 1,
+      "chainStartedAt": "2025-11-15T21:36:00.737959",
+      "completedAt": "2025-11-26T00:00:00"
+    },
+    {
+      "id": "COMP-00025",
+      "stepType": "ENR-TOU",
+      "stepName": "TOU Rate Plan Enrollment",
+      "baseType": "ENR",
+      "baseTypeName": "Program Enrollment",
+      "agency": "LADWP",
+      "durationDays": 23.38,
+      "attempts": 1,
+      "chainStartedAt": "2025-12-19T14:49:25.089925",
+      "completedAt": "2026-01-12T00:00:00"
+    },
+    {
+      "id": "COMP-00026",
+      "stepType": "ENR-Solar",
+      "stepName": "Solar Program Enrollment",
+      "baseType": "ENR",
+      "baseTypeName": "Program Enrollment",
+      "agency": "LADWP",
+      "durationDays": 7.14,
+      "attempts": 1,
+      "chainStartedAt": "2025-11-02T20:41:49.711645",
+      "completedAt": "2025-11-10T00:00:00"
+    },
+    {
+      "id": "COMP-00027",
+      "stepType": "PRM-Electrical",
+      "stepName": "Electrical Permit",
+      "baseType": "PRM",
+      "baseTypeName": "Permit Application",
+      "agency": "LADBS",
+      "durationDays": 33.19,
+      "attempts": 4,
+      "chainStartedAt": "2025-09-21T19:25:01.264823",
+      "completedAt": "2025-10-25T00:00:00"
+    },
+    {
+      "id": "COMP-00028",
+      "stepType": "PRM-Plumbing",
+      "stepName": "Plumbing Permit",
+      "baseType": "PRM",
+      "baseTypeName": "Permit Application",
+      "agency": "LADBS",
+      "durationDays": 16.9,
+      "attempts": 1,
+      "chainStartedAt": "2025-09-02T02:27:55.480705",
+      "completedAt": "2025-09-19T00:00:00"
+    },
+    {
+      "id": "COMP-00029",
+      "stepType": "PAY-Permit",
+      "stepName": "Pay Permit Fees",
+      "baseType": "PAY",
+      "baseTypeName": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "durationDays": 0.6,
+      "attempts": 1,
+      "chainStartedAt": "2026-01-03T09:35:49.489141",
+      "completedAt": "2026-01-04T00:00:00"
+    },
+    {
+      "id": "COMP-00030",
+      "stepType": "ENR-Solar",
+      "stepName": "Solar Program Enrollment",
+      "baseType": "ENR",
+      "baseTypeName": "Program Enrollment",
+      "agency": "LADWP",
+      "durationDays": 9.97,
+      "attempts": 1,
+      "chainStartedAt": "2025-06-07T00:45:05.685474",
+      "completedAt": "2025-06-17T00:00:00"
+    },
+    {
+      "id": "COMP-00031",
+      "stepType": "INS-Final",
+      "stepName": "Final Sign-off Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 13.55,
+      "attempts": 1,
+      "chainStartedAt": "2025-12-20T10:47:27.718750",
+      "completedAt": "2026-01-03T00:00:00"
+    },
+    {
+      "id": "COMP-00032",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 6.64,
+      "attempts": 1,
+      "chainStartedAt": "2025-07-20T08:33:17.958218",
+      "completedAt": "2025-07-27T00:00:00"
+    },
+    {
+      "id": "COMP-00033",
+      "stepType": "INS-FinalMechanical",
+      "stepName": "Final Mechanical Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 7.22,
+      "attempts": 1,
+      "chainStartedAt": "2025-08-09T18:41:19.493201",
+      "completedAt": "2025-08-17T00:00:00"
+    },
+    {
+      "id": "COMP-00034",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 5.63,
+      "attempts": 1,
+      "chainStartedAt": "2025-07-15T08:48:37.584891",
+      "completedAt": "2025-07-21T00:00:00"
+    },
+    {
+      "id": "COMP-00035",
+      "stepType": "PRM-Electrical",
+      "stepName": "Electrical Permit",
+      "baseType": "PRM",
+      "baseTypeName": "Permit Application",
+      "agency": "LADBS",
+      "durationDays": 37.08,
+      "attempts": 1,
+      "chainStartedAt": "2025-06-29T22:06:24.816208",
+      "completedAt": "2025-08-06T00:00:00"
+    },
+    {
+      "id": "COMP-00036",
+      "stepType": "INS-FinalMechanical",
+      "stepName": "Final Mechanical Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 11.68,
+      "attempts": 1,
+      "chainStartedAt": "2025-09-02T07:47:44.980876",
+      "completedAt": "2025-09-14T00:00:00"
+    },
+    {
+      "id": "COMP-00037",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 18.13,
+      "attempts": 4,
+      "chainStartedAt": "2025-10-22T20:54:47.701212",
+      "completedAt": "2025-11-10T00:00:00"
+    },
+    {
+      "id": "COMP-00038",
+      "stepType": "TRD-Electrician",
+      "stepName": "Hire & Complete Electrical Work",
+      "baseType": "TRD",
+      "baseTypeName": "Trade Work",
+      "agency": "LADBS",
+      "durationDays": 17.23,
+      "attempts": 1,
+      "chainStartedAt": "2025-10-25T18:35:11.796323",
+      "completedAt": "2025-11-12T00:00:00"
+    },
+    {
+      "id": "COMP-00039",
+      "stepType": "PAY-Permit",
+      "stepName": "Pay Permit Fees",
+      "baseType": "PAY",
+      "baseTypeName": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "durationDays": 0.61,
+      "attempts": 1,
+      "chainStartedAt": "2025-08-21T09:19:20.345665",
+      "completedAt": "2025-08-22T00:00:00"
+    },
+    {
+      "id": "COMP-00040",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 12.14,
+      "attempts": 1,
+      "chainStartedAt": "2025-08-29T20:43:19.332175",
+      "completedAt": "2025-09-11T00:00:00"
+    },
+    {
+      "id": "COMP-00041",
+      "stepType": "APP-Rebate",
+      "stepName": "Rebate Application",
+      "baseType": "APP",
+      "baseTypeName": "Application Submission",
+      "agency": "LADWP",
+      "durationDays": 7.62,
+      "attempts": 1,
+      "chainStartedAt": "2026-01-01T09:10:17.626953",
+      "completedAt": "2026-01-09T00:00:00"
+    },
+    {
+      "id": "COMP-00042",
+      "stepType": "DOC-Specs",
+      "stepName": "Gather Equipment Specs",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 1.23,
+      "attempts": 1,
+      "chainStartedAt": "2025-12-23T18:21:57.803091",
+      "completedAt": "2025-12-25T00:00:00"
+    },
+    {
+      "id": "COMP-00043",
+      "stepType": "PAY-Permit",
+      "stepName": "Pay Permit Fees",
+      "baseType": "PAY",
+      "baseTypeName": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "durationDays": 0.45,
+      "attempts": 1,
+      "chainStartedAt": "2025-10-05T13:09:20.929401",
+      "completedAt": "2025-10-06T00:00:00"
+    },
+    {
+      "id": "COMP-00044",
+      "stepType": "DOC-Specs",
+      "stepName": "Gather Equipment Specs",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 0.96,
+      "attempts": 1,
+      "chainStartedAt": "2026-01-20T01:04:38.092059",
+      "completedAt": "2026-01-21T00:00:00"
+    },
+    {
+      "id": "COMP-00045",
+      "stepType": "INS-Final",
+      "stepName": "Final Sign-off Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 15.46,
+      "attempts": 2,
+      "chainStartedAt": "2025-10-13T12:58:15.153749",
+      "completedAt": "2025-10-29T00:00:00"
+    },
+    {
+      "id": "COMP-00046",
+      "stepType": "INS-FinalMechanical",
+      "stepName": "Final Mechanical Inspection",
+      "baseType": "INS",
+      "baseTypeName": "City Inspection",
+      "agency": "LADBS",
+      "durationDays": 9.18,
+      "attempts": 1,
+      "chainStartedAt": "2025-06-20T19:47:02.057999",
+      "completedAt": "2025-06-30T00:00:00"
+    },
+    {
+      "id": "COMP-00047",
+      "stepType": "APP-Rebate",
+      "stepName": "Rebate Application",
+      "baseType": "APP",
+      "baseTypeName": "Application Submission",
+      "agency": "LADWP",
+      "durationDays": 13.92,
+      "attempts": 1,
+      "chainStartedAt": "2025-09-02T01:52:52.089600",
+      "completedAt": "2025-09-16T00:00:00"
+    },
+    {
+      "id": "COMP-00048",
+      "stepType": "PRM-Building",
+      "stepName": "Building Permit",
+      "baseType": "PRM",
+      "baseTypeName": "Permit Application",
+      "agency": "LADBS",
+      "durationDays": 34.54,
+      "attempts": 1,
+      "chainStartedAt": "2025-11-10T10:58:15.776297",
+      "completedAt": "2025-12-15T00:00:00"
+    },
+    {
+      "id": "COMP-00049",
+      "stepType": "DOC-Plans",
+      "stepName": "Prepare Plans & Drawings",
+      "baseType": "DOC",
+      "baseTypeName": "Document Preparation",
+      "agency": "All",
+      "durationDays": 9.04,
+      "attempts": 1,
+      "chainStartedAt": "2025-12-31T23:04:42.985085",
+      "completedAt": "2026-01-10T00:00:00"
+    },
+    {
+      "id": "COMP-00050",
+      "stepType": "TRD-Plumber",
+      "stepName": "Hire & Complete Plumbing Work",
+      "baseType": "TRD",
+      "baseTypeName": "Trade Work",
+      "agency": "LADBS",
+      "durationDays": 10.37,
+      "attempts": 1,
+      "chainStartedAt": "2025-06-26T15:11:13.607461",
+      "completedAt": "2025-07-07T00:00:00"
+    }
+  ],
+  "stepTypes": {
+    "PRM-Electrical": {
+      "base": "PRM",
+      "name": "Electrical Permit",
+      "min_days": 10,
+      "max_days": 45
+    },
+    "PRM-Mechanical": {
+      "base": "PRM",
+      "name": "Mechanical/HVAC Permit",
+      "min_days": 7,
+      "max_days": 30
+    },
+    "PRM-Building": {
+      "base": "PRM",
+      "name": "Building Permit",
+      "min_days": 14,
+      "max_days": 60
+    },
+    "PRM-Plumbing": {
+      "base": "PRM",
+      "name": "Plumbing Permit",
+      "min_days": 7,
+      "max_days": 28
+    },
+    "INS-RoughElectrical": {
+      "base": "INS",
+      "name": "Rough Electrical Inspection",
+      "min_days": 2,
+      "max_days": 10
+    },
+    "INS-FinalElectrical": {
+      "base": "INS",
+      "name": "Final Electrical Inspection",
+      "min_days": 2,
+      "max_days": 14
+    },
+    "INS-RoughMechanical": {
+      "base": "INS",
+      "name": "Rough Mechanical Inspection",
+      "min_days": 2,
+      "max_days": 10
+    },
+    "INS-FinalMechanical": {
+      "base": "INS",
+      "name": "Final Mechanical Inspection",
+      "min_days": 2,
+      "max_days": 14
+    },
+    "INS-Final": {
+      "base": "INS",
+      "name": "Final Sign-off Inspection",
+      "min_days": 3,
+      "max_days": 21
+    },
+    "TRD-Electrician": {
+      "base": "TRD",
+      "name": "Hire & Complete Electrical Work",
+      "min_days": 3,
+      "max_days": 21
+    },
+    "TRD-HVAC": {
+      "base": "TRD",
+      "name": "Hire & Complete HVAC Work",
+      "min_days": 5,
+      "max_days": 30
+    },
+    "TRD-Plumber": {
+      "base": "TRD",
+      "name": "Hire & Complete Plumbing Work",
+      "min_days": 2,
+      "max_days": 14
+    },
+    "APP-Interconnection": {
+      "base": "APP",
+      "name": "Solar Interconnection Application",
+      "min_days": 14,
+      "max_days": 60
+    },
+    "APP-Rebate": {
+      "base": "APP",
+      "name": "Rebate Application",
+      "min_days": 3,
+      "max_days": 21
+    },
+    "APP-ServiceUpgrade": {
+      "base": "APP",
+      "name": "Service Upgrade Request",
+      "min_days": 7,
+      "max_days": 45
+    },
+    "ENR-TOU": {
+      "base": "ENR",
+      "name": "TOU Rate Plan Enrollment",
+      "min_days": 7,
+      "max_days": 30
+    },
+    "ENR-Solar": {
+      "base": "ENR",
+      "name": "Solar Program Enrollment",
+      "min_days": 3,
+      "max_days": 14
+    },
+    "ENR-EV": {
+      "base": "ENR",
+      "name": "EV Charging Program",
+      "min_days": 2,
+      "max_days": 10
+    },
+    "PCK-Bulky": {
+      "base": "PCK",
+      "name": "Bulky Item Pickup",
+      "min_days": 5,
+      "max_days": 21
+    },
+    "PCK-Ewaste": {
+      "base": "PCK",
+      "name": "E-Waste Collection",
+      "min_days": 3,
+      "max_days": 14
+    },
+    "PCK-Hazardous": {
+      "base": "PCK",
+      "name": "Hazardous Waste Drop-off",
+      "min_days": 1,
+      "max_days": 7
+    },
+    "DOC-Plans": {
+      "base": "DOC",
+      "name": "Prepare Plans & Drawings",
+      "min_days": 2,
+      "max_days": 14
+    },
+    "DOC-Specs": {
+      "base": "DOC",
+      "name": "Gather Equipment Specs",
+      "min_days": 0.5,
+      "max_days": 3
+    },
+    "PAY-Permit": {
+      "base": "PAY",
+      "name": "Pay Permit Fees",
+      "min_days": 0.1,
+      "max_days": 1
+    },
+    "PAY-Deposit": {
+      "base": "PAY",
+      "name": "Pay Service Deposit",
+      "min_days": 0.1,
+      "max_days": 2
+    }
+  },
+  "baseTypes": {
+    "PRM": {
+      "name": "Permit Application",
+      "agency": "LADBS",
+      "description": "Apply for and obtain official permits",
+      "min_days": 5,
+      "max_days": 45,
+      "avg_attempts": 1.2
+    },
+    "INS": {
+      "name": "City Inspection",
+      "agency": "LADBS",
+      "description": "Schedule and pass city inspections",
+      "min_days": 1,
+      "max_days": 14,
+      "avg_attempts": 1.5
+    },
+    "TRD": {
+      "name": "Trade Work",
+      "agency": "LADBS",
+      "description": "Hire professionals and complete physical work",
+      "min_days": 1,
+      "max_days": 30,
+      "avg_attempts": 1.0
+    },
+    "DOC": {
+      "name": "Document Preparation",
+      "agency": "All",
+      "description": "Gather required documents and materials",
+      "min_days": 0.5,
+      "max_days": 7,
+      "avg_attempts": 1.0
+    },
+    "PAY": {
+      "name": "Payment Processing",
+      "agency": "LADBS/LADWP",
+      "description": "Pay fees, deposits, or charges",
+      "min_days": 0.1,
+      "max_days": 3,
+      "avg_attempts": 1.0
+    },
+    "APP": {
+      "name": "Application Submission",
+      "agency": "LADWP",
+      "description": "Submit non-permit applications (rebates, interconnection)",
+      "min_days": 1,
+      "max_days": 10,
+      "avg_attempts": 1.1
+    },
+    "ENR": {
+      "name": "Program Enrollment",
+      "agency": "LADWP",
+      "description": "Sign up for rate plans or programs",
+      "min_days": 1,
+      "max_days": 30,
+      "avg_attempts": 1.0
+    },
+    "PCK": {
+      "name": "Pickup Scheduling",
+      "agency": "LASAN",
+      "description": "Schedule pickups and drop-offs",
+      "min_days": 3,
+      "max_days": 21,
+      "avg_attempts": 1.0
+    }
+  }
+}
