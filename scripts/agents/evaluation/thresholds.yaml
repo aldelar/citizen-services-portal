@@ -1,0 +1,13 @@
+# Evaluation pass/fail thresholds
+# Scores are 1-5 scale for AI-assisted evaluators
+
+pass_thresholds:
+  # Quality evaluators
+  coherence.coherence: 4.0
+  fluency.fluency: 4.0
+  relevance.relevance: 4.0
+  groundedness.groundedness: 4.0
+
+  # Similarity (0-1 scale)
+  similarity.similarity: 0.7
+  f1_score.f1_score: 0.6

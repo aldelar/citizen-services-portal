@@ -1,0 +1,30 @@
+{"query": "What permits do I need for solar panel installation?", "context": "", "ground_truth": "electrical permit, building permit, LADWP interconnection"}
+{"query": "How do I schedule an electrical inspection?", "context": "", "ground_truth": "call 311 or use LADBS online portal"}
+{"query": "What are LADWP TOU rates?", "context": "", "ground_truth": "Time-of-Use rates with peak, off-peak, and super off-peak periods"}
+{"query": "How do I dispose of an old refrigerator?", "context": "", "ground_truth": "LASAN bulky item pickup, call 311 or schedule online"}
+{"query": "Requirements for a 400A electrical panel upgrade?", "context": "", "ground_truth": "electrical permit, licensed contractor, inspection required"}
+{"query": "What is the process for getting a building permit in LA?", "context": "", "ground_truth": "apply online or in person at LADBS, submit plans, pay fees, wait for approval"}
+{"query": "How do I report a water main break?", "context": "", "ground_truth": "call LADWP emergency line or 311"}
+{"query": "What are the requirements for a residential solar installation permit?", "context": "", "ground_truth": "submit plans, electrical permit, structural review if needed"}
+{"query": "How can I check the status of my permit application?", "context": "", "ground_truth": "use LADBS online portal or call permit office"}
+{"query": "What rebates are available for energy efficient appliances?", "context": "", "ground_truth": "LADWP offers rebates for energy star appliances, LED bulbs, smart thermostats"}
+{"query": "How do I schedule a bulky item pickup?", "context": "", "ground_truth": "call 311, use LASAN website, or use MyLA311 app"}
+{"query": "What are the inspection requirements for a new electrical panel?", "context": "", "ground_truth": "rough inspection, final inspection, cover inspection"}
+{"query": "How do I apply for LADWP interconnection for my solar panels?", "context": "", "ground_truth": "submit interconnection application, provide system specs, wait for approval"}
+{"query": "What items can be picked up during bulky item collection?", "context": "", "ground_truth": "furniture, appliances, mattresses, electronics"}
+{"query": "How do I pay my LADWP bill online?", "context": "", "ground_truth": "use LADWP website, phone app, or autopay"}
+{"query": "What is the timeline for permit approval in Los Angeles?", "context": "", "ground_truth": "simple permits same day, complex permits 2-4 weeks"}
+{"query": "How do I get a copy of my building permits?", "context": "", "ground_truth": "request from LADBS records department or online portal"}
+{"query": "What are the requirements for a pool permit?", "context": "", "ground_truth": "building permit, fencing requirements, electrical permit for equipment"}
+{"query": "How do I dispose of hazardous waste in LA?", "context": "", "ground_truth": "LASAN SAFE centers, household hazardous waste collection events"}
+{"query": "What is the process for a commercial building inspection?", "context": "", "ground_truth": "schedule inspection online or by phone, have approved plans on site"}
+{"query": "How do I start new water service with LADWP?", "context": "", "ground_truth": "apply online or in person, provide ID and lease/deed"}
+{"query": "What are the zoning requirements for a home addition?", "context": "", "ground_truth": "check zoning code, may need variance, setback requirements apply"}
+{"query": "How do I report illegal dumping in my neighborhood?", "context": "", "ground_truth": "call 311, use MyLA311 app, or report online"}
+{"query": "What documents are needed for an electrical permit?", "context": "", "ground_truth": "permit application, electrical plans, load calculations"}
+{"query": "How do I get my green waste bin replaced?", "context": "", "ground_truth": "call 311 or request through LASAN website"}
+{"query": "What is the fee for a building permit in LA?", "context": "", "ground_truth": "varies by project value, plan check fees, inspection fees"}
+{"query": "How do I request a new trash bin?", "context": "", "ground_truth": "call 311 or use LASAN online request form"}
+{"query": "What are the requirements for installing an EV charger at home?", "context": "", "ground_truth": "electrical permit, may need panel upgrade, inspection required"}
+{"query": "How do I appeal a permit denial?", "context": "", "ground_truth": "file appeal with Board of Building and Safety Commissioners"}
+{"query": "What is the process for connecting to LADWP solar program?", "context": "", "ground_truth": "install system, submit interconnection application, get meter upgraded"}
