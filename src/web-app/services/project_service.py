@@ -13,10 +13,15 @@ from typing import List, Optional
 from uuid import uuid4
 
 # Add shared library to path BEFORE any other imports
-# This must happen at the top of the module
-_shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
-if _shared_path not in sys.path:
-    sys.path.insert(0, _shared_path)
+# Try multiple locations: Docker (/app/shared) or local dev (../../shared)
+for _candidate in [
+    os.path.join(os.path.dirname(__file__), '..', 'shared'),  # Docker: /app/shared
+    os.path.join(os.path.dirname(__file__), '..', '..', 'shared'),  # Local: ../../shared
+]:
+    _shared_path = os.path.abspath(_candidate)
+    if os.path.isdir(_shared_path) and _shared_path not in sys.path:
+        sys.path.insert(0, _shared_path)
+        break
 
 from config import settings
 

@@ -186,5 +186,6 @@ async def inspections_schedule(
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", "8000"))
-    # Use streamable-http transport for compatibility with agent-framework MCPStreamableHTTPTool
-    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port, transport="streamable-http"))
+    # Use streamable-http transport with stateless_http=True for scalability
+    # stateless mode creates fresh transport per request, avoiding session timeout issues
+    asyncio.run(mcp.run_http_async(host="0.0.0.0", port=port, transport="streamable-http", stateless_http=True))

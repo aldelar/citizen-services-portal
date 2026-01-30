@@ -1,9 +1,12 @@
 --pre
-agent-framework>=1.0.0b260128
+agent-framework-core>=1.0.0b260128
+agent-framework-azure-ai>=1.0.0b260128
 agent-framework-devui>=1.0.0b260128
 azure-identity
 azure-cosmos
-
+# FastAPI server
+fastapi
+uvicorn[standard]
 # OpenTelemetry exporters for observability
 azure-monitor-opentelemetry          # For Application Insights
 opentelemetry-exporter-otlp-proto-grpc  # For Aspire Dashboard / OTLP

@@ -263,4 +263,4 @@ output name string = containerApp.name
 output fqdn string = containerApp.properties.configuration.ingress.fqdn
 
 @description('The URI of the Container App')
-output uri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output uri string = 'https://${containerApp.properties.configuration.ingress.fqdn}/mcp'
