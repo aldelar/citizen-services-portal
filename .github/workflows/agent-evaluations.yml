@@ -29,6 +29,40 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run Agent Evaluations
+      - name: Install evaluation dependencies
         run: |
-          python scripts/agents/run_evaluations.py
+          cd scripts/agents
+          pip install -e .
+
+      - name: Collect Agent Responses
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          MCP_LADBS_URL: ${{ vars.MCP_LADBS_URL }}
+          MCP_LADWP_URL: ${{ vars.MCP_LADWP_URL }}
+          MCP_LASAN_URL: ${{ vars.MCP_LASAN_URL }}
+          MCP_CSP_URL: ${{ vars.MCP_CSP_URL }}
+        run: |
+          cd scripts/agents
+          python -m evaluation.data_collector \
+            --input evaluation_data/test_queries.jsonl \
+            --output evaluation_data/collected_responses.jsonl
+
+      - name: Run Agent Evaluations (Foundry SDK)
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_EVAL_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EVAL_DEPLOYMENT }}
+        run: |
+          cd scripts/agents
+          python -m evaluation.run_evaluation \
+            --data evaluation_data/collected_responses.jsonl \
+            --output evaluation_results/ \
+            --thresholds evaluation/thresholds.yaml
+
+      - name: Upload Evaluation Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation-results
+          path: scripts/agents/evaluation_results/
