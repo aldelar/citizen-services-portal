@@ -1818,4 +1818,49 @@ This schema supports the Citizen Services Portal's requirements for:
 
 ---
 
+## CSP Database Entity Relationship Diagram
+
+The following diagram illustrates the core entity relationships within the `csp` database:
+
+```mermaid
+flowchart TB
+    User[👤 User]
+    
+    User -->|has many| Projects[📁 Projects]
+    
+    Projects -->|has one| Plan[📋 Plan]
+    Projects -->|has many| Messages[💬 Messages]
+    
+    Plan -->|has many| Steps[📝 Steps]
+    
+    Steps --> Automated[⚙️ Automated<br/>System executes]
+    Steps --> UserAction[✋ User Action Required<br/>Delegated to user]
+
+    style User fill:#4A90D9,stroke:#2E5A8B,color:#fff
+    style Projects fill:#6B8E23,stroke:#4A6316,color:#fff
+    style Plan fill:#E8E8E8,stroke:#999,color:#333
+    style Messages fill:#6B8E23,stroke:#4A6316,color:#fff
+    style Steps fill:#E8E8E8,stroke:#999,color:#333
+    style Automated fill:#7dd3fc,stroke:#38bdf8,color:#1e3a5f
+    style UserAction fill:#FFD700,stroke:#B8960F,color:#333
+```
+
+### Relationship Summary
+
+| Relationship | Cardinality | Storage |
+|--------------|-------------|---------|
+| User → Projects | 1:Many | `projects` container, partitioned by `/userId` |
+| Project → Plan | 1:1 | Embedded within project document |
+| Plan → Steps | 1:Many | Embedded within plan |
+| Project → Messages | 1:Many | Separate `messages` container, partitioned by `/projectId` |
+
+### Step Types
+
+| Type | Description |
+|------|-------------|
+| **Automated** | Steps executed by the system without user intervention (e.g., data validation, API calls) |
+| **User Action Required** | Steps that require user input or action before proceeding (e.g., document upload, form submission) |
+
+---
+
 *This document defines the data layer specification. Once confirmed, proceed with implementation in the data access layer.*

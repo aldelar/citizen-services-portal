@@ -1204,3 +1204,73 @@ For the demo, backend calls return mock data. The mock layer should:
 ### Tool Registration
 
 Each MCP server registers its tools with the standard MCP protocol. Tool names use dot notation (e.g., `permits.submit`) for logical grouping.
+
+---
+
+## Architecture Diagram
+
+The following diagram illustrates the MCP server architecture, showing the CSP Agent's connections to all MCP servers, their respective Cosmos DB databases, and AI Search integrations:
+
+```mermaid
+flowchart TB
+    CSP["🤖 csp-agent"]
+
+    mcpcsp["<b>mcp-csp</b><br/>─────────<br/>plan.get<br/>plan.create<br/>plan.update<br/>plan.updateStep"]
+    
+    mcpladbs["<b>mcp-ladbs</b><br/>─────────<br/>queryKB<br/>permits.search<br/>permits.submit<br/>permits.getStatus<br/>inspections.scheduled<br/>inspections.schedule"]
+    
+    mcpladwp["<b>mcp-ladwp</b><br/>─────────<br/>queryKB<br/>account.show<br/>plans.list<br/>tou.enroll<br/>interconnection.submit<br/>interconnection.getStatus<br/>rebates.filed<br/>rebates.apply<br/>rebates.getStatus"]
+    
+    mcplasan["<b>mcp-lasan</b><br/>─────────<br/>queryKB<br/>pickup.scheduled<br/>pickup.schedule<br/>pickup.getEligibility"]
+
+    subgraph csp_storage["Data Services"]
+        DB_CSP[("csp<br/><sub>CosmosDB</sub>")]
+    end
+
+    subgraph ladbs_storage["Data Services"]
+        DB_LADBS[("ladbs<br/><sub>CosmosDB</sub>")]
+        IDX_LADBS[("🔍 ladbs-kb<br/><sub>AI Search</sub>")]
+    end
+
+    subgraph ladwp_storage["Data Services"]
+        DB_LADWP[("ladwp<br/><sub>CosmosDB</sub>")]
+        IDX_LADWP[("🔍 ladwp-kb<br/><sub>AI Search</sub>")]
+    end
+
+    subgraph lasan_storage["Data Services"]
+        DB_LASAN[("lasan<br/><sub>CosmosDB</sub>")]
+        IDX_LASAN[("🔍 lasan-kb<br/><sub>AI Search</sub>")]
+    end
+
+    CSP --> mcpcsp
+    CSP --> mcpladbs
+    CSP --> mcpladwp
+    CSP --> mcplasan
+
+    mcpcsp --> csp_storage
+    mcpladbs --> ladbs_storage
+    mcpladwp --> ladwp_storage
+    mcplasan --> lasan_storage
+
+    style CSP fill:#7dd3fc,stroke:#38bdf8,color:#1e3a5f
+    style mcpcsp fill:#7dd3fc,stroke:#38bdf8,color:#1e3a5f
+    style mcpladbs fill:#3b82f6,stroke:#2563eb,color:#fff
+    style mcpladwp fill:#a855f7,stroke:#9333ea,color:#fff
+    style mcplasan fill:#22c55e,stroke:#16a34a,color:#fff
+    style DB_CSP fill:#E8E8E8,stroke:#999,color:#333
+    style DB_LADBS fill:#E8E8E8,stroke:#999,color:#333
+    style DB_LADWP fill:#E8E8E8,stroke:#999,color:#333
+    style DB_LASAN fill:#E8E8E8,stroke:#999,color:#333
+    style IDX_LADBS fill:#FFD700,stroke:#B8960F,color:#333
+    style IDX_LADWP fill:#FFD700,stroke:#B8960F,color:#333
+    style IDX_LASAN fill:#FFD700,stroke:#B8960F,color:#333
+```
+
+### Component Summary
+
+| MCP Server | Cosmos DB | AI Search Index | Tools |
+|------------|-----------|-----------------|-------|
+| **mcp-csp** | `csp` | ❌ | `plan.get`, `plan.create`, `plan.update`, `plan.updateStep` |
+| **mcp-ladbs** | `ladbs` | `ladbs-kb` | `queryKB`, `permits.search`, `permits.submit`, `permits.getStatus`, `inspections.scheduled`, `inspections.schedule` |
+| **mcp-ladwp** | `ladwp` | `ladwp-kb` | `queryKB`, `account.show`, `plans.list`, `tou.enroll`, `interconnection.submit`, `interconnection.getStatus`, `rebates.filed`, `rebates.apply`, `rebates.getStatus` |
+| **mcp-lasan** | `lasan` | `lasan-kb` | `queryKB`, `pickup.scheduled`, `pickup.schedule`, `pickup.getEligibility` |
