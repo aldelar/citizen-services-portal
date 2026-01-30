@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 """
-Agent Evaluation Runner - Placeholder
+DEPRECATED: This script has been replaced by the SDK-based evaluation suite.
 
-This script will eventually run AI agent evaluations using Azure AI Foundry.
-For now, it's a placeholder that passes to establish the CI/CD pipeline.
+Use the new evaluation runner instead:
+    python -m evaluation.run_evaluation --data <data.jsonl> --output <output_dir>
 
-Future evaluations will include:
-- Response quality scoring
-- Grounding accuracy
-- Tool call correctness
-- Latency benchmarks
-- Safety/content filtering validation
+See: scripts/agents/evaluation/run_evaluation.py
 """
 
 import sys
@@ -18,23 +13,22 @@ import sys
 
 def main():
     print("=" * 60)
-    print("AGENT EVALUATIONS - PLACEHOLDER")
+    print("⚠️  DEPRECATED SCRIPT")
     print("=" * 60)
     print()
-    print("ℹ️  This is a placeholder for future agent evaluations.")
+    print("This placeholder has been replaced by the SDK-based evaluation suite.")
     print()
-    print("When implemented, this script will:")
-    print("  • Connect to Azure AI Foundry evaluation APIs")
-    print("  • Run test conversations against the agent")
-    print("  • Score responses for quality, accuracy, and safety")
-    print("  • Report metrics back to the PR")
+    print("Please use the new evaluation runner:")
+    print("  cd scripts/agents")
+    print("  python -m evaluation.run_evaluation \\")
+    print("    --data evaluation_data/collected_responses.jsonl \\")
+    print("    --output evaluation_results/")
     print()
-    print("📊 Evaluation Results: SKIPPED (placeholder)")
-    print()
-    print("✅ Placeholder passed - no evaluations configured yet")
+    print("See: scripts/agents/evaluation/run_evaluation.py")
     print("=" * 60)
 
-    return 0
+    # Exit with error to fail CI if accidentally called
+    return 1
 
 
 if __name__ == "__main__":
