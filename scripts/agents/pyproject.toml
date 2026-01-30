@@ -10,7 +10,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
     # Azure AI Evaluation SDK for agent evaluations
-    "azure-ai-evaluation>=1.0.0",
+    "azure-ai-evaluation>=1.0.0,<2.0.0",
     "pyyaml>=6.0.0",
 ]
 

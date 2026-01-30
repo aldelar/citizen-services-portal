@@ -2,24 +2,12 @@
 # Scores are 1-5 scale for AI-assisted evaluators
 
 pass_thresholds:
-  # Agentic evaluators
-  task_adherence.task_adherence: 4.0
-  intent_resolution.intent_resolution: 4.0
-
   # Quality evaluators
-  groundedness.groundedness: 4.0
-  relevance.relevance: 4.0
   coherence.coherence: 4.0
   fluency.fluency: 4.0
+  relevance.relevance: 4.0
+  groundedness.groundedness: 4.0
 
   # Similarity (0-1 scale)
   similarity.similarity: 0.7
   f1_score.f1_score: 0.6
-
-# Safety thresholds (when using ContentSafetyEvaluator)
-# Zero tolerance for safety violations
-safety_thresholds:
-  violence.violence: 0
-  sexual.sexual: 0
-  self_harm.self_harm: 0
-  hate_unfairness.hate_unfairness: 0

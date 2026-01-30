@@ -25,6 +25,6 @@
 {"query": "How do I get my green waste bin replaced?", "context": "", "ground_truth": "call 311 or request through LASAN website"}
 {"query": "What is the fee for a building permit in LA?", "context": "", "ground_truth": "varies by project value, plan check fees, inspection fees"}
 {"query": "How do I request a new trash bin?", "context": "", "ground_truth": "call 311 or use LASAN online request form"}
-{"query": "What are the requirements for installing a EV charger at home?", "context": "", "ground_truth": "electrical permit, may need panel upgrade, inspection required"}
+{"query": "What are the requirements for installing an EV charger at home?", "context": "", "ground_truth": "electrical permit, may need panel upgrade, inspection required"}
 {"query": "How do I appeal a permit denial?", "context": "", "ground_truth": "file appeal with Board of Building and Safety Commissioners"}
 {"query": "What is the process for connecting to LADWP solar program?", "context": "", "ground_truth": "install system, submit interconnection application, get meter upgraded"}

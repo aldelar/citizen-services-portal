@@ -59,6 +59,7 @@ AZURE_OPENAI_ENDPOINT = os.environ.get(
     "https://aldelar-csp-foundry.cognitiveservices.azure.com/",
 )
 DEPLOYMENT_NAME = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME", "gpt-4.1")
+API_VERSION = os.environ.get("AZURE_API_VERSION", "2024-10-21")
 
 # System prompt
 SYSTEM_PROMPT = """You are the Citizen Services Portal Agent (CSP Agent), an AI assistant for 
@@ -131,7 +132,7 @@ def create_openai_client() -> AzureOpenAI:
     client = AzureOpenAI(
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
         api_key=token.token,
-        api_version="2024-10-21",
+        api_version=API_VERSION,
     )
     return client
 
