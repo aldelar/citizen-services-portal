@@ -111,3 +111,122 @@ az login
 - **LADWP**: queryKB, account_show, plans_list, tou_enroll, interconnection_submit, interconnection_getStatus, rebates_filed, rebates_apply, rebates_getStatus
 - **LASAN**: queryKB, pickup_scheduled, pickup_schedule, pickup_getEligibility
 - **CSP**: plan_create, plan_get, plan_update, plan_updateStep
+
+## Agent Evaluation
+
+This package includes evaluation capabilities using the **Microsoft Azure AI Foundry Evaluation SDK**. The evaluation framework uses ONLY SDK built-in evaluators - no custom evaluation logic.
+
+### Quick Start
+
+```bash
+# Step 1: Collect agent responses for evaluation
+uv run python -m evaluation.data_collector \
+    --input evaluation_data/test_queries.jsonl \
+    --output evaluation_data/collected_responses.jsonl
+
+# Step 2: Run SDK evaluation
+uv run python -m evaluation.run_evaluation \
+    --data evaluation_data/collected_responses.jsonl \
+    --output evaluation_results/ \
+    --thresholds evaluation/thresholds.yaml
+```
+
+### Evaluation Scripts
+
+#### Data Collector (`evaluation/data_collector.py`)
+
+Collects agent responses for evaluation by sending test queries to the CSP Agent.
+
+```bash
+# Collect responses from test queries
+uv run python -m evaluation.data_collector \
+    --input evaluation_data/test_queries.jsonl \
+    --output evaluation_data/collected_responses.jsonl
+
+# With verbose output (shows tool calls)
+uv run python -m evaluation.data_collector \
+    --input evaluation_data/test_queries.jsonl \
+    --output evaluation_data/collected_responses.jsonl \
+    --verbose
+```
+
+#### Evaluation Runner (`evaluation/run_evaluation.py`)
+
+Runs evaluation using the Azure AI Evaluation SDK built-in evaluators.
+
+```bash
+# Run all evaluators
+uv run python -m evaluation.run_evaluation \
+    --data evaluation_data/collected_responses.jsonl \
+    --output evaluation_results/
+
+# Run specific evaluators only
+uv run python -m evaluation.run_evaluation \
+    --data evaluation_data/collected_responses.jsonl \
+    --evaluators coherence relevance groundedness
+
+# Skip threshold checking
+uv run python -m evaluation.run_evaluation \
+    --data evaluation_data/collected_responses.jsonl \
+    --no-threshold-check
+```
+
+### SDK Built-in Evaluators Used
+
+| Evaluator | Purpose | Data Required |
+|-----------|---------|---------------|
+| **CoherenceEvaluator** | Clear and coherent? | query, response |
+| **FluencyEvaluator** | Natural language? | query, response |
+| **RelevanceEvaluator** | Relevant to query? | query, response |
+| **GroundednessEvaluator** | Grounded in context? | response, context |
+| **SimilarityEvaluator** | Similar to ground truth? | response, ground_truth |
+| **F1ScoreEvaluator** | Token overlap score | response, ground_truth |
+
+### File Structure
+
+```
+scripts/agents/
+├── evaluation/
+│   ├── __init__.py           # Package init
+│   ├── config.py             # Model configuration
+│   ├── data_collector.py     # Collect agent responses
+│   ├── run_evaluation.py     # Main evaluation runner
+│   └── thresholds.yaml       # Pass/fail thresholds
+│
+└── evaluation_data/
+    └── test_queries.jsonl    # Test dataset (30 queries)
+```
+
+### Environment Variables for Evaluation
+
+```bash
+# Azure OpenAI for evaluation (judge model)
+AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-key  # Or use DefaultAzureCredential
+AZURE_OPENAI_EVAL_DEPLOYMENT=gpt-4o  # Recommended for evaluation
+AZURE_API_VERSION=2024-10-21
+```
+
+### Thresholds Configuration
+
+Edit `evaluation/thresholds.yaml` to customize pass/fail thresholds:
+
+```yaml
+pass_thresholds:
+  coherence.coherence: 4.0      # 1-5 scale
+  fluency.fluency: 4.0
+  relevance.relevance: 4.0
+  groundedness.groundedness: 4.0
+  similarity.similarity: 0.7    # 0-1 scale
+  f1_score.f1_score: 0.6
+```
+
+### Exit Codes
+
+- `0`: All thresholds passed
+- `1`: One or more thresholds failed (for CI/CD integration)
+
+### Reference Documentation
+
+- [Azure AI Evaluation SDK](https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/develop/evaluate-sdk)
+- [Built-in Evaluators Reference](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/observability#what-are-evaluators)

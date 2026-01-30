@@ -1,7 +1,7 @@
 [project]
 name = "csp-agent-tests"
 version = "0.1.0"
-description = "Test scripts for CSP Agent and MCP Servers"
+description = "Test and evaluation scripts for CSP Agent"
 requires-python = ">=3.11"
 dependencies = [
     "azure-identity>=1.15.0",
@@ -9,6 +9,9 @@ dependencies = [
     "openai>=1.0.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
+    # Azure AI Evaluation SDK for agent evaluations
+    "azure-ai-evaluation>=1.0.0",
+    "pyyaml>=6.0.0",
 ]
 
 [tool.uv]
