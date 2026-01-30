@@ -1225,6 +1225,7 @@ flowchart TB
 
     subgraph csp_storage["Data Services"]
         DB_CSP[("csp<br/><sub>CosmosDB</sub>")]
+        ANALYTICS_CSP["📊 Metrics"]
     end
 
     subgraph ladbs_storage["Data Services"]
@@ -1264,6 +1265,7 @@ flowchart TB
     style IDX_LADBS fill:#FFD700,stroke:#B8960F,color:#333
     style IDX_LADWP fill:#FFD700,stroke:#B8960F,color:#333
     style IDX_LASAN fill:#FFD700,stroke:#B8960F,color:#333
+    style ANALYTICS_CSP fill:#E8E8E8,stroke:#999,color:#333
 ```
 
 ### Component Summary
