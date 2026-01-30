@@ -1,0 +1,31 @@
+name: Agent Evaluations
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      # Agent code changes
+      - 'src/agents/**'
+      - 'src/mcp-servers/**'
+      # Agent-related Bicep infrastructure
+      - 'infra/app/csp-agent.bicep'
+      - 'infra/app/mcp-*.bicep'
+      # Foundry/AI configuration
+      - 'infra/**/*foundry*'
+      - 'infra/**/*agent*'
+      - 'infra/**/*openai*'
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Agent Evaluations
+        run: |
+          python scripts/agents/run_evaluations.py

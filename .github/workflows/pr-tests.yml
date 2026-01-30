@@ -1,0 +1,60 @@
+name: PR Tests
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+
+          # Install shared libraries first (may be dependencies for other components)
+          for dir in src/shared/*/; do
+            if [ -f "$dir/pyproject.toml" ]; then
+              pip install -e "$dir"
+            fi
+          done
+
+          # Install shared library at src/shared level if it has pyproject.toml
+          if [ -f "src/shared/pyproject.toml" ]; then
+            pip install -e "src/shared"
+          fi
+
+          # Install MCP Servers
+          for dir in src/mcp-servers/*/; do
+            if [ -f "$dir/pyproject.toml" ]; then
+              pip install -e "$dir"
+            fi
+          done
+
+          # Install Agents
+          for dir in src/agents/*/; do
+            if [ -f "$dir/pyproject.toml" ]; then
+              pip install -e "$dir"
+            fi
+          done
+
+          # Install Web App if it has pyproject.toml
+          if [ -f "src/web-app/pyproject.toml" ]; then
+            pip install -e "src/web-app"
+          fi
+
+      - name: Run local tests (mock data only)
+        env:
+          MOCK_DATA: "true"
+          COSMOSDB_ENABLED: "false"
+        run: |
+          pytest src/ --ignore=src/**/integration_tests/ -v --tb=short
