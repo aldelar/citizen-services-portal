@@ -15,6 +15,9 @@ on:
       - 'infra/**/*agent*'
       - 'infra/**/*openai*'
 
+permissions:
+  contents: read
+
 jobs:
   evaluate:
     runs-on: ubuntu-latest
