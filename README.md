@@ -73,7 +73,7 @@ AI-driven virtual assistants handling routine inquiries and guiding citizens thr
 
 ## Agent Architecture (MVP)
 
-The Citizen Services Portal uses a single unified **CSP Agent** deployed as a Hosted Agent in Microsoft Foundry. This agent serves as the intelligent interface for all citizen service requests, connecting to multiple MCP (Model Context Protocol) servers to provide comprehensive assistance across government departments.
+The Citizen Services Portal uses a single unified **CSP Agent** deployed as an Azure Container App. This agent serves as the intelligent interface for all citizen service requests, connecting to multiple MCP (Model Context Protocol) servers to provide comprehensive assistance across government departments.
 
 ### Architecture Overview
 
@@ -84,8 +84,7 @@ The Citizen Services Portal uses a single unified **CSP Agent** deployed as a Ho
                                │
                     ┌──────────▼──────────┐
                     │     CSP Agent       │
-                    │  (Hosted Agent in   │
-                    │  Microsoft Foundry) │
+                    │  (Container App)    │
                     └──────────┬──────────┘
                                │
        ┌───────────────────────┼───────────────────────┐
@@ -184,10 +183,10 @@ citizen-services-portal/
 │
 ├── src/                                # Application code
 │   ├── agents/                         # AI agent implementations
-│   │   ├── csp-agent/                  # Active CSP Hosted Agent for MVP
+│   │   ├── csp-agent/                  # CSP Agent deployed as Azure Container App
 │   │   │   ├── Dockerfile              # Container definition
-│   │   │   ├── agent.yaml              # Agent manifest for Foundry
-│   │   │   ├── main.py                 # Agent entry point
+│   │   │   ├── agent.yaml              # Agent manifest (metadata and env vars)
+│   │   │   ├── main.py                 # Agent entry point (FastAPI server)
 │   │   │   ├── requirements.txt        # Python dependencies
 │   │   │   └── prompts/                # Agent system prompts
 │   │   ├── _future_approach/           # Reserved: Multi-agent per-agency approach (not deployed)

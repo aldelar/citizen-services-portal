@@ -2,8 +2,8 @@
 """
 CSP Agent Azure Deployment Test Script.
 
-This script tests the CSP Agent deployed to Azure AI Foundry Agent Service.
-It connects to the hosted agent endpoint and validates end-to-end functionality.
+This script tests the CSP Agent deployed to Azure Container Apps.
+It connects to the agent's Responses API endpoint and validates end-to-end functionality.
 
 Usage:
     uv run python test_csp_agent_azure.py
@@ -193,7 +193,7 @@ async def run_health_check():
     if not agents:
         print("   ⚠ No agents found in the project")
         print("\n   The CSP Agent may not be deployed yet.")
-        print("   To deploy, run: cd src/agents/csp-agent && azd ai agent build && azd ai agent deploy")
+        print("   To deploy, run: azd deploy csp-agent")
         return False
     
     print(f"   Found {len(agents)} agent(s):")
@@ -323,7 +323,7 @@ async def run_single_query(query: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Test CSP Agent deployed to Azure AI Foundry"
+        description="Test CSP Agent deployed to Azure Container Apps"
     )
     parser.add_argument("--query", "-q", type=str, help="Run a single query")
     parser.add_argument(

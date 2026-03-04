@@ -1,6 +1,6 @@
 # CSP Agent Technical Specification
 
-This document provides the comprehensive technical specification for the **CSP Agent** (Citizen Services Portal Agent), a single unified Hosted Agent deployed in Microsoft Foundry that connects to all MCP servers to provide intelligent citizen services.
+This document provides the comprehensive technical specification for the **CSP Agent** (Citizen Services Portal Agent), a single unified agent deployed as an Azure Container App that connects to all MCP servers to provide intelligent citizen services.
 
 ---
 
@@ -8,7 +8,7 @@ This document provides the comprehensive technical specification for the **CSP A
 
 ### 1.1 Design Pattern
 
-The CSP Agent follows the **Single Hosted Agent** pattern using the Microsoft Agent Framework. This approach provides:
+The CSP Agent follows the **Single Agent** pattern using the Microsoft Agent Framework. This approach provides:
 
 - **Unified Entry Point**: One agent handles all citizen service requests
 - **Cross-Agency Coordination**: Can create "Plans" spanning multiple agencies
@@ -23,8 +23,11 @@ flowchart TB
         User["Citizen/User"]
     end
 
+    subgraph ACAAgent["Azure Container Apps"]
+        CSP["CSP Agent<br/>(Container App)"]
+    end
+
     subgraph Foundry["Microsoft Foundry"]
-        CSP["CSP Agent<br/>(Hosted Agent)"]
         AOAI["Azure OpenAI<br/>(via AI Gateway)"]
     end
 
@@ -57,7 +60,7 @@ flowchart TB
 
 | Component | Hosting | Runtime |
 |-----------|---------|---------|
-| CSP Agent | Microsoft Foundry (Hosted Agent) | Docker Container via ACI |
+| CSP Agent | Azure Container Apps | Docker Container via ACA |
 | MCP Servers | Azure Container Apps | Python FastAPI |
 | AI Models | Azure OpenAI | gpt-4.1-mini, gpt-4.1 |
 | Knowledge Base | Azure AI Search | Vector + Semantic |
@@ -83,9 +86,9 @@ flowchart TB
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Builds the agent container image for deployment to Azure Container Instances |
-| `agent.yaml` | Foundry agent manifest defining name, description, protocols, and environment variables |
-| `main.py` | Main entry point that creates the agent with all MCP tools and runs it as a hosted agent |
+| `Dockerfile` | Builds the agent container image for deployment to Azure Container Apps |
+| `agent.yaml` | Agent manifest defining name, description, protocols, and environment variables |
+| `main.py` | Main entry point that creates the agent with all MCP tools and runs it as a FastAPI service |
 | `requirements.txt` | Python package dependencies for the agent |
 | `prompts/system_prompt.md` | Comprehensive system prompt defining agent behavior and capabilities |
 | `README.md` | Documentation for developing, testing, and deploying the agent |
@@ -121,16 +124,16 @@ environment_variables:
 
 ### 3.3 Tool Registration
 
-Each MCP server is registered as a `HostedMCPTool`:
+Each MCP server is registered as a `MCPStreamableHTTPTool`:
 
 ```python
-from agent_framework import HostedMCPTool
+from agent_framework import MCPStreamableHTTPTool
 
 tools = [
-    HostedMCPTool(name="LADBS", url=os.environ["MCP_LADBS_URL"]),
-    HostedMCPTool(name="LADWP", url=os.environ["MCP_LADWP_URL"]),
-    HostedMCPTool(name="LASAN", url=os.environ["MCP_LASAN_URL"]),
-    HostedMCPTool(name="Reporting", url=os.environ["MCP_REPORTING_URL"]),
+    MCPStreamableHTTPTool(name="LADBS", url=os.environ["MCP_LADBS_URL"]),
+    MCPStreamableHTTPTool(name="LADWP", url=os.environ["MCP_LADWP_URL"]),
+    MCPStreamableHTTPTool(name="LASAN", url=os.environ["MCP_LASAN_URL"]),
+    MCPStreamableHTTPTool(name="Reporting", url=os.environ["MCP_REPORTING_URL"]),
 ]
 ```
 
@@ -528,39 +531,20 @@ export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
 export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
 export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
 
-# Build and deploy the agent
-azd ai agent build
-azd ai agent deploy
+# Deploy the agent container app
+azd deploy csp-agent
 ```
 
 ### 7.3 Full Deployment via azd
 
-The agent is deployed automatically via the `postdeploy` hook in `azure.yaml`:
+The agent is deployed as an Azure Container App via `azure.yaml`:
 
 ```yaml
 postdeploy:
   posix:
     shell: sh
     run: |
-      echo "Deploying CSP Agent to Microsoft Foundry..."
-      cd src/agents/csp-agent
-      
-      # Export required environment variables
-      export foundryProjectEndpoint=$(azd env get-value foundryProjectEndpoint)
-      export AZURE_SUBSCRIPTION_ID=$(azd env get-value AZURE_SUBSCRIPTION_ID)
-      export resourceGroupName=$(azd env get-value resourceGroupName)
-      export foundryName=$(azd env get-value foundryName)
-      export foundryProjectName=$(azd env get-value foundryProjectName)
-      
-      # Export MCP server URLs
-      export MCP_LADBS_URL=$(azd env get-value SERVICE_MCP_LADBS_URI)
-      export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
-      export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
-      export MCP_REPORTING_URL=$(azd env get-value SERVICE_MCP_REPORTING_URI)
-      
-      # Deploy using azd ai agent extension
-      azd ai agent build
-      azd ai agent deploy
+      echo "CSP Agent deployed as Azure Container App via azd deploy"
 ```
 
 ### 7.4 Testing and Validation
@@ -594,19 +578,88 @@ curl -sS -H "Content-Type: application/json" \
 
 ---
 
-## 8. Comparison: Single Agent vs Multi-Agent Approach
+## 8. Observability & Foundry Registration
 
-### 8.1 Current Approach (MVP)
+### 8.1 Telemetry Pipeline
+
+The agent uses the Azure Monitor OpenTelemetry SDK to emit traces, logs, and metrics to Application Insights. The telemetry pipeline is:
+
+```
+ACA Agent → Azure Monitor SDK → Application Insights → Foundry Tracing
+```
+
+Telemetry is configured at startup in `main.py`:
+
+1. **`configure_azure_monitor()`** — sets up the Azure Monitor exporter using `APPLICATIONINSIGHTS_CONNECTION_STRING`
+2. **`enable_instrumentation()`** — activates the Agent Framework's `AgentTelemetryLayer`, which emits `gen_ai.*` semantic convention spans
+
+Key telemetry attributes emitted per agent invocation:
+
+| Attribute | Value | Description |
+|-----------|-------|-------------|
+| `gen_ai.agent.id` | `csp-agent` | Agent identifier used by Foundry for trace correlation |
+| `gen_ai.agent.name` | `csp-agent` | Human-readable agent name |
+| `gen_ai.operation.name` | `invoke_agent` | Operation type |
+| `gen_ai.provider.name` | `microsoft.agent_framework` | Telemetry source |
+| `gen_ai.request.model` | `gpt-4.1` | Model used for inference |
+| `gen_ai.usage.input_tokens` | *(varies)* | Input token count |
+| `gen_ai.usage.output_tokens` | *(varies)* | Output token count |
+| `cloud_RoleName` | `csp-agent` | ACA service name (via `OTEL_SERVICE_NAME`) |
+
+Additional spans are emitted for:
+- **`chat gpt-4.1`** — each LLM call with token usage and finish reasons
+- **`execute_tool <tool_name>`** — MCP tool invocations with duration metrics
+
+### 8.2 Foundry Registered Agent
+
+The ACA-deployed agent is registered in Microsoft Foundry as a **Registered Agent** (`csp-agent-ra`). This is distinct from a Hosted Agent — the agent code runs on ACA, but Foundry is aware of it and can display its traces.
+
+**Why register in Foundry:**
+- Enables the **Tracing** view in the Foundry portal, showing end-to-end agent execution traces
+- Provides visibility into LLM calls, tool invocations, token usage, and latency
+- Correlates traces using `gen_ai.agent.id=csp-agent` emitted by the Agent Framework
+- Leverages the Application Insights connection already configured on the Foundry project
+
+**Registration process (portal-only as of March 2026):**
+1. Navigate to the Foundry project (`aldelar-csp-foundry-project`) in Azure AI Foundry portal
+2. Go to **Agents** → **+ New agent** → **Registered Agent**
+3. Set endpoint to the ACA FQDN: `https://aldelar-csp-agent.gentlewave-1b3fce06.northcentralus.azurecontainerapps.io`
+4. Select protocol: **Responses API v1.0**
+5. Name the agent (e.g., `csp-agent-ra`)
+
+> **Note:** Registered Agent creation is not yet available via SDK, CLI, or REST API. It must be configured through the Foundry portal UI.
+
+### 8.3 AI Gateway
+
+The AI Gateway (`aldelar-csp-ai-gateway`, BasicV2 APIM) is linked to the Foundry project to provide:
+- API traffic observability for model calls routed through the gateway
+- Future capabilities: rate limiting, semantic caching, content safety policies
+
+> **Note:** AI Gateway linking to a Foundry project is a portal-only operation (not available via Bicep, ARM REST, or CLI as of March 2026).
+
+### 8.4 Environment Variables for Observability
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | *(secret ref)* | App Insights connection string for Azure Monitor SDK |
+| `OTEL_SERVICE_NAME` | `csp-agent` | Sets `cloud_RoleName` in telemetry |
+| `ENABLE_INSTRUMENTATION` | `true` | Feature flag for Agent Framework instrumentation |
+
+---
+
+## 9. Comparison: Single Agent vs Multi-Agent Approach
+
+### 9.1 Current Approach (MVP)
 
 | Aspect | Single CSP Agent |
 |--------|------------------|
-| **Deployment** | One hosted agent in Foundry |
+| **Deployment** | One container app in ACA |
 | **Maintenance** | Simpler - one codebase |
 | **Coordination** | Built-in multi-agency plans |
 | **Scalability** | Scales via container replicas |
 | **Use Case** | MVP and most citizen requests |
 
-### 8.2 Future Approach (Reserved)
+### 9.2 Future Approach (Reserved)
 
 The `_future_approach` folder contains per-agency agent implementations that may be used for:
 
@@ -617,7 +670,7 @@ The `_future_approach` folder contains per-agency agent implementations that may
 
 ---
 
-## 9. Acceptance Criteria
+## 10. Acceptance Criteria
 
 - [ ] `/specs/4-spec-csp-agent.md` is comprehensive and implementation-ready
 - [ ] `/src/agents/csp-agent/` folder is created with all required files
@@ -628,3 +681,6 @@ The `_future_approach` folder contains per-agency agent implementations that may
 - [ ] `azure.yaml` postdeploy hook deploys CSP Agent (not old agents)
 - [ ] All existing MCP server deployments continue to work unchanged
 - [ ] Agent can be deployed via `azd up` or `azd deploy`
+- [ ] Agent is registered in Foundry as a Registered Agent
+- [ ] Traces appear in Foundry Tracing with `gen_ai.agent.id=csp-agent`
+- [ ] AI Gateway is linked to Foundry project

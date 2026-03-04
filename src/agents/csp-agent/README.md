@@ -13,7 +13,7 @@ The **CSP Agent** is a unified AI assistant for the City of Los Angeles governme
 
 ## Architecture
 
-The CSP Agent is implemented as a **Hosted Agent** using the Microsoft Agent Framework and deployed to Microsoft Foundry. It connects to four MCP (Model Context Protocol) servers, each providing specialized tools for their respective agencies.
+The CSP Agent is implemented as a **containerized Python service** using the Microsoft Agent Framework and deployed to **Azure Container Apps (ACA)**. It exposes an OpenAI-compatible Responses API and connects to four MCP (Model Context Protocol) servers, each providing specialized tools for their respective agencies.
 
 ```
                     ┌─────────────────┐
@@ -22,7 +22,7 @@ The CSP Agent is implemented as a **Hosted Agent** using the Microsoft Agent Fra
                              │
                     ┌────────▼────────┐
                     │    CSP Agent    │
-                    │ (Hosted Agent)  │
+                    │ (Container App) │
                     └────────┬────────┘
                              │
         ┌────────────────────┼────────────────────┐
@@ -37,7 +37,7 @@ The CSP Agent is implemented as a **Hosted Agent** using the Microsoft Agent Fra
 
 ### MCP Integration
 
-The agent uses `HostedMCPTool` to connect to each MCP server:
+The agent uses `MCPStreamableHTTPTool` to connect to each MCP server:
 
 1. When a user asks a question, the agent determines which MCP tools are relevant
 2. Azure OpenAI Responses service automatically invokes the appropriate MCP tools
@@ -107,11 +107,11 @@ curl -sS -H "Content-Type: application/json" \
   -d '{"input": "What documents do I need for a solar panel permit?", "stream": false}'
 ```
 
-## Deploying to Microsoft Foundry
+## Deploying to Azure Container Apps
 
 ### Using azd (Recommended)
 
-The agent is deployed automatically via the `postdeploy` hook when running:
+The agent is deployed as an Azure Container App. Deploy all services (including the agent) with:
 
 ```bash
 azd up
@@ -120,24 +120,10 @@ azd up
 Or deploy only the agent after infrastructure exists:
 
 ```bash
-azd deploy
+azd deploy csp-agent
 ```
 
-### Manual Deployment
-
-```bash
-cd src/agents/csp-agent
-
-# Export MCP server URLs
-export MCP_LADBS_URL=$(azd env get-value SERVICE_MCP_LADBS_URI)
-export MCP_LADWP_URL=$(azd env get-value SERVICE_MCP_LADWP_URI)
-export MCP_LASAN_URL=$(azd env get-value SERVICE_MCP_LASAN_URI)
-export MCP_CSP_URL=$(azd env get-value SERVICE_MCP_CSP_URI)
-
-# Build and deploy
-azd ai agent build
-azd ai agent deploy
-```
+This builds the Docker image, pushes it to Azure Container Registry, and updates the Container App.
 
 ## File Structure
 
@@ -145,8 +131,8 @@ azd ai agent deploy
 csp-agent/
 ├── Dockerfile                # Container definition
 ├── README.md                 # This file
-├── agent.yaml                # Agent manifest for Foundry
-├── main.py                   # Agent entry point
+├── agent.yaml                # Agent manifest (metadata and env vars)
+├── main.py                   # Agent entry point (FastAPI server)
 ├── requirements.txt          # Python dependencies
 └── prompts/
     └── system_prompt.md      # Agent system instructions
@@ -158,10 +144,12 @@ csp-agent/
 
 The agent manifest defines:
 
-- **kind**: `hosted` - Runs as a containerized hosted agent
+- **kind**: `hosted` - Agent kind identifier (retained for manifest compatibility)
 - **name**: `csp-agent` - Agent identifier
 - **protocols**: `responses` - Uses OpenAI Responses protocol
 - **environment_variables**: Configuration for Azure OpenAI and MCP servers
+
+> **Note:** The agent is deployed as an Azure Container App, not as a Foundry Hosted Agent. The `agent.yaml` manifest is kept for metadata and local tooling compatibility.
 
 ### System Prompt
 

@@ -1,6 +1,6 @@
 """Integration tests for CSP Agent with Responses API.
 
-These tests validate end-to-end functionality with the actual hosted agent,
+These tests validate end-to-end functionality with the deployed container app agent,
 including authentication, stateless history passing, and response format.
 
 Requirements:

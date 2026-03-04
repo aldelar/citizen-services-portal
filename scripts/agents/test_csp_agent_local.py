@@ -3,7 +3,7 @@
 CSP Agent Local Test Script.
 
 This script tests the CSP Agent locally by connecting to deployed MCP servers
-and using Azure OpenAI for inference. It simulates what the hosted agent does
+and using Azure OpenAI for inference. It simulates what the deployed container app agent does
 but runs entirely on your local machine.
 
 Usage:

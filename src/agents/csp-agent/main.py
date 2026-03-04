@@ -14,20 +14,58 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agent_framework import ChatAgent, MCPStreamableHTTPTool
+from agent_framework import Agent, MCPStreamableHTTPTool
 from agent_framework.azure import AzureOpenAIChatClient
-from agent_framework.observability import configure_otel_providers
+from agent_framework.observability import configure_otel_providers, enable_instrumentation
 from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, EnvironmentCredential, AzureCliCredential
 
-# Setup observability - reads environment variables automatically:
-#   - OTEL_EXPORTER_OTLP_ENDPOINT (for Aspire Dashboard/OTLP, e.g., http://localhost:4317)
-#   - APPLICATIONINSIGHTS_CONNECTION_STRING (for Azure Monitor in production)
-#   - OTEL_SERVICE_NAME (defaults to agent_framework, set to 'csp-agent' for clarity)
-configure_otel_providers()
+# Setup observability
+# configure_otel_providers() only reads OTEL_EXPORTER_OTLP_ENDPOINT for exporters.
+# For Azure Monitor / Application Insights, we must call configure_azure_monitor()
+# first to set up the Azure Monitor exporter, then enable_instrumentation() so the
+# Agent Framework emits traces, logs, and metrics through those providers.
+_appinsights_conn_str = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
+_otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
 
-# Setup logging
+# Setup logging early so telemetry init messages are visible
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
+
+# Sensitive data capture: when enabled, the Agent Framework records full
+# conversation content (input/output messages, system instructions, tool
+# arguments & results) as span attributes and OpenTelemetry log events.
+# This dramatically enriches the Foundry Traces viewer and App Insights.
+# Controlled via ENABLE_SENSITIVE_DATA env var (default: False / off).
+_enable_sensitive_data = os.environ.get("ENABLE_SENSITIVE_DATA", "false").lower() in ("true", "1", "yes")
+
+if _appinsights_conn_str:
+    # Production path: Azure Monitor exporter → Application Insights → Foundry
+    logger.info(f"[TELEMETRY] Configuring Azure Monitor (conn string length={len(_appinsights_conn_str)})")
+    from azure.monitor.opentelemetry import configure_azure_monitor
+    configure_azure_monitor(
+        connection_string=_appinsights_conn_str,
+        # Export logs from both our logger AND the Agent Framework logger.
+        # The framework emits GenAI semantic convention log events
+        # (gen_ai.user.message, gen_ai.choice, gen_ai.tool.message, etc.)
+        # on the "agent_framework" logger. Without including it here,
+        # those structured events are silently dropped by Azure Monitor.
+        logger_name="",                    # root logger – captures all loggers
+    )
+    # Reduce noise from Azure SDK HTTP logging
+    logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+    logging.getLogger("azure.core").setLevel(logging.WARNING)
+    logging.getLogger("azure.identity").setLevel(logging.WARNING)
+    enable_instrumentation(enable_sensitive_data=_enable_sensitive_data)
+    logger.info(f"[TELEMETRY] Azure Monitor + Agent Framework instrumentation enabled (sensitive_data={_enable_sensitive_data})")
+elif _otlp_endpoint:
+    # Local dev path: OTLP exporter → Aspire Dashboard or similar
+    logger.info(f"[TELEMETRY] Configuring OTLP exporter → {_otlp_endpoint}")
+    configure_otel_providers(enable_sensitive_data=_enable_sensitive_data)
+    logger.info(f"[TELEMETRY] OTLP + Agent Framework instrumentation enabled (sensitive_data={_enable_sensitive_data})")
+else:
+    # No exporter configured – just enable instrumentation (spans go nowhere but code still runs)
+    logger.info("[TELEMETRY] No exporter configured, enabling instrumentation only")
+    enable_instrumentation(enable_sensitive_data=_enable_sensitive_data)
 
 
 def load_system_prompt() -> str:
@@ -91,20 +129,23 @@ def create_chat_client() -> AzureOpenAIChatClient:
     if api_key:
         return AzureOpenAIChatClient(api_key=api_key)
     else:
-        # Use a credential chain for authentication
-        # For local dev: AzureCliCredential (uses 'az login')
-        # For production (Azure): ManagedIdentityCredential
         mi_client_id = os.environ.get("AZURE_CLIENT_ID")
-        credential = ChainedTokenCredential(
-            EnvironmentCredential(),  # For explicit env var auth
-            AzureCliCredential(),  # For local dev with 'az login'
-            ManagedIdentityCredential(client_id=mi_client_id)  # For production in Azure (user-assigned MI)
-        )
+        if mi_client_id:
+            # Production: use managed identity directly
+            logger.info(f"[CSP-AGENT] Using ManagedIdentityCredential with client_id={mi_client_id}")
+            credential = ManagedIdentityCredential(client_id=mi_client_id)
+        else:
+            # Local dev: use credential chain
+            logger.info("[CSP-AGENT] Using ChainedTokenCredential (local dev)")
+            credential = ChainedTokenCredential(
+                EnvironmentCredential(),
+                AzureCliCredential(),
+            )
         return AzureOpenAIChatClient(credential=credential)
 
 
 # Global state for agent and tools (initialized in lifespan)
-agent: ChatAgent | None = None
+agent: Agent | None = None
 mcp_tools: list[MCPStreamableHTTPTool] = []
 
 
@@ -139,11 +180,12 @@ async def lifespan(app: FastAPI):
     chat_client = create_chat_client()
     
     # Create the agent with connected tools
-    agent = ChatAgent(
+    agent = Agent(
         name="csp-agent",
+        id="csp-agent",
         description="Citizen Services Portal Agent - helps citizens navigate LA city services",
         instructions=instructions,
-        chat_client=chat_client,
+        client=chat_client,
         tools=mcp_tools,
     )
     

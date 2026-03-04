@@ -64,11 +64,13 @@ hooks:
         posix:
             shell: sh
             run: |
-                echo "Skipping AI Gateway configuration (deferred to APIM implementation)"
+                echo "=== Configuring AI Gateway ↔ Foundry link ==="
+                chmod +x ./infra/hooks/postprovision.sh
+                ./infra/hooks/postprovision.sh
 
                 echo ""
                 echo "Setting up CosmosDB RBAC for local development..."
-                cd ../.. && ./scripts/setup-dev-rbac.sh || echo "Note: RBAC setup skipped (may already be configured)"
+                ./scripts/setup-dev-rbac.sh || echo "Note: RBAC setup skipped (may already be configured)"
     preprovision:
         posix:
             name: preprovision

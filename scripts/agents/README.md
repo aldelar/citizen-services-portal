@@ -52,7 +52,7 @@ uv run python test_csp_agent_local.py --interactive
 
 ### 3. CSP Agent Azure Test (`test_csp_agent_azure.py`)
 
-Tests the CSP Agent deployed to Azure AI Foundry Agent Service.
+Tests the CSP Agent deployed to Azure Container Apps.
 
 ```bash
 # Run health check and test query

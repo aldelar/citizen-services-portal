@@ -15,10 +15,10 @@
 | AI Search | `aldelar-csp-search` | North Central US | Knowledge base vector search |
 | Cosmos DB | `aldelar-csp-cosmos` | North Central US | Agent memory (serverless) |
 | Storage Account | `aldelarcspstorage` | North Central US | Blob storage for documents |
-| API Management | `aldelar-csp-apim` | North Central US | AI Gateway (https://aldelar-csp-apim.azure-api.net) |
+| API Management | `aldelar-csp-ai-gateway` | North Central US | AI Gateway (BasicV2 SKU), linked to Foundry project |
 | Key Vault | `aldelar-csp-kv` | North Central US | Secrets management |
 | Managed Identity | `aldelar-csp-identity` | North Central US | Service authentication |
-| Application Insights | `aldelar-csp-insights` | North Central US | Application monitoring |
+| Application Insights | `aldelar-csp-insights` | North Central US | Application monitoring, connected to Foundry for agent tracing |
 | Log Analytics | `aldelar-csp-log` | North Central US | Centralized logging |
 
 ## Model Deployments

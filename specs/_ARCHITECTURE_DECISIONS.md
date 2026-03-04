@@ -12,3 +12,11 @@ Abandoned the idea of using Hosted Agents with Agent Framework:
 Azure Container Apps (ACA) provide a stable, production-ready hosting environment with full control over the agent container, allowing us to ensure consistent behavior between local development and hosted deployment. This approach also allows us to fully implement the unified Responses API contract, including conversation persistence and structured message handling, which are critical for our application's functionality.
 
 ACA is also a supported service in Azure Gov if we need to deploy based on data residency requirements of future Governement services enablement in the solution.
+
+Registering the ACA-deployed agent in Foundry as a **Registered Agent**:
+- The agent is deployed and hosted on ACA, but registered in Microsoft Foundry as a "Registered Agent" (`csp-agent-ra`) pointing to the ACA endpoint.
+- This enables **Foundry Tracing**: agent telemetry (spans, traces, token usage) flows from the ACA agent → Azure Monitor SDK → Application Insights → Foundry, and is visible in the Foundry portal under Tracing.
+- The agent emits OpenTelemetry traces with `gen_ai.agent.id=csp-agent` via the Agent Framework's `AgentTelemetryLayer`, which Foundry uses to correlate traces to the registered agent.
+- The AI Gateway (`aldelar-csp-ai-gateway`, BasicV2 APIM) is linked to the Foundry project to enable API traffic observability.
+- AI Gateway linking to a Foundry project is a portal-only operation (not available via Bicep, ARM REST, or CLI as of March 2026).
+- Registered Agent creation is also a portal-only operation — defined in Foundry UI by pointing to the ACA FQDN and selecting the Responses API protocol.

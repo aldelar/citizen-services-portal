@@ -157,6 +157,14 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
                 name: 'ENABLE_INSTRUMENTATION'
                 value: 'true'
               }
+              {
+                name: 'ENABLE_SENSITIVE_DATA'
+                value: 'true'
+              }
+              {
+                name: 'OTEL_SERVICE_NAME'
+                value: 'csp-agent'
+              }
             ],
             !empty(applicationInsightsConnectionString) ? [
               {

@@ -164,6 +164,23 @@ module apiManagement './core/gateway/api-management.bicep' = {
   }
 }
 
+// AI Gateway (BasicV2 APIM) - Required by Foundry for agent registration & governance
+// Foundry AI Gateway requires a v2 tier APIM (BasicV2/StandardV2/PremiumV2).
+// The existing Standard (classic) APIM does not qualify.
+// Linking to Foundry is handled by the foundryAiGatewayLink module below.
+module aiGateway './core/gateway/ai-gateway.bicep' = {
+  name: 'ai-gateway-deployment'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    gatewayName: 'aldelar-csp-ai-gateway'
+    publisherEmail: 'admin@citizenservices.local'
+    publisherName: 'Citizen Services AI Gateway'
+    sku: 'BasicV2'
+  }
+}
+
 // AI Foundry
 module foundry './core/ai/foundry.bicep' = {
   name: 'ai-foundry'
@@ -255,6 +272,21 @@ module foundryProject './core/ai/foundry-project.bicep' = {
     friendlyName: 'Citizen Services AI Foundry Project'
     projectDescription: 'Foundry project for building and deploying citizen service AI agents'
     foundryName: foundry.outputs.name
+  }
+}
+
+// AI Gateway ↔ Foundry linking is handled by the postprovision hook
+// (infra/hooks/postprovision.sh) using `az rest` with the logged-in identity.
+// deploymentScripts was removed because it requires storage key access.
+
+// AI Gateway RBAC – grant the AI Gateway APIM's managed identity access to Foundry
+module aiGatewayFoundryRbac './core/security/foundry-rbac.bicep' = {
+  name: 'ai-gateway-foundry-rbac-deployment'
+  scope: rg
+  params: {
+    foundryId: foundry.outputs.id
+    principalId: aiGateway.outputs.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -713,7 +745,23 @@ output apiManagementId string = apiManagement.outputs.id
 @description('API Management gateway URL')
 output apiManagementGatewayUrl string = apiManagement.outputs.gatewayUrl
 
+// AI Gateway (v2 APIM for Foundry)
+@description('AI Gateway (v2 APIM) name')
+output aiGatewayName string = aiGateway.outputs.name
+
+@description('AI Gateway (v2 APIM) resource ID')
+output aiGatewayId string = aiGateway.outputs.id
+
+@description('AI Gateway URL')
+output aiGatewayUrl string = aiGateway.outputs.gatewayUrl
+
 // AI Foundry
+@description('Foundry account ARM resource ID')
+output foundryId string = foundry.outputs.id
+
+@description('Foundry project ARM resource ID')
+output foundryProjectId string = foundryProject.outputs.id
+
 @description('Foundry name')
 output foundryName string = foundry.outputs.name
 
